@@ -134,11 +134,11 @@ async function login(){
   if(error){$('#lerr').textContent='Wrong email or password.';return}
   boot(data.user);
 }
-async function logout(){await sb.auth.signOut();ME=null;clearInterval(poll);showLogin()}
+async function logout(){await sb.auth.signOut();ME=null;for(const k in VC)delete VC[k];clearInterval(poll);showLogin()}
 async function boot(user){
   const {data:me,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
-  ME=me;ME.email=user.email||'';
+  ME=me;ME.email=user.email||'';for(const k in VC)delete VC[k];
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
@@ -163,12 +163,18 @@ async function render(){
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
+  const rid=++RID,busy=openId||noteId||showAdd;
+  const ck=[ME.role,tab,q,fLoc,fBhk,fSt,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
+  if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];
+  const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
   try{h=await VIEW[ME.role+':'+tab]()}catch(e){h=`<div class="card er">Error: ${esc(e.message||e)}</div>`}
-  let nb='';
-  if(ME.role=='telecaller'&&tab!='deal'){try{nb=await dealBanner()}catch(e){}}
+  const nb=await dbp;
+  if(rid!=RID)return;
   $('#app').innerHTML=nb+h;
+  if(!busy)VC[ck]=nb+h;
 }
+let RID=0;const VC={};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;$('#inst').style.display='inline-block'});
 async function doInstall(){if(!instEv)return;instEv.prompt();await instEv.userChoice;instEv=null;$('#inst').style.display='none'}
 
@@ -403,13 +409,13 @@ async function saveCall(id){
 const VIEW={};
 // Telecaller
 VIEW['telecaller:call']=async()=>{
-  await loadFilt();
+  const flp=loadFilt();
   let qy=sb.from('leads').select('*').order('created_at',{ascending:true}).limit(50);
   const qq=clean(q);
   if(qq)qy=qy.or(srch(qq));else if(!fSt)qy=qy.in('status',['new','callback','ringing','followup']);
   qy=applyF(qy);
   const {data,error}=await qy;if(error)throw error;
-  const hs=await histMap(data.map(l=>l.id));
+  const [hs]=await Promise.all([histMap(data.map(l=>l.id)),flp]);
   return searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
     (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc||fBhk||fSt?'Nothing found.':'No leads to call.'));
 };
@@ -617,7 +623,8 @@ const tcCard=(r,rows)=>`<div class="card"><b>${esc(r.name||'?')}</b>${medal(rows
 const feCard=(r,rows)=>`<div class="card"><b>${esc(r.name||'?')}</b>${medal(rows,r,'deal')} <span class="mu">Field Exec</span><div style="margin-top:8px">${feFunnel(r)}</div><div style="margin-top:6px">${feRatios(r)}</div></div>`;
 const vsRow=(lab,me,tm)=>lr(lab,`<b>${me}</b> <span class="mu">· team ${tm}</span>`);
 VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
-  const rows=await kpi();
+  const xp=ME.role=='telecaller'?sb.from('leads').select('*',{count:'exact',head:true}).eq('tc_id',ME.id).in('status',['followup','callback']).lte('follow_date',isoToday()):ME.role=='fe'?sb.from('leads').select('*',{count:'exact',head:true}).eq('fe_id',ME.id).eq('meeting_date',isoToday()):null;
+  const [rows,xr]=await Promise.all([kpi(),xp||Promise.resolve({})]);
   const tcs=rows.filter(r=>r.role=='telecaller'),fes=rows.filter(r=>r.role=='fe');
   const head=repTabs()+rangeChips()+rangeNote;
   const T={given:sumF(tcs,'given'),touched:sumF(tcs,'touched'),meet:sumF(tcs,'meet'),att:sumF(tcs,'att'),deal:sumF(tcs,'deal'),calls:sumF(tcs,'calls'),talk:sumF(tcs,'talk'),connected:sumF(tcs,'connected'),owned:sumF(tcs,'owned'),untouched:sumF(tcs,'untouched')};
@@ -634,13 +641,13 @@ VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
   const hero=(items,extra)=>`<div class="hero"><div class="hg">${hi}</div><div class="hs2">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'})} · ${PL}</div><div class="hn">${items.map(i=>`<div><b>${i[1]}</b><span>${i[0]}</span></div>`).join('')}</div>${extra||''}</div>`;
   if(ME.role=='telecaller'){
     const m=tcs.find(r=>r.uid==ME.id)||{given:0,touched:0,meet:0,att:0,deal:0,calls:0,talk:0,connected:0,owned:0,untouched:0};
-    const {count:fdue}=await sb.from('leads').select('*',{count:'exact',head:true}).eq('tc_id',ME.id).in('status',['followup','callback']).lte('follow_date',isoToday());
+    const fdue=xr.count;
     return hero([['Calls',m.calls],['Talk time',talkS(m.talk)],['Meetings fixed',m.meet]],`<button class="hb" onclick="go('call')">📞 Start calling</button>`)+`<div class="card" style="cursor:pointer" onclick="go('lk')">📲 <b>Incoming call?</b> <span class="mu">Check if the number is in our data</span></div>`+(fdue?`<div class="card alert" style="background:#fff6e0;border-color:#f0d9a0" onclick="go('fu')">🔔 ${fdue} call-back${fdue>1?'s':''} due today / overdue — tap to view</div>`:'')+rangeChips()+
       `<div class="card"><b>🎯 My Funnel</b><div style="margin-top:8px">${tcFunnel(m)}</div><div style="margin-top:6px">${tcRatios(m)}</div></div>`+rangeNote;
   }
   const m=fes.find(r=>r.uid==ME.id)||{meet:0,att:0,deal:0,pending:0,overdue:0,ni:0,fu:0};
   const td=isoToday();
-  const {count:tdc}=await sb.from('leads').select('*',{count:'exact',head:true}).eq('fe_id',ME.id).eq('meeting_date',td);
+  const tdc=xr.count;
   return hero([['Meetings today',tdc||0],['Pending',m.pending],['Deals',m.deal]],`<button class="hb" onclick="go('today')">📅 Today's meetings</button>`)+
     `<div class="card" style="cursor:pointer" onclick="go('lk')">📲 <b>Incoming call?</b> <span class="mu">Check if the number is in our data</span></div>`+
     (m.overdue?`<div class="card alert" style="border-color:var(--er);background:#fef2f2" onclick="go('asg')">⚠️ ${m.overdue} overdue meeting${m.overdue>1?'s':''} — tap to view</div>`:'')+rangeChips()+
@@ -700,8 +707,10 @@ async function updateBell(){
     const today=new Date().toLocaleDateString('en-CA');
     let x=sb.from('leads').select('*',{count:'exact',head:true}).eq('status','meeting_assigned').lte('meeting_date',today);
     if(ME.role=='fe')x=x.eq('fe_id',ME.id);else if(ME.role=='telecaller')x=x.eq('tc_id',ME.id);
-    let {count}=await x;
-    if(ME.role!='admin'){let y=sb.from('leads').select('*',{count:'exact',head:true}).in('status',['followup','callback']).lte('follow_date',today);y=ME.role=='fe'?y.eq('fe_id',ME.id):y.eq('tc_id',ME.id);const r2=await y;count=(count||0)+(r2.count||0)}
+    let y=null;
+    if(ME.role!='admin'){y=sb.from('leads').select('*',{count:'exact',head:true}).in('status',['followup','callback']).lte('follow_date',today);y=ME.role=='fe'?y.eq('fe_id',ME.id):y.eq('tc_id',ME.id)}
+    const [r1,r2]=await Promise.all([x,y||Promise.resolve({})]);
+    const count=(r1.count||0)+(r2.count||0);
     const b=$('#bc');if(!b)return;
     b.textContent=count>99?'99+':count;b.style.display=count?'block':'none';
   }catch(e){}
