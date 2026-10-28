@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="hi"><head>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1f4e78">
@@ -18,7 +18,7 @@ header b{font-size:16px}#who{font-size:12px;opacity:.9}
 header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:13px}
 main{max-width:900px;margin:auto;padding:12px}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0)}
-nav button{flex:1;border:0;background:none;padding:10px 4px;font-size:12px;color:var(--mu)}
+nav button{flex:1;border:0;background:none;padding:10px 2px;font-size:12px;color:var(--mu)}
 nav button.on{color:var(--pr);font-weight:700;border-top:3px solid var(--pr)}
 input,select,textarea,button,.btn{font:inherit}
 input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--tx)}
@@ -34,7 +34,6 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 .form{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd);display:grid;gap:8px}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bd);white-space:nowrap}
 .chips{display:flex;gap:6px;margin-bottom:10px}.chips button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 .login{max-width:340px;margin:12vh auto;display:grid;gap:10px;text-align:center}
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:9;max-width:90%}
@@ -47,6 +46,7 @@ a{color:var(--pr)}
 .sm{padding:4px 10px;font-size:13px}
 .chp{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .note{margin-top:6px;padding:6px 8px;background:#fffbea;border:1px solid #f1e3a6;border-radius:8px;font-size:13.5px;white-space:pre-wrap}
+label{font-size:12.5px;color:var(--mu)}
 textarea{resize:vertical}
 </style></head><body>
 <header id="hdr" style="display:none"><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div><div><button id="inst" style="display:none" onclick="doInstall()">📲 Install</button> <button onclick="render()">⟳</button> <button onclick="logout()">Logout</button></div></header>
@@ -63,10 +63,14 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmt=s=>{s=Math.round(+s||0);const m=Math.floor(s/60),r=s%60;return m?m+' min '+r+' sec':r+' sec'};
 const dshort=x=>new Date(x).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
 const dtime=x=>new Date(x).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-const ST={new:'Naya',callback:'Callback',not_interested:'Not Interested',meeting_assigned:'Meeting Assigned',fe_followup:'Follow-up',fe_not_interested:'FE Not Interested',deal_closed:'Deal Closed'};
+const ST={new:'New',callback:'Call Back',ringing:'Ringing',followup:'Follow Up',meeting_assigned:'Meeting Assigned',meeting_done:'Meeting Done',online_meet_done:'Online Meet Done',not_interested:'Not Interested',deal_closed:'Deal Closed'};
+const TCS=['meeting_assigned','followup','callback','ringing','meeting_done','deal_closed','not_interested'];
+const FES=['meeting_done','followup','not_interested','deal_closed','callback','ringing','online_meet_done'];
+const ALLS=Object.keys(ST).filter(k=>k!='new');
+const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
-const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':/not_int/.test(s)?'er':'wr'}">${ST[s]||esc(s)}</span>`;
-let ME=null,P={},tab='',openId=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',FILT={loc:[],bhk:[],t:0};
+const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
+let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',fSt='',FILT={loc:[],bhk:[],t:0};
 
 function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
 const clean=s=>String(s||'').replace(/[,()%*]/g,' ').trim();
@@ -82,17 +86,17 @@ function showLogin(msg){
 }
 async function login(){
   const {data,error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
-  if(error){$('#lerr').textContent='Email ya password galat hai.';return}
+  if(error){$('#lerr').textContent='Wrong email or password.';return}
   boot(data.user);
 }
 async function logout(){await sb.auth.signOut();ME=null;clearInterval(poll);showLogin()}
 async function boot(user){
   const {data:me,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
-  if(error||!me){showLogin('Profile nahi mili. Admin se sampark karein.');return}
+  if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
   ME=me;
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
-  tab='';openId=null;q='';
+  tab='';openId=null;openK=null;q='';
   render();
   clearInterval(poll);
   poll=setInterval(()=>{if(!ME||document.hidden||openId||noteId||showAdd)return;const a=document.activeElement;if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))return;render()},45000);
@@ -102,8 +106,8 @@ async function boot(user){
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
   telecaller:[['call','📞 Calling'],['meet','📅 Meetings'],['deal','✅ Deals']],
-  fe:[['asg','📅 Meetings'],['fu','🔁 Follow-up'],['ni','❌ Not Int.'],['deal','✅ Deals']]};
-function go(t){tab=t;q='';openId=null;noteId=null;showAdd=false;render()}
+  fe:[['asg','📅 Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
+function go(t){tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;render()}
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
@@ -126,7 +130,7 @@ async function histMap(ids){
   const {data}=await sb.from('calls').select('lead_id,by_id,duration_sec,outcome,created_at').in('lead_id',ids).order('created_at',{ascending:false});
   const m={};(data||[]).forEach(c=>(m[c.lead_id]=m[c.lead_id]||[]).push(c));return m;
 }
-const hist=cs=>cs&&cs.length?'<div class="mu">Call history: '+cs.slice(0,5).map(c=>esc(P[c.by_id]?.name||'?')+' – '+fmt(c.duration_sec)+' ('+dshort(c.created_at)+')').join(' • ')+(cs.length>5?' • +'+(cs.length-5)+' aur':'')+'</div>':'<div class="mu">Is data pe abhi tak koi call nahi</div>';
+const hist=cs=>cs&&cs.length?'<div class="mu">Call history: '+cs.slice(0,5).map(c=>esc(P[c.by_id]?.name||'?')+' – '+fmt(c.duration_sec)+' ('+dshort(c.created_at)+')').join(' • ')+(cs.length>5?' • +'+(cs.length-5)+' more':'')+'</div>':'<div class="mu">No calls on this lead yet</div>';
 const fp=l=>{if(l.price_l!=null&&l.price_l!==''){const v=+l.price_l;return v>=100?(+(v/100).toFixed(2))+' Cr':(+v.toFixed(2))+' L'}return l.price||''};
 function parsePrice(s){
   const m=String(s||'').replace(/,/g,'').match(/([\d.]+)\s*(cr|crore|crores|l|lac|lacs|lakh|lakhs)?\b/i);
@@ -137,14 +141,16 @@ function parsePrice(s){
   return v>=100000?Math.round(v/1000)/100:null;
 }
 function noteBlock(l){
-  if(noteId==l.id)return `<div class="form"><textarea id="nt" rows="3" placeholder="Notes likhein...">${esc(l.remarks||'')}</textarea><div class="acts" style="margin-top:0"><button class="g sm" onclick="saveNote(${l.id})">💾 Save</button><button class="sm" onclick="noteId=null;render()">Cancel</button></div></div>`;
-  return (l.remarks?`<div class="note">📝 ${esc(l.remarks)}</div>`:'')+`<div style="margin-top:6px"><button class="sm" onclick="noteId=${l.id};openId=null;render()">📝 ${l.remarks?'Note badlein':'Note likhein'}</button></div>`;
+  if(noteId==l.id)return `<div class="form"><textarea id="nt" rows="3" placeholder="Write a note...">${esc(l.remarks||'')}</textarea><div class="acts" style="margin-top:0"><button class="g sm" onclick="saveNote(${l.id})">💾 Save</button><button class="sm" onclick="noteId=null;render()">Cancel</button></div></div>`;
+  return (l.remarks?`<div class="note">📝 ${esc(l.remarks)}</div>`:'')+`<div style="margin-top:6px"><button class="sm" onclick="noteId=${l.id};openId=null;openK=null;render()">📝 ${l.remarks?'Edit note':'Add note'}</button></div>`;
 }
 async function saveNote(id){
   const {error}=await sb.from('leads').update({remarks:$('#nt').value.trim()}).eq('id',id);
-  if(error)return toast(error.message,1);noteId=null;toast('Note save ho gaya ✅');render();
+  if(error)return toast(error.message,1);noteId=null;toast('Note saved ✅');render();
 }
-function leadCard(l,cs,extra){
+
+/* ---------- lead card + actions ---------- */
+function leadCard(l,cs){
   LEADS[l.id]=l;
   const fe=l.fe_id&&P[l.fe_id]?.name,tc=l.tc_id&&P[l.tc_id]?.name;
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
@@ -155,36 +161,101 @@ function leadCard(l,cs,extra){
   ${noteBlock(l)}
   ${cs!==undefined?'<div style="margin:6px 0">'+hist(cs)+'</div>':''}
   ${(fe||tc||l.meeting_date)?'<div class="mu">'+[fe?'Field Exec: '+esc(fe):'',tc?'Telecaller: '+esc(tc):'',l.meeting_date?'Meeting: '+esc(l.meeting_date):''].filter(Boolean).join(' · ')+'</div>':''}
-  ${extra||''}</div>`;
+  ${actions(l)}</div>`;
+}
+function openForm(id,k){openId=id;openK=k;noteId=null;render()}
+function closeForm(){openId=null;openK=null;clearInterval(tint);t0=null;render()}
+function actions(l){
+  if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='del'?delForm(l):'';
+  const b=[];
+  if(ME.role!='fe')b.push(`<button class="p" onclick="openForm(${l.id},'call')">📞 Call</button>`);
+  b.push(`<button onclick="openForm(${l.id},'status')">🔄 Status</button>`);
+  b.push(`<button onclick="openForm(${l.id},'assign')">👥 Assign</button>`);
+  if(ME.role=='admin')b.push(`<button class="r" onclick="openForm(${l.id},'del')">🗑 Delete</button>`);
+  return `<div class="acts">${b.join('')}</div>`;
+}
+const stOpts=()=>'<option value="">— Select status —</option>'+myStatuses().map(s=>`<option value="${s}">${ST[s]}</option>`).join('');
+const feOpts=sel=>Object.values(P).filter(p=>p.role=='fe').map(f=>`<option value="${f.id}" ${f.id==sel?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
+const meetBox=l=>`<div id="mt" class="f2" style="display:none"><div><label>Field Exec</label><select id="fe">${feOpts(l.fe_id)}</select></div><div><label>Meeting date</label><input id="dt" type="date"></div></div>`;
+const onSt=`onchange="const m=$('#mt');if(m)m.style.display=this.value=='meeting_assigned'?'grid':'none'"`;
+function statusUpd(l,st){
+  const upd={status:st};
+  if(st=='meeting_assigned'){
+    const fe=$('#fe')&&$('#fe').value,dt=$('#dt')&&$('#dt').value;
+    if(!fe||!dt)return {err:'Select a Field Exec and the meeting date'};
+    upd.fe_id=fe;upd.meeting_date=dt;
+    if(ME.role=='telecaller')upd.tc_id=ME.id;
+  }else if(ME.role=='telecaller'&&!l.tc_id)upd.tc_id=ME.id;
+  return {upd};
+}
+function statusForm(l){
+  return `<div class="form"><label>Change status</label><select id="sst" ${onSt}>${stOpts()}</select>${ME.role!='fe'?meetBox(l):''}
+  <div class="acts" style="margin-top:0"><button class="g" onclick="saveStatus(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
+}
+async function saveStatus(id){
+  const l=LEADS[id],st=$('#sst').value;
+  if(!st)return toast('Select a status',1);
+  const u=statusUpd(l,st);if(u.err)return toast(u.err,1);
+  const {error}=await sb.from('leads').update(u.upd).eq('id',id);
+  if(error)return toast(error.message,1);
+  openId=null;openK=null;toast('Status updated ✅');render();
+}
+function assignForm(l){
+  const grp=(r,t)=>{const a=Object.values(P).filter(p=>p.role==r);return a.length?`<optgroup label="${t}">${a.map(p=>`<option value="${p.id}">${esc(p.name||p.id)}</option>`).join('')}</optgroup>`:''};
+  return `<div class="form"><label>Assign this lead to</label><select id="asg"><option value="">— Select person —</option>${grp('fe','Field Executives')}${grp('telecaller','Telecallers')}</select>
+  <div class="mu">The person you pick gets access to this lead.</div>
+  <div class="acts" style="margin-top:0"><button class="g" onclick="saveAssign(${l.id})">✅ Assign</button><button onclick="closeForm()">Cancel</button></div></div>`;
+}
+async function saveAssign(id){
+  const pid=$('#asg').value;if(!pid)return toast('Select a person',1);
+  const p=P[pid],upd=p.role=='fe'?{fe_id:pid}:{tc_id:pid};
+  const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
+  if(error)return toast(error.message,1);
+  if(!data||!data.length)return toast('Could not assign this lead',1);
+  openId=null;openK=null;toast('Assigned to '+(p.name||'user')+' ✅');render();
+}
+function delForm(l){
+  return `<div class="form"><div class="er">Delete ${esc(l.name||'this lead')}? Its call history will also be deleted. This cannot be undone.</div>
+  <div class="acts" style="margin-top:0"><button class="r" onclick="doDelete(${l.id})">Yes, delete</button><button onclick="closeForm()">Cancel</button></div></div>`;
+}
+async function doDelete(id){
+  if(ME.role!='admin')return toast('Only admin can delete',1);
+  const {data,error}=await sb.from('leads').delete().eq('id',id).select('id');
+  if(error)return toast(error.message,1);
+  if(!data||!data.length)return toast('Could not delete',1);
+  FILT.t=0;openId=null;openK=null;toast('Lead deleted');render();
 }
 const empty=m=>`<p class="mu" style="text-align:center;margin:30px 0">${m}</p>`;
-const searchBar=ph=>`<div class="card"><div class="f2" style="grid-template-columns:1fr auto"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()"><button class="p" onclick="doSearch()">Dhundhein</button></div></div>`;
-function doSearch(){q=$('#sq').value;openId=null;render()}
+const searchBar=ph=>`<div class="card"><div class="f2" style="grid-template-columns:1fr auto"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()"><button class="p" onclick="doSearch()">Search</button></div></div>`;
+function doSearch(){q=$('#sq').value;openId=null;openK=null;render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
 const setSeen=a=>{try{localStorage.setItem('seen_'+ME.id,JSON.stringify(a))}catch(e){}};
 async function dealBanner(){
   const {data}=await sb.from('leads').select('id').eq('tc_id',ME.id).eq('status','deal_closed');
   const seen=getSeen(),n=(data||[]).filter(l=>!seen.includes(l.id)).length;
-  return n?`<div class="card alert" onclick="go('deal')">🎉 ${n} meeting ki deal close ho gayi! Dekhne ke liye yahan dabayein</div>`:'';
+  return n?`<div class="card alert" onclick="go('deal')">🎉 ${n} deal${n>1?'s':''} closed! Tap to view</div>`:'';
 }
 
-/* ---------- add lead ---------- */
+/* ---------- add lead (all roles) ---------- */
 function addLeadCard(){
-  if(!showAdd)return `<button style="margin-bottom:10px" onclick="showAdd=true;render()">➕ Naya data jodein</button>`;
-  return `<div class="card"><b>Naya property owner</b><div class="form" style="border:0;padding-top:4px">
-  <input id="an" placeholder="Owner ka naam"><input id="ap" type="tel" placeholder="Mobile number (10 digit)">
-  <input id="ar" placeholder="Society / Property ka naam"><input id="al" placeholder="Area / Locality (jaise Baner)">
-  <div class="f2"><input id="ab" placeholder="BHK (jaise 2 BHK)"><input id="as" type="number" placeholder="Area (sqft)"></div>
-  <input id="ac" placeholder="Price (jaise 85 L ya 1.2 Cr)"><textarea id="am" rows="2" placeholder="Notes (optional)"></textarea>
+  if(!showAdd)return `<button style="margin-bottom:10px" onclick="showAdd=true;render()">➕ Add Lead</button>`;
+  return `<div class="card"><b>New property owner</b><div class="form" style="border:0;padding-top:4px">
+  <input id="an" placeholder="Owner name"><input id="ap" type="tel" placeholder="Mobile number (10 digits)">
+  <input id="ar" placeholder="Society / Property name"><input id="al" placeholder="Area / Locality (e.g. Baner)">
+  <div class="f2"><input id="ab" placeholder="BHK (e.g. 2 BHK)"><input id="as" type="number" placeholder="Area (sqft)"></div>
+  <input id="ac" placeholder="Price (e.g. 85 L or 1.2 Cr)"><textarea id="am" rows="2" placeholder="Notes (optional)"></textarea>
   <div class="acts"><button class="p" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div></div></div>`;
 }
 async function addLead(){
   const phone=ph10($('#ap').value);
-  if(phone.length!=10)return toast('10 digit ka number daalein',1);
+  if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
   const pr=$('#ac').value.trim();
-  const {error}=await sb.from('leads').insert({name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),locality:$('#al').value.trim(),bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()});
+  const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),locality:$('#al').value.trim(),bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
+  if(ME.role=='fe')row.fe_id=ME.id;
+  if(ME.role=='telecaller')row.tc_id=ME.id;
+  const {error}=await sb.from('leads').insert(row);
   if(error)return toast(error.message,1);
-  FILT.t=0;showAdd=false;toast('Data jud gaya ✅');render();
+  FILT.t=0;showAdd=false;toast('Lead added ✅');render();
 }
 async function loadFilt(){
   if(Date.now()-FILT.t<300000)return;
@@ -192,48 +263,38 @@ async function loadFilt(){
   FILT.loc=[...new Set(d.map(x=>x.locality).filter(Boolean))].sort();
   FILT.bhk=[...new Set(d.map(x=>x.bhk).filter(Boolean))].sort();FILT.t=Date.now();
 }
-const filterBar=()=>`<div class="f2" style="margin-bottom:10px"><select onchange="fLoc=this.value;render()"><option value="">Sab area</option>${FILT.loc.map(x=>`<option ${x==fLoc?'selected':''}>${esc(x)}</option>`).join('')}</select><select onchange="fBhk=this.value;render()"><option value="">Sab BHK</option>${FILT.bhk.map(x=>`<option ${x==fBhk?'selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
-const applyF=qy=>{if(fLoc)qy=qy.eq('locality',fLoc);if(fBhk)qy=qy.eq('bhk',fBhk);return qy};
+const filterBar=()=>`<div class="f2" style="margin-bottom:8px"><select onchange="fLoc=this.value;render()"><option value="">All areas</option>${FILT.loc.map(x=>`<option ${x==fLoc?'selected':''}>${esc(x)}</option>`).join('')}</select><select onchange="fBhk=this.value;render()"><option value="">All BHK</option>${FILT.bhk.map(x=>`<option ${x==fBhk?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+<select style="margin-bottom:10px" onchange="fSt=this.value;render()"><option value="">All statuses</option>${Object.entries(ST).map(([k,v])=>`<option value="${k}" ${k==fSt?'selected':''}>${v}</option>`).join('')}</select>`;
+const applyF=qy=>{if(fLoc)qy=qy.eq('locality',fLoc);if(fBhk)qy=qy.eq('bhk',fBhk);if(fSt)qy=qy.eq('status',fSt);return qy};
 const srch=qq=>`name.ilike.%${qq}%,phone.ilike.%${qq}%,property.ilike.%${qq}%,locality.ilike.%${qq}%`;
 
-/* ---------- call timer + form ---------- */
-function startT(){if(t0)return;t0=Date.now();tint=setInterval(()=>{const e=$('#tmr');if(e)e.textContent=fmt((Date.now()-t0)/1000)},1000)}
+/* ---------- call timer + call form ---------- */
+function startT(){if(t0)return;t0=Date.now();tint=setInterval(()=>{const e=$('#tmr');if(e)e.textContent='Timer: '+fmt((Date.now()-t0)/1000)},1000)}
 function stopT(){
-  if(!t0)return toast('Pehle "Call shuru" dabayein',1);
+  if(!t0)return toast('Tap "Start call" first',1);
   const s=Math.round((Date.now()-t0)/1000);clearInterval(tint);t0=null;
   $('#mi').value=Math.floor(s/60);$('#se').value=s%60;$('#tmr').textContent='Talk time: '+fmt(s);
 }
 function callForm(l){
-  const fes=Object.values(P).filter(p=>p.role=='fe');
   return `<div class="form">
-  <div class="f2"><a class="btn p" href="tel:${esc(l.phone)}" onclick="startT()">📞 Call shuru</a><button onclick="stopT()">⏹ Call khatam</button></div>
-  <div id="tmr" class="mu">Timer: call shuru karne par chalu hoga, ya talk time neeche haath se daalein</div>
-  <div class="f2"><input id="mi" type="number" min="0" placeholder="Minute" value="0"><input id="se" type="number" min="0" max="59" placeholder="Second" value="0"></div>
-  <select id="out" onchange="$('#mt').style.display=this.value=='Meeting Fixed'?'grid':'none'">
-    <option>Not Picked</option><option>Callback</option><option>Not Interested</option><option>Meeting Fixed</option></select>
-  <div id="mt" class="f2" style="display:none"><select id="fe">${fes.map(f=>`<option value="${f.id}">${esc(f.name||f.id)}</option>`).join('')}</select><input id="dt" type="date"></div>
+  <div class="f2"><a class="btn p" href="tel:${esc(l.phone)}" onclick="startT()">📞 Start call</a><button onclick="stopT()">⏹ End call</button></div>
+  <div id="tmr" class="mu">Tap "Start call" to run a timer, then "End call" to fill the talk time below. You can also type it by hand.</div>
+  <div class="f2"><div><label>Talk time: minutes</label><input id="mi" type="number" min="0" value="0"></div><div><label>Talk time: seconds</label><input id="se" type="number" min="0" max="59" value="0"></div></div>
+  <label>Call result / status</label><select id="sst" ${onSt}>${stOpts()}</select>${meetBox(l)}
   <textarea id="cn" rows="2" placeholder="Notes (optional)">${esc(l.remarks||'')}</textarea>
-  <div class="acts"><button class="g" onclick="saveCall(${l.id})">💾 Save</button><button onclick="openId=null;render()">Cancel</button></div></div>`;
+  <div class="acts" style="margin-top:0"><button class="g" onclick="saveCall(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveCall(id){
-  const l=LEADS[id],dur=(+$('#mi').value||0)*60+(+$('#se').value||0),out=$('#out').value;
-  let upd=null;
-  if(out=='Meeting Fixed'){
-    const fe=$('#fe').value,dt=$('#dt').value;
-    if(!fe||!dt)return toast('Field Exec aur meeting date chuniye',1);
-    upd={status:'meeting_assigned',fe_id:fe,tc_id:ME.id,meeting_date:dt};
-  }else if(out=='Not Interested')upd={status:'not_interested',tc_id:ME.id};
-  else if(out=='Callback')upd={status:'callback'};
+  const l=LEADS[id],dur=(+$('#mi').value||0)*60+(+$('#se').value||0),st=$('#sst').value;
+  if(!st)return toast('Select a call result / status',1);
+  const u=statusUpd(l,st);if(u.err)return toast(u.err,1);
   const nt=$('#cn').value.trim();
-  if(nt!==(l.remarks||'')){upd=upd||{};upd.remarks=nt}
-  const {error}=await sb.from('calls').insert({lead_id:id,phone:l.phone,by_id:ME.id,duration_sec:dur,outcome:out});
+  if(nt!==(l.remarks||''))u.upd.remarks=nt;
+  const {error}=await sb.from('calls').insert({lead_id:id,phone:l.phone,by_id:ME.id,duration_sec:dur,outcome:ST[st]});
   if(error)return toast(error.message,1);
-  if(upd){const {error:e2}=await sb.from('leads').update(upd).eq('id',id);if(e2)return toast(e2.message,1)}
-  clearInterval(tint);t0=null;openId=null;toast('Save ho gaya ✅');render();
-}
-async function setS(id,s){
-  const {error}=await sb.from('leads').update({status:s}).eq('id',id);
-  if(error)return toast(error.message,1);toast('Update ho gaya ✅');render();
+  const {error:e2}=await sb.from('leads').update(u.upd).eq('id',id);
+  if(e2)return toast(e2.message,1);
+  clearInterval(tint);t0=null;openId=null;openK=null;toast('Saved ✅');render();
 }
 
 /* ---------- views ---------- */
@@ -243,59 +304,59 @@ VIEW['telecaller:call']=async()=>{
   await loadFilt();
   let qy=sb.from('leads').select('*').order('created_at',{ascending:true}).limit(50);
   const qq=clean(q);
-  if(qq)qy=qy.or(srch(qq));else qy=qy.in('status',['new','callback']);
+  if(qq)qy=qy.or(srch(qq));else if(!fSt)qy=qy.in('status',['new','callback','ringing','followup']);
   qy=applyF(qy);
   const {data,error}=await qy;if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
-  const canCall=s=>!['meeting_assigned','fe_followup','deal_closed'].includes(s);
-  return searchBar('Naam, number, society ya area')+filterBar()+addLeadCard()+
-    (data.map(l=>leadCard(l,hs[l.id]||[],canCall(l.status)?(l.id==openId?callForm(l):`<div class="acts"><button class="p" onclick="openId=${l.id};noteId=null;render()">📞 Call / Update</button></div>`):'')).join('')||empty(qq||fLoc||fBhk?'Kuch nahi mila.':'Calling ke liye koi data nahi.'));
+  return searchBar('Name, number, society or area')+filterBar()+addLeadCard()+
+    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc||fBhk||fSt?'Nothing found.':'No leads to call.'));
 };
 VIEW['telecaller:meet']=async()=>{
-  const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['meeting_assigned','fe_followup','fe_not_interested']).order('meeting_date',{ascending:false});
+  const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['meeting_assigned','meeting_done','online_meet_done']).order('meeting_date',{ascending:false});
   if(error)throw error;
-  return data.map(l=>leadCard(l)).join('')||empty('Abhi koi meeting assign nahi hai.');
+  return data.map(l=>leadCard(l)).join('')||empty('No meetings yet.');
 };
 VIEW['telecaller:deal']=async()=>{
   const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).eq('status','deal_closed').order('meeting_date',{ascending:false});
   if(error)throw error;
   setSeen(data.map(l=>l.id));
-  return data.map(l=>leadCard(l)).join('')||empty('Abhi koi deal close nahi hui.');
+  return data.map(l=>leadCard(l)).join('')||empty('No deals closed yet.');
 };
 // Field Exec
-const feList=async(sts,acts)=>{
-  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true});
+const feList=async sts=>{
+  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).limit(200);
   if(error)throw error;
-  return data.map(l=>leadCard(l,undefined,acts?acts(l):'')).join('')||empty('Kuch nahi hai.');
+  return addLeadCard()+(data.map(l=>leadCard(l)).join('')||empty('Nothing here.'));
 };
-const feBtns=l=>`<div class="acts"><button class="g" onclick="setS(${l.id},'deal_closed')">✅ Deal Closed</button><button onclick="setS(${l.id},'fe_followup')">🔁 Follow-up</button><button class="r" onclick="setS(${l.id},'fe_not_interested')">❌ Not Interested</button></div>`;
-VIEW['fe:asg']=()=>feList(['meeting_assigned'],feBtns);
-VIEW['fe:fu']=()=>feList(['fe_followup'],feBtns);
-VIEW['fe:ni']=()=>feList(['fe_not_interested'],l=>`<div class="acts"><button onclick="setS(${l.id},'fe_followup')">🔁 Wapas Follow-up</button></div>`);
+VIEW['fe:asg']=()=>feList(['meeting_assigned']);
+VIEW['fe:fu']=()=>feList(['followup','callback','ringing','new']);
+VIEW['fe:done']=()=>feList(['meeting_done','online_meet_done']);
 VIEW['fe:deal']=()=>feList(['deal_closed']);
+VIEW['fe:ni']=()=>feList(['not_interested']);
 // Admin
 const lr=(a,b)=>`<div class="lr"><div>${a}</div><div style="text-align:right;white-space:nowrap">${b}</div></div>`;
 const sinceISO=()=>{if(RANGE=='all')return null;const d=new Date();if(RANGE=='today')d.setHours(0,0,0,0);else d.setDate(d.getDate()-7);return d.toISOString()};
-const rangeChips=()=>`<div class="chips">${[['today','Aaj'],['7','7 din'],['all','Sab']].map(r=>`<button class="${RANGE==r[0]?'on':''}" onclick="RANGE='${r[0]}';render()">${r[1]}</button>`).join('')}</div>`;
+const rangeChips=()=>`<div class="chips">${[['today','Today'],['7','7 days'],['all','All']].map(r=>`<button class="${RANGE==r[0]?'on':''}" onclick="RANGE='${r[0]}';render()">${r[1]}</button>`).join('')}</div>`;
 const callsInRange=()=>{const s=sinceISO();return pageAll(()=>{let x=sb.from('calls').select('*').order('created_at',{ascending:false});if(s)x=x.gte('created_at',s);return x})};
+const isMeet=c=>c.outcome=='Meeting Assigned'||c.outcome=='Meeting Fixed';
 VIEW['admin:dash']=async()=>{
   const calls=await callsInRange();
   const cnt=await Promise.all(Object.keys(ST).map(s=>sb.from('leads').select('*',{count:'exact',head:true}).eq('status',s).then(r=>[s,r.count||0])));
   const C=Object.fromEntries(cnt),total=cnt.reduce((a,c)=>a+c[1],0);
   const talk=calls.reduce((a,c)=>a+(c.duration_sec||0),0);
-  const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(c.outcome=='Meeting Fixed')b.m++});
+  const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(isMeet(c))b.m++});
   const stat=(a,b)=>`<div class="card stat"><span class="mu">${a}</span><b>${b}</b></div>`;
-  return rangeChips()+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings fixed',calls.filter(c=>c.outcome=='Meeting Fixed').length)}</div>
-  <div class="grid">${stat('Total data',total)}${stat('Naya',C.new)}${stat('Callback',C.callback)}${stat('Meeting Assigned',C.meeting_assigned)}${stat('Follow-up',C.fe_followup)}${stat('Not Interested',C.not_interested+C.fe_not_interested)}${stat('Deals Closed',C.deal_closed)}</div>
-  <div class="card"><b>📲 Incoming call? Number daalein</b><div class="f2" style="grid-template-columns:1fr auto;margin-top:8px"><input id="ln" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookup()"><button class="p" onclick="lookup()">Dekhein</button></div><div id="lk"></div></div>
-  <div class="card"><b>Telecaller performance</b>${Object.entries(by).map(([id,b])=>lr(`<b>${esc(P[id]?.name||'?')}</b><br><span class="mu">${b.n} calls · ${b.m} meetings</span>`,`${fmt(b.t)}<br><span class="mu">talk time</span>`)).join('')||'<p class="mu">Is period me koi call nahi</p>'}</div>`;
+  return rangeChips()+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
+  <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k])).join('')}</div>
+  <div class="card"><b>📲 Incoming call? Enter the number</b><div class="f2" style="grid-template-columns:1fr auto;margin-top:8px"><input id="ln" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookup()"><button class="p" onclick="lookup()">Look up</button></div><div id="lk"></div></div>
+  <div class="card"><b>Telecaller performance</b>${Object.entries(by).map(([id,b])=>lr(`<b>${esc(P[id]?.name||'?')}</b><br><span class="mu">${b.n} calls · ${b.m} meetings</span>`,`${fmt(b.t)}<br><span class="mu">talk time</span>`)).join('')||'<p class="mu">No calls in this period</p>'}</div>`;
 };
 async function lookup(){
-  const n=ph10($('#ln').value);if(n.length<10){$('#lk').innerHTML='<p class="er">10 digit number daalein</p>';return}
+  const n=ph10($('#ln').value);if(n.length<10){$('#lk').innerHTML='<p class="er">Enter a 10-digit number</p>';return}
   const {data}=await sb.from('leads').select('*').eq('phone',n).limit(10);
-  if(!data||!data.length){$('#lk').innerHTML='<p class="er">Ye number CRM data me nahi mila.</p>';return}
+  if(!data||!data.length){$('#lk').innerHTML='<p class="er">This number is not in the CRM.</p>';return}
   const hs=await histMap(data.map(l=>l.id));
-  $('#lk').innerHTML=`<div style="margin:10px 0 8px">✅ Ye call <b>${esc(data[0].name||'-')}</b> ka hai${data.length>1?' ('+data.length+' properties)':''}</div>`+data.map(l=>leadCard(l,hs[l.id]||[])).join('');
+  $('#lk').innerHTML=`<div style="margin:10px 0 8px">✅ This call is from <b>${esc(data[0].name||'-')}</b>${data.length>1?' ('+data.length+' properties)':''}</div>`+data.map(l=>leadCard(l,hs[l.id]||[])).join('');
 }
 VIEW['admin:calls']=async()=>{
   const calls=await callsInRange();
@@ -305,8 +366,8 @@ VIEW['admin:calls']=async()=>{
   const names={};
   for(let i=0;i<ids.length;i+=200){const {data}=await sb.from('leads').select('id,name').in('id',ids.slice(i,i+200));(data||[]).forEach(x=>names[x.id]=x.name)}
   const byNum={};list.forEach(c=>{const b=byNum[c.phone]=byNum[c.phone]||{n:0,t:0,who:new Set(),name:names[c.lead_id]};b.n++;b.t+=c.duration_sec||0;b.who.add(P[c.by_id]?.name||'?')});
-  return rangeChips()+searchBar('Number se filter (jaise 9890011111)')+
-  `<div class="card"><b>Number-wise talk time</b>${Object.entries(byNum).sort((a,b)=>b[1].t-a[1].t).slice(0,100).map(([p,b])=>lr(`<b>${esc(p)}</b> ${esc(b.name||'')}<br><span class="mu">Kisne: ${esc([...b.who].join(', '))}</span>`,`${fmt(b.t)}<br><span class="mu">${b.n} calls</span>`)).join('')||'<p class="mu">Koi call nahi</p>'}</div>
+  return rangeChips()+searchBar('Filter by number (e.g. 9890011111)')+
+  `<div class="card"><b>Talk time by number</b>${Object.entries(byNum).sort((a,b)=>b[1].t-a[1].t).slice(0,100).map(([p,b])=>lr(`<b>${esc(p)}</b> ${esc(b.name||'')}<br><span class="mu">Spoke: ${esc([...b.who].join(', '))}</span>`,`${fmt(b.t)}<br><span class="mu">${b.n} calls</span>`)).join('')||'<p class="mu">No calls</p>'}</div>
   <div class="card"><b>Call log</b> <span class="mu">(latest 200)</span>${list.slice(0,200).map(c=>lr(`${esc(c.phone)} · ${esc(names[c.lead_id]||'-')}<br><span class="mu">${dtime(c.created_at)} · ${esc(P[c.by_id]?.name||'?')}</span>`,`${fmt(c.duration_sec)}<br><span class="mu">${esc(c.outcome)}</span>`)).join('')}</div>`;
 };
 VIEW['admin:leads']=async()=>{
@@ -316,11 +377,11 @@ VIEW['admin:leads']=async()=>{
   qy=applyF(qy);
   const {data,error}=await qy;if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
-  return `<div class="card"><b>📥 Data import (Sheet / Excel se)</b><p class="mu">Sheet ki header row ke saath rows copy karke yahan paste karein (ya CSV file chunein). Columns apne naam se pehchane jaate hain: Owner Name, Contact Number, Property Name, Area / Locality, BHK, Area (SQFT), Price. Column ka order koi matter nahi karta.</p>
-  <textarea id="imp" rows="5" placeholder="Header row + data rows yahan paste karein"></textarea>
-  <div class="acts"><input type="file" id="impf" accept=".csv,.txt" style="flex:1" onchange="loadFile(this)"><button class="p" onclick="doImport()">Import karein</button></div><div id="impr" class="mu"></div></div>`+
-  searchBar('Naam, number, society ya area')+filterBar()+addLeadCard()+
-  (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Kuch nahi mila.'))+(data.length>=100?'<p class="mu" style="text-align:center">Latest 100 dikh rahe hain. Baaki ke liye search ya filter use karein.</p>':'');
+  return `<div class="card"><b>📥 Data import (from Sheet / Excel)</b><p class="mu">Copy the rows from your sheet <b>including the header row</b> and paste them here (or choose a CSV file). Columns are recognised by their names: Owner Name, Contact Number, Property Name, Area / Locality, BHK, Area (SQFT), Price. Column order does not matter.</p>
+  <textarea id="imp" rows="5" placeholder="Paste header row + data rows here"></textarea>
+  <div class="acts"><input type="file" id="impf" accept=".csv,.txt" style="flex:1" onchange="loadFile(this)"><button class="p" onclick="doImport()">Import</button></div><div id="impr" class="mu"></div></div>`+
+  searchBar('Name, number, society or area')+filterBar()+addLeadCard()+
+  (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing found.'))+(data.length>=100?'<p class="mu" style="text-align:center">Showing the latest 100. Use search or filters to find others.</p>':'');
 };
 function loadFile(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#imp').value=r.result};r.readAsText(f)}
 function splitLine(ln){
@@ -346,10 +407,10 @@ function colKey(h){
 }
 async function doImport(){
   const lines=$('#imp').value.split(/\r?\n/).filter(s=>s.trim());
-  if(!lines.length){$('#impr').textContent='Pehle data paste karein.';return}
+  if(!lines.length){$('#impr').textContent='Paste some data first.';return}
   let first=splitLine(lines[0]);
   let map=first.map(colKey),body=lines.slice(1);
-  if(!map.includes('phone')){ // header nahi mili: purana format Naam, Mobile, Property, Price
+  if(!map.includes('phone')){ // no header found: old format Name, Mobile, Property, Price
     map=['name','phone','property','price'];body=lines;
   }
   const seen=new Set(),rows=[];let bad=0;
@@ -367,23 +428,23 @@ async function doImport(){
     if(seen.has(k)){dup++;continue}seen.add(k);
     rows.push({name:r.name||'',phone,property:prop,locality:r.locality||'',bhk:r.bhk||'',sqft:parseInt(String(r.sqft||'').replace(/,/g,''))||null,price:r.price||'',price_l:parsePrice(r.price),remarks:r.remarks||''});
   }
-  if(!rows.length){$('#impr').textContent=`Koi naya data nahi mila. ${dup} pehle se maujood, ${bad} me number galat.`;return}
+  if(!rows.length){$('#impr').textContent=`No new leads found. ${dup} already existed, ${bad} had an invalid number.`;return}
   for(let i=0;i<rows.length;i+=500){
     const {error}=await sb.from('leads').insert(rows.slice(i,i+500));
     if(error){$('#impr').textContent='Error: '+error.message;return}
   }
   FILT.t=0;
-  $('#impr').textContent=`${rows.length} naye data jude. ${dup} pehle se maujood the, ${bad} me number galat tha.`;
-  toast('Import ho gaya ✅');setTimeout(render,1200);
+  $('#impr').textContent=`${rows.length} new leads added. ${dup} already existed, ${bad} had an invalid number.`;
+  toast('Import done ✅');setTimeout(render,1200);
 }
 VIEW['admin:team']=async()=>{
   const {data}=await sb.from('profiles').select('*').order('role');
   data.forEach(p=>P[p.id]=p);
-  return `<p class="mu">Naya member jodne ke liye Supabase → Authentication → Add user me user banayein. Wo yahan apne aap aa jayega, phir uska role yahan se chunein.</p>`+
+  return `<p class="mu">To add a new member: Supabase → Authentication → Add user. They will appear here automatically; then choose their role.</p>`+
   data.map(p=>`<div class="card"><div class="f2"><input value="${esc(p.name||'')}" onchange="setName('${p.id}',this.value)"><select ${p.id==ME.id?'disabled':''} onchange="setRole('${p.id}',this.value)">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${p.role==k?'selected':''}>${v}</option>`).join('')}</select></div></div>`).join('');
 };
-async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role badal gaya ✅')}
-async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Naam badal gaya ✅')}
+async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
+async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
 
 /* ---------- start ---------- */
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
