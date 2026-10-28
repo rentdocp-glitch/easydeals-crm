@@ -132,7 +132,7 @@ const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
-  if(tab!='st'&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  if(tab!='st'&&tab!='rep'&&!list.find(t=>t[0]==tab))tab=list[0][0];
   $('#nav').innerHTML=navHtml(['__home','🏠 Home'],list[0][0])+list.map(t=>navHtml(t)).join('');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
@@ -358,8 +358,8 @@ VIEW['fe:deal']=()=>feList(['deal_closed']);
 VIEW['fe:ni']=()=>feList(['not_interested']);
 // Admin
 const lr=(a,b)=>`<div class="lr"><div>${a}</div><div style="text-align:right;white-space:nowrap">${b}</div></div>`;
-const sinceISO=()=>{if(RANGE=='all')return null;const d=new Date();if(RANGE=='today')d.setHours(0,0,0,0);else d.setDate(d.getDate()-7);return d.toISOString()};
-const rangeChips=()=>`<div class="chips">${[['today','Today'],['7','7 days'],['all','All']].map(r=>`<button class="${RANGE==r[0]?'on':''}" onclick="RANGE='${r[0]}';render()">${r[1]}</button>`).join('')}</div>`;
+const sinceISO=()=>{if(RANGE=='all')return null;const d=new Date();if(RANGE=='today')d.setHours(0,0,0,0);else d.setDate(d.getDate()-(RANGE=='30'?30:7));return d.toISOString()};
+const rangeChips=()=>`<div class="chips">${[['today','Today'],['7','7 days'],['30','30 days'],['all','All']].map(r=>`<button class="${RANGE==r[0]?'on':''}" onclick="RANGE='${r[0]}';render()">${r[1]}</button>`).join('')}</div>`;
 const callsInRange=()=>{const s=sinceISO();return pageAll(()=>{let x=sb.from('calls').select('*').order('created_at',{ascending:false});if(s)x=x.gte('created_at',s);return x})};
 const isMeet=c=>c.outcome=='Meeting Assigned'||c.outcome=='Meeting Fixed';
 VIEW['admin:dash']=async()=>{
@@ -478,11 +478,61 @@ VIEW['admin:st']=VIEW['telecaller:st']=VIEW['fe:st']=async()=>{
     (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'));
 };
 function viewStatus(k){viewSt=k;go('st')}
+
+/* ---------- KPI reports ---------- */
+const pct=(a,b)=>b?Math.round(a*100/b)+'%':'–';
+const nz=(a,b)=>b?a/b:0;
+const mean=(arr,f)=>arr.length?arr.reduce((s,x)=>s+f(x),0)/arr.length:0;
+const f1=n=>(Math.round(n*10)/10).toString();
+const tile=(a,b,s)=>`<div class="card stat"><span class="mu">${a}</span><b>${b}</b>${s?`<span class="mu">${s}</span>`:''}</div>`;
+const cmp=(lab,you,tm)=>lr(`${lab}`,`<b>${you}</b> <span class="mu">· team ${tm}</span>`);
+const rangeNote='<p class="mu" style="margin:4px 2px 10px">Calls & talk time follow the selected period. Meetings, deals and lead counts are all-time totals.</p>';
+const tcM=r=>({calls:r.calls,talk:r.talk,avgd:nz(r.talk,r.connected),conn:nz(r.connected,r.calls),perday:nz(r.calls,r.active_days),mrate:nz(r.meet_calls,r.calls)});
+VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
+  const rows=await kpi();
+  const tcs=rows.filter(r=>r.role=='telecaller'),fes=rows.filter(r=>r.role=='fe');
+  const head=rangeChips()+rangeNote;
+  const tcTeam=r=>`<b>${esc(r.name||'?')}</b><br><span class="mu">${r.calls} calls · ${r.connected} connected · ${r.meet_calls} meetings fixed</span>`;
+  if(ME.role=='telecaller'){
+    const m=rows.find(r=>r.uid==ME.id)||{calls:0,connected:0,talk:0,meet_calls:0,active_days:0,l_total:0,l_pending:0,l_deal:0,l_ni:0,l_fu:0};
+    const me=tcM(m),T=tcs.map(tcM);
+    const av=k=>mean(T,x=>x[k]);
+    return head+`<div style="margin:2px 2px 10px;font-size:18px"><b>📈 My Report</b> <span class="mu">${esc(ME.name||'')}</span></div>
+    <div class="grid">${tile('Calls made',m.calls,'≈ '+f1(me.perday)+' per working day')}${tile('Talk time',fmt(m.talk))}${tile('Avg talk / connected call',fmt(Math.round(me.avgd)))}${tile('Connected calls',m.connected,pct(m.connected,m.calls)+' of calls')}${tile('Meetings fixed',m.meet_calls,pct(m.meet_calls,m.calls)+' of calls')}${tile('Deals closed',m.l_deal,'on my leads')}</div>
+    <div class="grid">${tile('My leads',m.l_total)}${tile('Meetings pending',m.l_pending)}${tile('In follow-up',m.l_fu)}${tile('Not interested',m.l_ni)}</div>
+    <div class="card"><b>🆚 Me vs Team average</b>${T.length>1?cmp('Calls',me.calls,f1(av('calls')))+cmp('Talk time',fmt(me.talk),fmt(Math.round(av('talk'))))+cmp('Avg talk / call',fmt(Math.round(me.avgd)),fmt(Math.round(av('avgd'))))+cmp('Connect rate',pct(m.connected,m.calls),Math.round(av('conn')*100)+'%')+cmp('Meeting rate',pct(m.meet_calls,m.calls),Math.round(av('mrate')*100)+'%')+cmp('Calls / day',f1(me.perday),f1(av('perday'))):'<p class="mu">Team average appears once 2+ telecallers have data.</p>'}</div>`;
+  }
+  if(ME.role=='fe'){
+    const m=rows.find(r=>r.uid==ME.id)||{l_total:0,l_pending:0,l_done:0,l_deal:0,l_ni:0,l_fu:0};
+    const A=fes.length?{tot:mean(fes,x=>x.l_total),done:mean(fes,x=>x.l_done),deal:mean(fes,x=>x.l_deal),conv:mean(fes,x=>nz(x.l_deal,x.l_done)),pend:mean(fes,x=>x.l_pending)}:{};
+    return `<div style="margin:2px 2px 10px;font-size:18px"><b>📈 My Report</b> <span class="mu">${esc(ME.name||'')}</span></div>
+    <p class="mu" style="margin:4px 2px 10px">All-time totals for your leads.</p>
+    <div class="grid">${tile('Leads given to me',m.l_total)}${tile('Meetings pending',m.l_pending)}${tile('Meetings done',m.l_done)}${tile('Deals closed',m.l_deal,'🎉')}${tile('Closing rate',pct(m.l_deal,m.l_done),'deals ÷ meetings done')}${tile('Not interested',m.l_ni)}${tile('In follow-up',m.l_fu)}</div>
+    <div class="card"><b>🆚 Me vs Team average</b>${fes.length>1?cmp('Leads given',m.l_total,f1(A.tot))+cmp('Meetings done',m.l_done,f1(A.done))+cmp('Deals closed',m.l_deal,f1(A.deal))+cmp('Closing rate',pct(m.l_deal,m.l_done),Math.round(A.conv*100)+'%'):'<p class="mu">Team average appears once 2+ field executives have data.</p>'}</div>`;
+  }
+  const best=(arr,f)=>arr.length?arr.slice().sort((a,b)=>f(b)-f(a))[0]:null;
+  const bt=best(tcs,r=>r.calls),bf=best(fes,r=>r.l_deal);
+  const tTot=tcs.reduce((a,r)=>({c:a.c+r.calls,t:a.t+r.talk,cn:a.cn+r.connected,m:a.m+r.meet_calls}),{c:0,t:0,cn:0,m:0});
+  const fTot=fes.reduce((a,r)=>({tot:a.tot+r.l_total,p:a.p+r.l_pending,d:a.d+r.l_done,dl:a.dl+r.l_deal,ni:a.ni+r.l_ni}),{tot:0,p:0,d:0,dl:0,ni:0});
+  return head+`<div style="margin:2px 2px 10px;font-size:18px"><b>📈 Team Report</b></div>
+  <div class="card"><b>📞 Telecallers</b> <span class="mu">${tcs.length} members</span>
+   <div class="grid" style="margin-top:8px">${tile('Team calls',tTot.c,'avg '+f1(nz(tTot.c,tcs.length))+' per person')}${tile('Team talk time',fmt(tTot.t),'avg '+fmt(Math.round(nz(tTot.t,tcs.length)))+' per person')}${tile('Connect rate',pct(tTot.cn,tTot.c))}${tile('Meeting rate',pct(tTot.m,tTot.c),tTot.m+' meetings fixed')}</div>
+   ${tcs.slice().sort((a,b)=>b.calls-a.calls).map(r=>lr(`${bt&&r.uid==bt.uid&&r.calls>0?'🥇 ':''}${tcTeam(r)}`,`${fmt(r.talk)}<br><span class="mu">avg ${fmt(Math.round(nz(r.talk,r.connected)))}/call</span>`)).join('')||'<p class="mu">No telecallers</p>'}</div>
+  <div class="card"><b>🚶 Field Executives</b> <span class="mu">${fes.length} members</span>
+   <div class="grid" style="margin-top:8px">${tile('Meetings pending',fTot.p)}${tile('Meetings done',fTot.d,'avg '+f1(nz(fTot.d,fes.length))+' per person')}${tile('Deals closed',fTot.dl,'avg '+f1(nz(fTot.dl,fes.length))+' per person')}${tile('Closing rate',pct(fTot.dl,fTot.d),'deals ÷ meetings done')}</div>
+   ${fes.slice().sort((a,b)=>b.l_deal-a.l_deal).map(r=>lr(`${bf&&r.uid==bf.uid&&r.l_deal>0?'🥇 ':''}<b>${esc(r.name||'?')}</b><br><span class="mu">${r.l_total} leads · ${r.l_pending} pending · ${r.l_done} meetings done · ${r.l_ni} not int.</span>`,`${r.l_deal} deals<br><span class="mu">${pct(r.l_deal,r.l_done)} closing</span>`)).join('')||'<p class="mu">No field executives</p>'}</div>`;
+};
+const kpi=async()=>{const {data,error}=await sb.rpc('kpi',{since:sinceISO()});if(error)throw error;return data||[]};
 const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['new','🆕']];
+let qvOpen=false;
+function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';$('#qva').textContent=qvOpen?'▾':'▸'}
 function drawerBody(C){
   const list=TABS[ME.role]||[];
-  return `<div class="ds">Quick view · ${ME.role=='fe'?'your leads':'whole team'}</div>`+
-    QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+
+  return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+
+    `<div class="di" onclick="go('rep')"><span>📈 ${ME.role=='admin'?'Team Report (KPI)':'My Report (KPI)'}</span></div>`+
+    `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
+    `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
+    QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
     `<div class="ds">Menu</div>`+
     list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+
     (instEv?`<div class="di" onclick="doInstall();closeDrawer()"><span>📲 Install app</span></div>`:'');
