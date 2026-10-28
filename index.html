@@ -41,6 +41,7 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 #toast.err{background:var(--er)}
 #tmr{font-weight:700}
 a{color:var(--pr)}
+.wa{display:inline-block;margin-left:10px;padding:3px 11px;border-radius:99px;background:#25d366;color:#fff;font-size:13px;text-decoration:none;vertical-align:middle}
 .lr{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px}
 .lr:last-child{border-bottom:0}
 .sm{padding:4px 10px;font-size:13px}
@@ -148,7 +149,7 @@ function leadCard(l,cs,extra){
   const fe=l.fe_id&&P[l.fe_id]?.name,tc=l.tc_id&&P[l.tc_id]?.name;
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
-  return `<div class="card"><div class="row"><div><b>${esc(l.name||'-')}</b><br><a href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div>${tag(l.status)}</div>
+  return `<div class="card"><div class="row"><div><b>${esc(l.name||'-')}</b><br><a href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a><a class="wa" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener">💬 WhatsApp</a></div>${tag(l.status)}</div>
   ${where?`<div style="margin-top:6px">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp">${chips}</div>`:''}
   ${noteBlock(l)}
