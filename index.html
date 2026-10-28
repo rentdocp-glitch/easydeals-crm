@@ -12,14 +12,31 @@
 <style>
 :root{--bg:#f4f6f9;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e2e5ea;--pr:#1f4e78;--ok:#15803d;--wr:#b45309;--er:#b91c1c}
 *{box-sizing:border-box}
-body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:70px}
-header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--pr);color:#fff}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:104px}
+header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--pr);color:#fff}
 header b{font-size:16px}#who{font-size:12px;opacity:.9}
-header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:13px}
+header button{position:relative;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:0;width:44px;height:44px;font-size:20px}
+.hl{display:flex;gap:10px;align-items:center}
+.bd{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:99px;font-size:11px;line-height:1;padding:3px 6px;min-width:18px;font-weight:700}
 main{max-width:900px;margin:auto;padding:12px}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0)}
-nav button{flex:1;border:0;background:none;padding:10px 2px;font-size:12px;color:var(--mu)}
-nav button.on{color:var(--pr);font-weight:700;border-top:3px solid var(--pr)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 10px rgba(0,0,0,.06);z-index:6}
+nav button{flex:1;border:0;border-radius:0;background:none;padding:10px 2px 9px;color:var(--mu);display:flex;flex-direction:column;align-items:center;gap:3px;min-height:68px}
+nav button .ni{font-size:26px;line-height:1}nav button .nl{font-size:12.5px}
+nav button.on{color:var(--pr);font-weight:700;border-top:4px solid var(--pr);background:#eef4fa}
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+#dr{position:fixed;top:0;bottom:0;left:0;width:82%;max-width:330px;background:#fff;z-index:21;transform:translateX(-105%);transition:transform .22s;display:flex;flex-direction:column;box-shadow:2px 0 16px rgba(0,0,0,.2)}
+#dr.open{transform:none}
+.dh{display:flex;gap:12px;align-items:center;padding:14px;border-bottom:1px solid var(--bd)}
+.dh .av{width:42px;height:42px;border-radius:50%;background:var(--pr);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+.dh .x{margin-left:auto;border:0;background:none;font-size:22px;padding:6px 10px}
+#drb{flex:1;overflow-y:auto;padding-bottom:8px}
+.ds{padding:14px 16px 6px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--mu);font-weight:700}
+.di{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-size:16px;cursor:pointer;border-bottom:1px solid #f0f2f5}
+.di:active{background:#eef4fa}
+.cnt{min-width:30px;text-align:center;padding:2px 9px;border-radius:99px;background:#eef2f7;font-weight:700;font-size:14px}
+.cnt.hi{background:var(--pr);color:#fff}.cnt.gd{background:#dcfce7;color:var(--ok)}
+.dbot{border-top:1px solid var(--bd);padding:12px 14px;display:flex;align-items:center;gap:10px}
+.dbot .em{font-size:12.5px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 input,select,textarea,button,.btn{font:inherit}
 input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--tx)}
 button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);background:#fff;color:var(--tx);border-radius:8px;padding:8px 12px;text-decoration:none;text-align:center}
@@ -33,25 +50,28 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 .stat b{display:block;font-size:22px}
 .form{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd);display:grid;gap:8px}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.acts button,.acts .btn{padding:12px 18px;font-size:15.5px;min-height:48px}
 .chips{display:flex;gap:6px;margin-bottom:10px}.chips button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 .login{max-width:340px;margin:12vh auto;display:grid;gap:10px;text-align:center}
-#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:9;max-width:90%}
+#toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:9;max-width:90%}
 #toast.err{background:var(--er)}
 #tmr{font-weight:700}
 a{color:var(--pr)}
 .wa{display:inline-block;margin-left:10px;padding:3px 11px;border-radius:99px;background:#25d366;color:#fff;font-size:13px;text-decoration:none;vertical-align:middle}
 .lr{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px}
 .lr:last-child{border-bottom:0}
-.sm{padding:4px 10px;font-size:13px}
+.sm{padding:9px 14px!important;font-size:14px!important;min-height:40px!important}
 .chp{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .note{margin-top:6px;padding:6px 8px;background:#fffbea;border:1px solid #f1e3a6;border-radius:8px;font-size:13.5px;white-space:pre-wrap}
 label{font-size:12.5px;color:var(--mu)}
 textarea{resize:vertical}
 </style></head><body>
-<header id="hdr" style="display:none"><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div><div><button id="inst" style="display:none" onclick="doInstall()">📲 Install</button> <button onclick="render()">⟳</button> <button onclick="logout()">Logout</button></div></header>
+<header id="hdr" style="display:none"><div class="hl"><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
 <main id="app"></main>
 <nav id="nav" style="display:none"></nav>
+<div id="ov" onclick="closeDrawer()"></div>
+<aside id="dr"><div class="dh"><div class="av" id="dav"></div><div><b id="dnm"></b><div class="mu" id="drl"></div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -70,7 +90,7 @@ const ALLS=Object.keys(ST).filter(k=>k!='new');
 const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
 const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
-let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',fSt='',FILT={loc:[],bhk:[],t:0};
+let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',fSt='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
 
 function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
 const clean=s=>String(s||'').replace(/[,()%*]/g,' ').trim();
@@ -93,7 +113,7 @@ async function logout(){await sb.auth.signOut();ME=null;clearInterval(poll);show
 async function boot(user){
   const {data:me,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
-  ME=me;
+  ME=me;ME.email=user.email||'';
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
@@ -107,13 +127,15 @@ const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
   telecaller:[['call','📞 Calling'],['meet','📅 Meetings'],['deal','✅ Deals']],
   fe:[['asg','📅 Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
-function go(t){tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;render()}
+function go(t){tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
+const navHtml=t=>{const i=t[1].indexOf(' ');return `<button class="${t[0]==tab?'on':''}" onclick="go('${t[0]}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
-  if(!list.find(t=>t[0]==tab))tab=list[0][0];
-  $('#nav').innerHTML=list.map(t=>`<button class="${t[0]==tab?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('');
+  if(tab!='st'&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  $('#nav').innerHTML=list.map(navHtml).join('');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
+  updateBell();
   let h;
   try{h=await VIEW[ME.role+':'+tab]()}catch(e){h=`<div class="card er">Error: ${esc(e.message||e)}</div>`}
   let nb='';
@@ -226,7 +248,8 @@ async function doDelete(id){
   FILT.t=0;openId=null;openK=null;toast('Lead deleted');render();
 }
 const empty=m=>`<p class="mu" style="text-align:center;margin:30px 0">${m}</p>`;
-const searchBar=ph=>`<div class="card"><div class="f2" style="grid-template-columns:1fr auto"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()"><button class="p" onclick="doSearch()">Search</button></div></div>`;
+const fCount=()=>(fLoc?1:0)+(fBhk?1:0)+(fSt?1:0);
+const searchBar=(ph,withF)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()" style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div></div>`;
 function doSearch(){q=$('#sq').value;openId=null;openK=null;render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
 const setSeen=a=>{try{localStorage.setItem('seen_'+ME.id,JSON.stringify(a))}catch(e){}};
@@ -263,7 +286,7 @@ async function loadFilt(){
   FILT.loc=[...new Set(d.map(x=>x.locality).filter(Boolean))].sort();
   FILT.bhk=[...new Set(d.map(x=>x.bhk).filter(Boolean))].sort();FILT.t=Date.now();
 }
-const filterBar=()=>`<div class="f2" style="margin-bottom:8px"><select onchange="fLoc=this.value;render()"><option value="">All areas</option>${FILT.loc.map(x=>`<option ${x==fLoc?'selected':''}>${esc(x)}</option>`).join('')}</select><select onchange="fBhk=this.value;render()"><option value="">All BHK</option>${FILT.bhk.map(x=>`<option ${x==fBhk?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+const filterBar=()=>!showF?'':`<div class="f2" style="margin-bottom:8px"><select onchange="fLoc=this.value;render()"><option value="">All areas</option>${FILT.loc.map(x=>`<option ${x==fLoc?'selected':''}>${esc(x)}</option>`).join('')}</select><select onchange="fBhk=this.value;render()"><option value="">All BHK</option>${FILT.bhk.map(x=>`<option ${x==fBhk?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
 <select style="margin-bottom:10px" onchange="fSt=this.value;render()"><option value="">All statuses</option>${Object.entries(ST).map(([k,v])=>`<option value="${k}" ${k==fSt?'selected':''}>${v}</option>`).join('')}</select>`;
 const applyF=qy=>{if(fLoc)qy=qy.eq('locality',fLoc);if(fBhk)qy=qy.eq('bhk',fBhk);if(fSt)qy=qy.eq('status',fSt);return qy};
 const srch=qq=>`name.ilike.%${qq}%,phone.ilike.%${qq}%,property.ilike.%${qq}%,locality.ilike.%${qq}%`;
@@ -308,7 +331,7 @@ VIEW['telecaller:call']=async()=>{
   qy=applyF(qy);
   const {data,error}=await qy;if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
-  return searchBar('Name, number, society or area')+filterBar()+addLeadCard()+
+  return searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
     (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc||fBhk||fSt?'Nothing found.':'No leads to call.'));
 };
 VIEW['telecaller:meet']=async()=>{
@@ -380,7 +403,7 @@ VIEW['admin:leads']=async()=>{
   return `<div class="card"><b>📥 Data import (from Sheet / Excel)</b><p class="mu">Copy the rows from your sheet <b>including the header row</b> and paste them here (or choose a CSV file). Columns are recognised by their names: Owner Name, Contact Number, Property Name, Area / Locality, BHK, Area (SQFT), Price. Column order does not matter.</p>
   <textarea id="imp" rows="5" placeholder="Paste header row + data rows here"></textarea>
   <div class="acts"><input type="file" id="impf" accept=".csv,.txt" style="flex:1" onchange="loadFile(this)"><button class="p" onclick="doImport()">Import</button></div><div id="impr" class="mu"></div></div>`+
-  searchBar('Name, number, society or area')+filterBar()+addLeadCard()+
+  searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
   (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing found.'))+(data.length>=100?'<p class="mu" style="text-align:center">Showing the latest 100. Use search or filters to find others.</p>':'');
 };
 function loadFile(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#imp').value=r.result};r.readAsText(f)}
@@ -445,6 +468,50 @@ VIEW['admin:team']=async()=>{
 };
 async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
+
+/* ---------- status view, menu drawer, bell ---------- */
+VIEW['admin:st']=VIEW['telecaller:st']=VIEW['fe:st']=async()=>{
+  const {data,error}=await sb.from('leads').select('*').eq('status',viewSt).order('created_at',{ascending:false}).limit(100);
+  if(error)throw error;
+  const hs=await histMap(data.map(l=>l.id));
+  return `<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${data.length}${data.length>=100?'+':''} lead${data.length==1?'':'s'}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+
+    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'));
+};
+function viewStatus(k){viewSt=k;go('st')}
+const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['new','🆕']];
+function drawerBody(C){
+  const list=TABS[ME.role]||[];
+  return `<div class="ds">Quick view · ${ME.role=='fe'?'your leads':'whole team'}</div>`+
+    QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+
+    `<div class="ds">Menu</div>`+
+    list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+
+    (instEv?`<div class="di" onclick="doInstall();closeDrawer()"><span>📲 Install app</span></div>`:'');
+}
+async function openDrawer(){
+  if(!ME)return;
+  $('#dav').textContent=(ME.name||'?').trim().charAt(0).toUpperCase();
+  $('#dnm').textContent=ME.name||'';$('#drl').textContent=ROLE[ME.role]||ME.role;$('#dem').textContent=ME.email||'';
+  $('#drb').innerHTML=drawerBody(null);
+  $('#ov').style.display='block';$('#dr').classList.add('open');
+  try{
+    const r=await Promise.all(Object.keys(ST).map(s=>sb.from('leads').select('*',{count:'exact',head:true}).eq('status',s).then(x=>[s,x.count||0])));
+    if($('#dr').classList.contains('open'))$('#drb').innerHTML=drawerBody(Object.fromEntries(r));
+  }catch(e){}
+}
+function closeDrawer(){$('#dr').classList.remove('open');$('#ov').style.display='none'}
+async function updateBell(){
+  if(!ME)return;
+  try{
+    const today=new Date().toLocaleDateString('en-CA');
+    let x=sb.from('leads').select('*',{count:'exact',head:true}).eq('status','meeting_assigned').lte('meeting_date',today);
+    if(ME.role=='fe')x=x.eq('fe_id',ME.id);else if(ME.role=='telecaller')x=x.eq('tc_id',ME.id);
+    const {count}=await x,b=$('#bc');if(!b)return;
+    b.textContent=count>99?'99+':count;b.style.display=count?'block':'none';
+  }catch(e){}
+}
+function bellGo(){
+  if(ME.role=='fe')go('asg');else if(ME.role=='telecaller')go('meet');else{viewSt='meeting_assigned';go('st')}
+}
 
 /* ---------- start ---------- */
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
