@@ -45,6 +45,7 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 .alert{border-color:var(--ok);background:#ecfdf3;cursor:pointer}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between}
 .mu{color:var(--mu);font-size:12.5px}.er{color:var(--er)}.ok{color:var(--ok)}.wr{color:var(--wr)}
+.fol{margin-top:6px;padding:6px 10px;border-radius:10px;background:#eef4fb;border:1px solid #cfdff0;font-size:13.5px}.fol.tod{background:#fff6e0;border-color:#f0d9a0}.fol.late{background:#fdecec;border-color:#f3b9b9;color:#a61b1b}
 .tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;border:1px solid var(--bd);white-space:nowrap}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:10px}
 .stat b{display:block;font-size:22px}
@@ -53,6 +54,7 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .acts button,.acts .btn{padding:7px 12px;font-size:14px;min-height:38px}
 .acts{gap:7px;margin-top:8px}
+.acts a.cl{background:#e8f0f9;color:var(--pr);border-color:#c5d8ee;font-weight:600}
 .acts button.cl{background:#e8f0f9;color:var(--pr);border-color:#c5d8ee;font-weight:600}
 .acts button.ic{padding:7px 10px;min-width:40px}
 .lc{padding:10px 12px;margin-bottom:8px}
@@ -148,7 +150,7 @@ async function boot(user){
 /* ---------- shell ---------- */
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
-  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['meet','📅 Meetings'],['deal','✅ Deals']],
+  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals']],
   fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
 function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
@@ -156,7 +158,7 @@ async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
   if(tab!='st'&&tab!='rep'&&!list.find(t=>t[0]==tab))tab=list[0][0];
-  const NAVX={admin:['calls','leads','team'],telecaller:['call','meet','deal'],fe:['today','fu','done','deal']};
+  const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','done']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
@@ -197,15 +199,31 @@ async function saveNote(id){
 }
 
 /* ---------- lead card + actions ---------- */
+const fmtT=t=>{if(!t)return '';const [h,m]=t.split(':');const H=+h;return (H%12||12)+':'+m+' '+(H>=12?'PM':'AM')};
+function meetLine(l){
+  if(!l.meeting_date)return '';
+  const td=new Date().toLocaleDateString('en-CA'),nowT=new Date().toTimeString().slice(0,5),mt=(l.meeting_time||'').slice(0,5);
+  const pend=l.status=='meeting_assigned',late=pend&&(l.meeting_date<td||(l.meeting_date==td&&mt&&mt<nowT)),today=l.meeting_date==td;
+  const dt=new Date(l.meeting_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  return `<div class="fol ${!pend?'':late?'late':today?'tod':''}">📅 Meeting: <b>${today?'Today':dt}</b>${mt?' · <b>'+fmtT(mt)+'</b>':''}${late?' · overdue':''}</div>`;
+}
+function followLine(l){
+  if(!l.follow_date||!(l.status=='followup'||l.status=='callback'))return '';
+  const td=new Date().toLocaleDateString('en-CA'),nowT=new Date().toTimeString().slice(0,5),ft=(l.follow_time||'').slice(0,5);
+  const late=l.follow_date<td||(l.follow_date==td&&ft&&ft<nowT),today=l.follow_date==td;
+  const dt=new Date(l.follow_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  return `<div class="fol ${late?'late':today?'tod':''}">🔔 ${l.status=='callback'?'Call back':'Follow up'}: <b>${today?'Today':dt}</b>${ft?' · <b>'+fmtT(ft)+'</b>':''}${late?' · overdue':''}</div>`;
+}
 function leadCard(l,cs){
   LEADS[l.id]=l;
   const fe=l.fe_id&&P[l.fe_id]?.name,tc=l.tc_id&&P[l.tc_id]?.name;
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
-  const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',l.meeting_date?'📅 '+esc(l.meeting_date):''].filter(Boolean).join(' · ');
+  const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',''].filter(Boolean).join(' · ');
   return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
+  ${followLine(l)}${meetLine(l)}
   ${noteBlock(l)}
   ${meta?`<div class="mu cp">${meta}</div>`:''}
   ${cs!==undefined?'<div class="hs cp">'+hist(cs)+'</div>':''}
@@ -216,30 +234,38 @@ function closeForm(){openId=null;openK=null;clearInterval(tint);t0=null;render()
 function actions(l){
   if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
   const b=[];
-  if(ME.role!='fe')b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
-  b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener">💬</a>`);
+  if(ME.role!='fe')b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`)
+  else b.push(`<a class="btn cl" href="tel:${esc(ph10(l.phone))}">📞 Call</a>`);
+  b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
   b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
-  b.push(`<button onclick="openForm(${l.id},'assign')">Assign</button>`);
   b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
   if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
   return `<div class="acts">${b.join('')}</div>`;
 }
 const stOpts=()=>'<option value="">— Select status —</option>'+myStatuses().map(s=>`<option value="${s}">${ST[s]}</option>`).join('');
 const feOpts=sel=>Object.values(P).filter(p=>p.role=='fe').map(f=>`<option value="${f.id}" ${f.id==sel?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
-const meetBox=l=>`<div id="mt" class="f2" style="display:none"><div><label>Field Exec</label><select id="fe">${feOpts(l.fe_id)}</select></div><div><label>Meeting date</label><input id="dt" type="date"></div></div>`;
-const onSt=`onchange="const m=$('#mt');if(m)m.style.display=this.value=='meeting_assigned'?'grid':'none'"`;
+const meetBox=l=>`<div id="mt" class="f2" style="display:none"><div><label>Field Exec</label><select id="fe">${feOpts(l.fe_id)}</select></div><div><label>Meeting date</label><input id="dt" type="date"></div><div style="grid-column:1/-1"><label>Meeting time</label><input id="mtm" type="time"></div></div>`;
+const tmrw=()=>new Date(Date.now()+864e5+19800000).toISOString().slice(0,10);
+const fuBox=l=>`<div id="fb" class="f2" style="display:none"><div><label>Call back on (date)</label><input id="fd" type="date" value="${l.follow_date||tmrw()}"></div><div><label>Time (optional)</label><input id="ft" type="time" value="${(l.follow_time||'').slice(0,5)}"></div></div>`;
+const onSt=`onchange="const m=$('#mt');if(m)m.style.display=this.value=='meeting_assigned'?'grid':'none';const f=$('#fb');if(f)f.style.display=(this.value=='followup'||this.value=='callback')?'grid':'none'"`;
 function statusUpd(l,st){
   const upd={status:st};
   if(st=='meeting_assigned'){
     const fe=$('#fe')&&$('#fe').value,dt=$('#dt')&&$('#dt').value;
-    if(!fe||!dt)return {err:'Select a Field Exec and the meeting date'};
-    upd.fe_id=fe;upd.meeting_date=dt;
+    const mtm=$('#mtm')&&$('#mtm').value;
+    if(!fe||!dt||!mtm)return {err:'Select a Field Exec, the meeting date and time'};
+    upd.fe_id=fe;upd.meeting_date=dt;upd.meeting_time=mtm;
     if(ME.role=='telecaller')upd.tc_id=ME.id;
   }else if(ME.role=='telecaller'&&!l.tc_id)upd.tc_id=ME.id;
+  if(st=='followup'||st=='callback'){
+    const fd=$('#fd')&&$('#fd').value,ft=$('#ft')&&$('#ft').value;
+    if(!fd)return {err:'Select the call-back date'};
+    upd.follow_date=fd;upd.follow_time=ft||null;
+  }else{upd.follow_date=null;upd.follow_time=null}
   return {upd};
 }
 function statusForm(l){
-  return `<div class="form"><label>Change status</label><select id="sst" ${onSt}>${stOpts()}</select>${ME.role!='fe'?meetBox(l):''}
+  return `<div class="form"><label>Change status</label><select id="sst" ${onSt}>${stOpts()}</select>${ME.role!='fe'?meetBox(l):''}${fuBox(l)}
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveStatus(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveStatus(id){
@@ -264,6 +290,7 @@ async function saveAssign(id){
   if(!data||!data.length)return toast('Could not assign this lead',1);
   openId=null;openK=null;toast('Assigned to '+(p.name||'user')+' ✅');render();
 }
+const asgGrp=(r,t,cur)=>{const a=Object.values(P).filter(p=>p.role==r);return a.length?`<optgroup label="${t}">${a.map(p=>`<option value="${p.id}">${esc(p.name||p.id)}${p.id==cur?' (current)':''}</option>`).join('')}</optgroup>`:''};
 function editForm(l){
   const v=x=>esc(x==null?'':x);
   return `<div class="form"><b>✏️ Edit lead</b>
@@ -274,6 +301,7 @@ function editForm(l){
   <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
   <label>Price</label><input id="ec" value="${v(fp(l))}" placeholder="85 L or 1.2 Cr">
   <label>Notes</label><textarea id="em" rows="2">${v(l.remarks)}</textarea>
+  <label>Assign / hand over to</label><select id="easg"><option value="">— No change —</option>${asgGrp('fe','Field Executives',l.fe_id)}${asgGrp('telecaller','Telecallers',l.tc_id)}</select>
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveEdit(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveEdit(id){
@@ -281,6 +309,7 @@ async function saveEdit(id){
   if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
   const pr=$('#ec').value.trim();
   const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),locality:$('#el').value.trim(),bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
+  const ap=$('#easg').value;if(ap&&P[ap]){if(P[ap].role=='fe')upd.fe_id=ap;else upd.tc_id=ap}
   const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
   if(!data||!data.length)return toast('Could not save (no permission)',1);
@@ -353,7 +382,7 @@ function callForm(l){
   <div class="f2"><a class="btn p" href="tel:${esc(l.phone)}" onclick="startT()">📞 Start call</a><button onclick="stopT()">⏹ End call</button></div>
   <div id="tmr" class="mu">Tap "Start call" to run a timer, then "End call" to fill the talk time below. You can also type it by hand.</div>
   <div class="f2"><div><label>Talk time: minutes</label><input id="mi" type="number" min="0" value="0"></div><div><label>Talk time: seconds</label><input id="se" type="number" min="0" max="59" value="0"></div></div>
-  <label>Call result / status</label><select id="sst" ${onSt}>${stOpts()}</select>${meetBox(l)}
+  <label>Call result / status</label><select id="sst" ${onSt}>${stOpts()}</select>${meetBox(l)}${fuBox(l)}
   <textarea id="cn" rows="2" placeholder="Notes (optional)">${esc(l.remarks||'')}</textarea>
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveCall(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
@@ -384,6 +413,12 @@ VIEW['telecaller:call']=async()=>{
   return searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
     (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc||fBhk||fSt?'Nothing found.':'No leads to call.'));
 };
+VIEW['telecaller:fu']=async()=>{
+  const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['followup','callback']).order('follow_date',{ascending:true,nullsFirst:false}).order('follow_time',{ascending:true,nullsFirst:false}).limit(100);
+  if(error)throw error;
+  const hs=await histMap(data.map(l=>l.id));
+  return data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No follow-ups or call-backs pending.');
+};
 VIEW['telecaller:meet']=async()=>{
   const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['meeting_assigned','meeting_done','online_meet_done']).order('meeting_date',{ascending:false});
   if(error)throw error;
@@ -397,7 +432,7 @@ VIEW['telecaller:deal']=async()=>{
 };
 // Field Exec
 const feList=async sts=>{
-  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).limit(200);
+  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(200);
   if(error)throw error;
   return addLeadCard()+(data.map(l=>leadCard(l)).join('')||empty('Nothing here.'));
 };
@@ -582,7 +617,8 @@ VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
   const hero=(items,extra)=>`<div class="hero"><div class="hg">${hi}</div><div class="hs2">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'})} · ${PL}</div><div class="hn">${items.map(i=>`<div><b>${i[1]}</b><span>${i[0]}</span></div>`).join('')}</div>${extra||''}</div>`;
   if(ME.role=='telecaller'){
     const m=tcs.find(r=>r.uid==ME.id)||{given:0,touched:0,meet:0,att:0,deal:0,calls:0,talk:0,connected:0,owned:0,untouched:0};
-    return hero([['Calls',m.calls],['Talk time',talkS(m.talk)],['Meetings fixed',m.meet]],`<button class="hb" onclick="go('call')">📞 Start calling</button>`)+rangeChips()+
+    const {count:fdue}=await sb.from('leads').select('*',{count:'exact',head:true}).eq('tc_id',ME.id).in('status',['followup','callback']).lte('follow_date',isoToday());
+    return hero([['Calls',m.calls],['Talk time',talkS(m.talk)],['Meetings fixed',m.meet]],`<button class="hb" onclick="go('call')">📞 Start calling</button>`)+(fdue?`<div class="card alert" style="background:#fff6e0;border-color:#f0d9a0" onclick="go('fu')">🔔 ${fdue} call-back${fdue>1?'s':''} due today / overdue — tap to view</div>`:'')+rangeChips()+
       `<div class="card"><b>🎯 My Funnel</b><div style="margin-top:8px">${tcFunnel(m)}</div><div style="margin-top:6px">${tcRatios(m)}</div></div>`+rangeNote;
   }
   const m=fes.find(r=>r.uid==ME.id)||{meet:0,att:0,deal:0,pending:0,overdue:0,ni:0,fu:0};
@@ -599,14 +635,14 @@ let mDate=null;
 function setMD(v){if(v){mDate=v;render()}}
 VIEW['fe:today']=async()=>{
   const t=isoToday(),d=mDate||t;
-  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('meeting_date',d).order('created_at');
+  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('meeting_date',d).order('meeting_time',{ascending:true,nullsFirst:false});
   if(error)throw error;
   let late=[];
   if(d==t){const r=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',t).order('meeting_date');late=r.data||[]}
   const dn=['meeting_done','online_meet_done','deal_closed'],done=data.filter(l=>dn.includes(l.status)).length;
   const lab=d==t?'Today':d==shiftDate(t,1)?'Tomorrow':d==shiftDate(t,-1)?'Yesterday':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
   return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div></div>
-  <div class="grid">${tile(lab+"'s meetings",data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',data.length-done,'',data.length-done?'wr':'')}</div>`+
+  <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab=='Today'?'Meetings':lab,data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',data.length-done,'',data.length-done?'wr':'')}</div>`+
   (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l)).join(''):'')+
   (data.map(l=>leadCard(l)).join('')||empty('No meetings on this date.'));
 };
@@ -646,12 +682,14 @@ async function updateBell(){
     const today=new Date().toLocaleDateString('en-CA');
     let x=sb.from('leads').select('*',{count:'exact',head:true}).eq('status','meeting_assigned').lte('meeting_date',today);
     if(ME.role=='fe')x=x.eq('fe_id',ME.id);else if(ME.role=='telecaller')x=x.eq('tc_id',ME.id);
-    const {count}=await x,b=$('#bc');if(!b)return;
+    let {count}=await x;
+    if(ME.role!='admin'){let y=sb.from('leads').select('*',{count:'exact',head:true}).in('status',['followup','callback']).lte('follow_date',today);y=ME.role=='fe'?y.eq('fe_id',ME.id):y.eq('tc_id',ME.id);const r2=await y;count=(count||0)+(r2.count||0)}
+    const b=$('#bc');if(!b)return;
     b.textContent=count>99?'99+':count;b.style.display=count?'block':'none';
   }catch(e){}
 }
 function bellGo(){
-  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('meet');else{viewSt='meeting_assigned';go('st')}
+  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('fu');else{viewSt='meeting_assigned';go('st')}
 }
 
 /* ---------- start ---------- */
