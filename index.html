@@ -128,12 +128,12 @@ const TABS={
   telecaller:[['call','📞 Calling'],['meet','📅 Meetings'],['deal','✅ Deals']],
   fe:[['asg','📅 Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
 function go(t){tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
-const navHtml=t=>{const i=t[1].indexOf(' ');return `<button class="${t[0]==tab?'on':''}" onclick="go('${t[0]}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
+const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
   if(tab!='st'&&!list.find(t=>t[0]==tab))tab=list[0][0];
-  $('#nav').innerHTML=list.map(navHtml).join('');
+  $('#nav').innerHTML=navHtml(['__home','🏠 Home'],list[0][0])+list.map(t=>navHtml(t)).join('');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   let h;
