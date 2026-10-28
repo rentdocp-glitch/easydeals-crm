@@ -65,6 +65,13 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 .lc .note{margin-top:5px;padding:5px 8px;font-size:13px;cursor:pointer}
 .lc .hs{margin-top:4px}.lc .hs .mu{font-size:12px}
 .cmp .lc{padding:8px 10px;margin-bottom:6px}.cmp .cp{display:none}.cmp .acts{margin-top:6px}.cmp .acts button{min-height:34px;padding:5px 11px}
+.acts a.wi{background:#25d366;border-color:#25d366;color:#fff;padding:7px 10px;display:inline-flex;align-items:center;justify-content:center}
+.hero{background:linear-gradient(135deg,#17406a,#2f7fc4);color:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 6px 16px rgba(23,64,106,.28)}
+.hero .hg{font-size:21px;font-weight:700}.hero .hs2{opacity:.85;font-size:13px;margin-top:2px}
+.hero .hn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;text-align:center}
+.hero .hn>div{background:rgba(255,255,255,.14);border-radius:12px;padding:10px 4px}
+.hero .hn b{display:block;font-size:26px;line-height:1.1}.hero .hn span{font-size:12px;opacity:.9}
+.hero .hb{margin-top:14px;width:100%;border:0;border-radius:12px;background:#fff;color:#17406a;font-weight:700;font-size:16px;padding:12px;min-height:46px}
 .fn{display:grid;grid-template-columns:104px 1fr 38px 44px;gap:8px;align-items:center;margin:6px 0;font-size:13.5px}
 .fn .fb{background:#eef2f7;border-radius:99px;height:10px;overflow:hidden}.fn .fb i{display:block;height:100%;background:var(--pr);border-radius:99px}
 .fn b{text-align:right}.fn .fp{font-size:12px;color:var(--mu);text-align:right}
@@ -141,17 +148,17 @@ async function boot(user){
 /* ---------- shell ---------- */
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
-  telecaller:[['call','📞 Calling'],['meet','📅 Meetings'],['deal','✅ Deals']],
-  fe:[['asg','📅 Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
-function go(t){tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
+  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['meet','📅 Meetings'],['deal','✅ Deals']],
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
+function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
   if(tab!='st'&&tab!='rep'&&!list.find(t=>t[0]==tab))tab=list[0][0];
-  const NAVX={admin:['calls','leads','team'],telecaller:['meet','deal'],fe:['fu','done','deal']};
+  const NAVX={admin:['calls','leads','team'],telecaller:['call','meet','deal'],fe:['today','fu','done','deal']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
-  $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]):''}).join('')+nv('rep','📈 KPI',tab=='rep');
+  $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   let h;
@@ -196,7 +203,7 @@ function leadCard(l,cs){
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
   const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',l.meeting_date?'📅 '+esc(l.meeting_date):''].filter(Boolean).join(' · ');
-  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a><a class="wa" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener">💬 WhatsApp</a></div></div>${tag(l.status)}</div>
+  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${noteBlock(l)}
@@ -207,12 +214,13 @@ function leadCard(l,cs){
 function openForm(id,k){openId=id;openK=k;noteId=null;render()}
 function closeForm(){openId=null;openK=null;clearInterval(tint);t0=null;render()}
 function actions(l){
-  if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='del'?delForm(l):'';
+  if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
   const b=[];
   if(ME.role!='fe')b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
+  b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener">💬</a>`);
   b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
   b.push(`<button onclick="openForm(${l.id},'assign')">Assign</button>`);
-  b.push(`<button class="ic" title="Note" onclick="noteId=${l.id};openId=null;openK=null;render()">📝</button>`);
+  b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
   if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
   return `<div class="acts">${b.join('')}</div>`;
 }
@@ -255,6 +263,28 @@ async function saveAssign(id){
   if(error)return toast(error.message,1);
   if(!data||!data.length)return toast('Could not assign this lead',1);
   openId=null;openK=null;toast('Assigned to '+(p.name||'user')+' ✅');render();
+}
+function editForm(l){
+  const v=x=>esc(x==null?'':x);
+  return `<div class="form"><b>✏️ Edit lead</b>
+  <label>Owner name</label><input id="en" value="${v(l.name)}">
+  <label>Mobile number</label><input id="ep" type="tel" value="${v(l.phone)}">
+  <label>Society / Property name</label><input id="er" value="${v(l.property)}">
+  <label>Area / Address</label><input id="el" value="${v(l.locality)}">
+  <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
+  <label>Price</label><input id="ec" value="${v(fp(l))}" placeholder="85 L or 1.2 Cr">
+  <label>Notes</label><textarea id="em" rows="2">${v(l.remarks)}</textarea>
+  <div class="acts" style="margin-top:0"><button class="g" onclick="saveEdit(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
+}
+async function saveEdit(id){
+  const phone=ph10($('#ep').value);
+  if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
+  const pr=$('#ec').value.trim();
+  const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),locality:$('#el').value.trim(),bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
+  const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
+  if(error)return toast(error.message,1);
+  if(!data||!data.length)return toast('Could not save (no permission)',1);
+  openId=null;openK=null;toast('Lead updated ✅');render();
 }
 function delForm(l){
   return `<div class="form"><div class="er">Delete ${esc(l.name||'this lead')}? Its call history will also be deleted. This cannot be undone.</div>
@@ -547,22 +577,38 @@ VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
     <div class="card"><b>🔁 Full pipeline</b> <span class="mu">telecaller data → deal</span><div style="margin-top:8px">${tcFunnel(T)}</div><div style="margin-top:6px">${tcRatios(T)}</div></div>
     <div class="card"><b>🚶 Field Exec — team</b><div style="margin-top:8px">${feFunnel(F)}</div><div style="margin-top:6px">${feRatios({...F,ni:sumF(fes,'ni'),fu:sumF(fes,'fu')})}</div></div>`;
   }
+  const PL={today:'Today','7':'Last 7 days','30':'Last 30 days',all:'All time'}[RANGE]||'';
+  const hi=`Hi ${esc((ME.name||'').split(' ')[0])} 👋`;
+  const hero=(items,extra)=>`<div class="hero"><div class="hg">${hi}</div><div class="hs2">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'})} · ${PL}</div><div class="hn">${items.map(i=>`<div><b>${i[1]}</b><span>${i[0]}</span></div>`).join('')}</div>${extra||''}</div>`;
   if(ME.role=='telecaller'){
     const m=tcs.find(r=>r.uid==ME.id)||{given:0,touched:0,meet:0,att:0,deal:0,calls:0,talk:0,connected:0,owned:0,untouched:0};
-    if(repTab=='vs'){
-      const n=Math.max(1,tcs.length);
-      return head+`<div class="card"><b>🆚 Me vs Team</b> <span class="mu">team = average per telecaller</span>${tcs.length>1?
-        vsRow('Calls',m.calls,f1(T.calls/n))+vsRow('Talk time',fmt(m.talk),fmt(Math.round(T.talk/n)))+vsRow('Data touched',m.touched,f1(T.touched/n))+vsRow('Meetings fixed',m.meet,f1(T.meet/n))+vsRow('Touched → Meeting',pct(m.meet,m.touched),pct(T.meet,T.touched))+vsRow('Meeting → Attended',pct(m.att,m.meet),pct(T.att,T.meet))+vsRow('Attended → Deal',pct(m.deal,m.att),pct(T.deal,T.att))+vsRow('Deals',m.deal,f1(T.deal/n))+vsRow('Connect rate',pct(m.connected,m.calls),pct(T.connected,T.calls)):'<p class="mu">Team comparison appears once 2+ telecallers have data.</p>'}</div>`;
-    }
-    return head+`<div class="card"><b>🎯 My Funnel</b> <span class="mu">${esc(ME.name||'')}</span><div style="margin-top:8px">${tcFunnel(m)}</div><div style="margin-top:6px">${tcRatios(m)}</div></div>`;
+    return hero([['Calls',m.calls],['Talk time',talkS(m.talk)],['Meetings fixed',m.meet]],`<button class="hb" onclick="go('call')">📞 Start calling</button>`)+rangeChips()+
+      `<div class="card"><b>🎯 My Funnel</b><div style="margin-top:8px">${tcFunnel(m)}</div><div style="margin-top:6px">${tcRatios(m)}</div></div>`+rangeNote;
   }
   const m=fes.find(r=>r.uid==ME.id)||{meet:0,att:0,deal:0,pending:0,overdue:0,ni:0,fu:0};
-  if(repTab=='vs'){
-    const n=Math.max(1,fes.length);
-    return head+`<div class="card"><b>🆚 Me vs Team</b> <span class="mu">team = average per field exec</span>${fes.length>1?
-      vsRow('Meetings given',m.meet,f1(F.meet/n))+vsRow('Attended',m.att,f1(F.att/n))+vsRow('Attend ratio',pct(m.att,m.meet),pct(F.att,F.meet))+vsRow('Deals',m.deal,f1(F.deal/n))+vsRow('Closing ratio',pct(m.deal,m.att),pct(F.deal,F.att)):'<p class="mu">Team comparison appears once 2+ field executives have data.</p>'}</div>`;
-  }
-  return head+`<div class="card"><b>🎯 My Meetings</b> <span class="mu">${esc(ME.name||'')}</span><div style="margin-top:8px">${feFunnel(m)}</div><div style="margin-top:6px">${feRatios(m)}</div></div>`;
+  const td=isoToday();
+  const {count:tdc}=await sb.from('leads').select('*',{count:'exact',head:true}).eq('fe_id',ME.id).eq('meeting_date',td);
+  return hero([['Meetings today',tdc||0],['Pending',m.pending],['Deals',m.deal]],`<button class="hb" onclick="go('today')">📅 Today's meetings</button>`)+
+    (m.overdue?`<div class="card alert" style="border-color:var(--er);background:#fef2f2" onclick="go('asg')">⚠️ ${m.overdue} overdue meeting${m.overdue>1?'s':''} — tap to view</div>`:'')+rangeChips()+
+    `<div class="card"><b>🎯 My Meetings</b><div style="margin-top:8px">${feFunnel(m)}</div><div style="margin-top:6px">${feRatios(m)}</div></div>`+rangeNote;
+};
+const talkS=s=>{s=Math.round(+s||0);const m=Math.floor(s/60);return m>=60?Math.floor(m/60)+'h '+(m%60)+'m':m+'m'};
+const isoToday=()=>new Date().toLocaleDateString('en-CA');
+const shiftDate=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return x.toLocaleDateString('en-CA')};
+let mDate=null;
+function setMD(v){if(v){mDate=v;render()}}
+VIEW['fe:today']=async()=>{
+  const t=isoToday(),d=mDate||t;
+  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('meeting_date',d).order('created_at');
+  if(error)throw error;
+  let late=[];
+  if(d==t){const r=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',t).order('meeting_date');late=r.data||[]}
+  const dn=['meeting_done','online_meet_done','deal_closed'],done=data.filter(l=>dn.includes(l.status)).length;
+  const lab=d==t?'Today':d==shiftDate(t,1)?'Tomorrow':d==shiftDate(t,-1)?'Yesterday':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div></div>
+  <div class="grid">${tile(lab+"'s meetings",data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',data.length-done,'',data.length-done?'wr':'')}</div>`+
+  (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l)).join(''):'')+
+  (data.map(l=>leadCard(l)).join('')||empty('No meetings on this date.'));
 };
 const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['new','🆕']];
 let CMP=false;try{CMP=localStorage.getItem('cmp')=='1'}catch(e){}
@@ -573,7 +619,7 @@ function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';
 function drawerBody(C){
   const list=TABS[ME.role]||[];
   return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+
-    `<div class="di" onclick="go('rep')"><span>📈 ${ME.role=='admin'?'Team Report (KPI)':'My Report (KPI)'}</span></div>`+
+    (ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
@@ -605,7 +651,7 @@ async function updateBell(){
   }catch(e){}
 }
 function bellGo(){
-  if(ME.role=='fe')go('asg');else if(ME.role=='telecaller')go('meet');else{viewSt='meeting_assigned';go('st')}
+  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('meet');else{viewSt='meeting_assigned';go('st')}
 }
 
 /* ---------- start ---------- */
