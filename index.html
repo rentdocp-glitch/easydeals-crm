@@ -150,8 +150,8 @@ async function boot(user){
 /* ---------- shell ---------- */
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
-  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals']],
-  fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.']]};
+  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup']],
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['lk','🔎 Number Lookup']]};
 function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
@@ -413,6 +413,23 @@ VIEW['telecaller:call']=async()=>{
   return searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
     (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc||fBhk||fSt?'Nothing found.':'No leads to call.'));
 };
+async function lookupAny(){
+  const n=ph10($('#lkn').value),box=$('#lkr');
+  if(n.length<10){box.innerHTML='<p class="er">Enter a 10-digit number</p>';return}
+  box.innerHTML='<p class="mu">Searching…</p>';
+  const {data,error}=await sb.rpc('lookup_number',{n});
+  if(error){box.innerHTML='<p class="er">'+esc(error.message)+'</p>';return}
+  if(!data||!data.length){box.innerHTML='<div class="card"><b class="er">❌ Not in our database</b><div class="mu">This number is not in the CRM — it is a new contact.</div></div>';return}
+  box.innerHTML=`<div style="margin:10px 2px 8px">✅ <b>Yes, this number is in our data</b></div>`+data.map(l=>{
+    const chips=[l.bhk,l.price].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
+    const who=[l.tc_name?'Telecaller: <b>'+esc(l.tc_name)+'</b>':'',l.fe_name?'Field Exec: <b>'+esc(l.fe_name)+'</b>':''].filter(Boolean).join(' · ')||'Not assigned yet';
+    const mt=l.meeting_date?`<div class="fol">📅 Meeting: <b>${new Date(l.meeting_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</b>${l.meeting_time?' · <b>'+fmtT(l.meeting_time.slice(0,5))+'</b>':''}</div>`:'';
+    return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>
+    ${(l.property||l.locality)?`<div class="wh">🏢 ${[l.property,l.locality].filter(Boolean).map(esc).join(' · ')}</div>`:''}
+    ${chips?`<div class="chp cp">${chips}</div>`:''}${mt}
+    <div class="mu cp">👤 ${who}</div></div>`}).join('');
+}
+VIEW['telecaller:lk']=VIEW['fe:lk']=()=>`<div class="card"><b>🔎 Number Lookup</b><div class="mu" style="margin-bottom:8px">Customer called? Enter the number to see whether it is in our data and who has it.</div><div class="f2" style="grid-template-columns:1fr auto"><input id="lkn" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookupAny()"><button class="p" onclick="lookupAny()">Look up</button></div></div><div id="lkr"></div>`;
 VIEW['telecaller:fu']=async()=>{
   const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['followup','callback']).order('follow_date',{ascending:true,nullsFirst:false}).order('follow_time',{ascending:true,nullsFirst:false}).limit(100);
   if(error)throw error;
@@ -618,13 +635,14 @@ VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
   if(ME.role=='telecaller'){
     const m=tcs.find(r=>r.uid==ME.id)||{given:0,touched:0,meet:0,att:0,deal:0,calls:0,talk:0,connected:0,owned:0,untouched:0};
     const {count:fdue}=await sb.from('leads').select('*',{count:'exact',head:true}).eq('tc_id',ME.id).in('status',['followup','callback']).lte('follow_date',isoToday());
-    return hero([['Calls',m.calls],['Talk time',talkS(m.talk)],['Meetings fixed',m.meet]],`<button class="hb" onclick="go('call')">📞 Start calling</button>`)+(fdue?`<div class="card alert" style="background:#fff6e0;border-color:#f0d9a0" onclick="go('fu')">🔔 ${fdue} call-back${fdue>1?'s':''} due today / overdue — tap to view</div>`:'')+rangeChips()+
+    return hero([['Calls',m.calls],['Talk time',talkS(m.talk)],['Meetings fixed',m.meet]],`<button class="hb" onclick="go('call')">📞 Start calling</button>`)+`<div class="card" style="cursor:pointer" onclick="go('lk')">📲 <b>Incoming call?</b> <span class="mu">Check if the number is in our data</span></div>`+(fdue?`<div class="card alert" style="background:#fff6e0;border-color:#f0d9a0" onclick="go('fu')">🔔 ${fdue} call-back${fdue>1?'s':''} due today / overdue — tap to view</div>`:'')+rangeChips()+
       `<div class="card"><b>🎯 My Funnel</b><div style="margin-top:8px">${tcFunnel(m)}</div><div style="margin-top:6px">${tcRatios(m)}</div></div>`+rangeNote;
   }
   const m=fes.find(r=>r.uid==ME.id)||{meet:0,att:0,deal:0,pending:0,overdue:0,ni:0,fu:0};
   const td=isoToday();
   const {count:tdc}=await sb.from('leads').select('*',{count:'exact',head:true}).eq('fe_id',ME.id).eq('meeting_date',td);
   return hero([['Meetings today',tdc||0],['Pending',m.pending],['Deals',m.deal]],`<button class="hb" onclick="go('today')">📅 Today's meetings</button>`)+
+    `<div class="card" style="cursor:pointer" onclick="go('lk')">📲 <b>Incoming call?</b> <span class="mu">Check if the number is in our data</span></div>`+
     (m.overdue?`<div class="card alert" style="border-color:var(--er);background:#fef2f2" onclick="go('asg')">⚠️ ${m.overdue} overdue meeting${m.overdue>1?'s':''} — tap to view</div>`:'')+rangeChips()+
     `<div class="card"><b>🎯 My Meetings</b><div style="margin-top:8px">${feFunnel(m)}</div><div style="margin-top:6px">${feRatios(m)}</div></div>`+rangeNote;
 };
