@@ -115,7 +115,7 @@ const ALLS=Object.keys(ST).filter(k=>k!='new');
 const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
 const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
-let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',fSt='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
+let DR={id:'',day:''};let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',fSt='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
 
 function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
 const clean=s=>String(s||'').replace(/[,()%*]/g,' ').trim();
@@ -157,14 +157,14 @@ const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
-  if(tab!='st'&&tab!='rep'&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','done']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
-  $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
+  $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,tab,q,fLoc,fBhk,fSt,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
+  const ck=[ME.role,tab,DR.id,DR.day,q,fLoc,fBhk,fSt,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];
   const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -600,10 +600,45 @@ async function doImport(){
   impSummary(rows.length,dup,bad,skipped,tp?(tp.name||'user'):'');
   toast('Import done ✅');if(!skipped.length)setTimeout(render,1200);
 }
+function openDaily(id){DR.id=id;DR.day=isoToday();go('daily')}
+function drShift(n){const d=new Date(DR.day+'T00:00:00');d.setDate(d.getDate()+n);DR.day=d.toLocaleDateString('en-CA');render()}
+function drCsv(){
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const csv='Time,Lead,Property,Phone,Outcome,Duration (sec)\n'+(window.__DR||[]).map(r=>r.map(q).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='daily_report_'+((P[DR.id]||{}).name||'')+'_'+DR.day+'.csv';a.click();
+}
+VIEW['admin:daily']=async()=>{
+  const p=P[DR.id]||{},isFE=p.role=='fe',key=isFE?'fe_id':'tc_id';
+  const a=new Date(DR.day+'T00:00:00'),b=new Date(a);b.setDate(b.getDate()+1);const A=a.toISOString(),B=b.toISOString();
+  const inDay=col=>sb.from('leads').select('id,name,property').eq(key,DR.id).gte(col,A).lt(col,B);
+  const [calls,lm,la,ld]=await Promise.all([pageAll(()=>sb.from('calls').select('*').eq('by_id',DR.id).gte('created_at',A).lt('created_at',B).order('created_at')),inDay('meet_at'),inDay('att_at'),inDay('deal_at')]);
+  const ids=[...new Set(calls.map(c=>c.lead_id))];
+  const L={};if(ids.length){const r=await sb.from('leads').select('id,name,property,phone').in('id',ids);(r.data||[]).forEach(l=>L[l.id]=l)}
+  const talk=calls.reduce((x,c)=>x+(c.duration_sec||0),0);
+  const stat=(x,y,c)=>`<div class="card stat"><span class="mu">${x}</span><b${c?` style="color:${c}"`:''}>${y}</b></div>`;
+  const tm=t=>new Date(t).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
+  const nm=n=>(n.data||[]).length;
+  window.__DR=calls.map(c=>{const l=L[c.lead_id]||{};return [tm(c.created_at),l.name||'',l.property||'',l.phone||'',c.outcome||'',c.duration_sec||0]});
+  const tiles=`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Leads called',ids.length)}${isFE?stat('Meetings attended',nm(la),'#1b6b34'):stat('Meetings fixed',nm(lm),'#5b3aa8')}${isFE?'':stat('Meetings attended',nm(la),'#1b6b34')}${stat('Deals closed',nm(ld),'#0f5a28')}</div>`;
+  const sub=(t,r)=>r.data&&r.data.length?`<div class="card"><b>${t}</b>${r.data.map(l=>`<div class="mu" style="margin-top:4px">${esc(l.name||'-')} · ${esc(l.property||'')}</div>`).join('')}</div>`:'';
+  return `<div class="acts" style="margin-bottom:8px"><button onclick="go('team')">← Team</button></div>
+  <div class="card"><b>📋 ${esc(p.name||'-')}</b> <span class="mu">${isFE?'Field Executive':'Telecaller'} · daily work report</span>
+  <div class="acts" style="margin-top:10px"><button onclick="drShift(-1)">◀</button><input type="date" value="${DR.day}" max="${isoToday()}" onchange="if(this.value){DR.day=this.value;render()}" style="flex:1"><button onclick="drShift(1)" ${DR.day>=isoToday()?'disabled':''}>▶</button></div></div>`+tiles+
+  (isFE?'':sub('📅 Meetings fixed',lm))+sub('✅ Meetings attended',la)+sub('🏆 Deals closed',ld)+
+  `<div class="card"><b>📞 Call log</b> <span class="mu">${calls.length} calls</span>${calls.map(c=>{const l=L[c.lead_id]||{};return lr(`<b>${esc(l.name||'-')}</b> <span class="mu">${esc(l.property||'')}</span><br><span class="mu">${tm(c.created_at)} · ${esc(c.outcome||'')}</span>`,fmt(c.duration_sec||0))}).join('')||'<div class="mu" style="margin-top:6px">No calls on this day.</div>'}${calls.length?`<div class="acts" style="margin-top:10px"><button onclick="drCsv()">⬇️ Download this report (CSV)</button></div>`:''}</div>`;
+};
 VIEW['admin:team']=async()=>{
   const {data}=await sb.from('profiles').select('*').order('role');
   data.forEach(p=>P[p.id]=p);
-  return `<p class="mu">To add a new member: Supabase → Authentication → Add user. They will appear here automatically; then choose their role.</p>`+
+  const all=await pageAll(()=>sb.from('leads').select('tc_id,fe_id,status'));
+  const SC={new:'#e8eefc|#1f4e9c',callback:'#fff1d6|#8a5a00',ringing:'#eef0f3|#4a5361',followup:'#e3f3ff|#0b5a8a',meeting_assigned:'#e9e2fb|#5b3aa8',meeting_done:'#e0f5e6|#1b6b34',online_meet_done:'#e0f5e6|#1b6b34',not_interested:'#fde4e4|#9b1c1c',deal_closed:'#cdeed6|#0f5a28',not_available:'#f1e6dc|#7a4a1f'};
+  const card=(title,sub,rows,uid)=>{const c={};rows.forEach(l=>c[l.status]=(c[l.status]||0)+1);
+    const chips=Object.keys(ST).filter(k=>c[k]).map(k=>{const [bg,fg]=SC[k].split('|');return `<span style="background:${bg};color:${fg};padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600">${ST[k]} ${c[k]}</span>`}).join(' ');
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px"><button onclick="openDaily('${uid}')">📋 Daily work report</button></div>`:''}</div>`};
+  const grp=(role,label,key)=>data.filter(p=>p.role==role).map(p=>card('👤 '+esc(p.name||'-'),label,all.filter(l=>l[key]==p.id),p.id)).join('');
+  const un=all.filter(l=>!l.tc_id&&!l.fe_id);
+  const work=`<h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
+  return work+`<p class="mu">To add a new member: Supabase → Authentication → Add user. They will appear here automatically; then choose their role.</p>`+
   data.map(p=>`<div class="card"><div class="f2"><input value="${esc(p.name||'')}" onchange="setName('${p.id}',this.value)"><select ${p.id==ME.id?'disabled':''} onchange="setRole('${p.id}',this.value)">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${p.role==k?'selected':''}>${v}</option>`).join('')}</select></div></div>`).join('');
 };
 async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
