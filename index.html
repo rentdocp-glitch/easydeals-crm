@@ -240,8 +240,7 @@ function closeForm(){openId=null;openK=null;clearInterval(tint);t0=null;render()
 function actions(l){
   if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
   const b=[];
-  if(ME.role!='fe')b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`)
-  else b.push(`<a class="btn cl" href="tel:${esc(ph10(l.phone))}">📞 Call</a>`);
+  b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
   b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
   b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
   b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
@@ -457,7 +456,8 @@ VIEW['telecaller:deal']=async()=>{
 const feList=async sts=>{
   const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(200);
   if(error)throw error;
-  return addLeadCard()+(data.map(l=>leadCard(l)).join('')||empty('Nothing here.'));
+  const hs=await histMap(data.map(l=>l.id));
+  return addLeadCard()+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing here.'));
 };
 VIEW['fe:asg']=()=>feList(['meeting_assigned']);
 VIEW['fe:fu']=()=>feList(['followup','callback','ringing','new']);
@@ -511,6 +511,7 @@ VIEW['admin:leads']=async()=>{
   const hs=await histMap(data.map(l=>l.id));
   return `<div class="card"><b>📥 Data import (from Sheet / Excel)</b><p class="mu">Copy the rows from your sheet <b>including the header row</b> and paste them here (or choose a CSV file). Columns are recognised by their names: Owner Name, Contact Number, Property Name, Area / Locality, BHK, Area (SQFT), Price. Column order does not matter.</p>
   <textarea id="imp" rows="5" placeholder="Paste header row + data rows here"></textarea>
+ <label>Give these leads to</label><select id="impto"><option value="">Everyone (all telecallers, nobody specific)</option>${asgGrp('telecaller','Telecallers')}${asgGrp('fe','Field Executives')}</select>
   <div class="acts"><input type="file" id="impf" accept=".csv,.txt" style="flex:1" onchange="loadFile(this)"><button class="p" onclick="doImport()">Import</button></div><div id="impr" class="mu"></div></div>`+
   searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
   (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing found.'))+(data.length>=100?'<p class="mu" style="text-align:center">Showing the latest 100. Use search or filters to find others.</p>':'');
@@ -545,6 +546,7 @@ async function doImport(){
   if(!map.includes('phone')){ // no header found: old format Name, Mobile, Property, Price
     map=['name','phone','property','price'];body=lines;
   }
+  const to=$('#impto')?$('#impto').value:'',tp=to&&P[to]?P[to]:null;
   const seen=new Set(),rows=[];let bad=0;
   const ex=await pageAll(()=>sb.from('leads').select('phone,property,bhk'));
   const key=(p,pr,b)=>p+'|'+String(pr||'').toLowerCase().trim()+'|'+String(b||'').toLowerCase().trim();
@@ -558,7 +560,7 @@ async function doImport(){
     let prop=r.property||'';if(/unspecified/i.test(prop))prop='';
     const k=key(phone,prop,r.bhk);
     if(seen.has(k)){dup++;continue}seen.add(k);
-    rows.push({name:r.name||'',phone,property:prop,locality:r.locality||'',bhk:r.bhk||'',sqft:parseInt(String(r.sqft||'').replace(/,/g,''))||null,price:r.price||'',price_l:parsePrice(r.price),remarks:r.remarks||''});
+    rows.push({name:r.name||'',phone,property:prop,locality:r.locality||'',bhk:r.bhk||'',sqft:parseInt(String(r.sqft||'').replace(/,/g,''))||null,price:r.price||'',price_l:parsePrice(r.price),remarks:r.remarks||'',...(tp?(tp.role=='fe'?{fe_id:to}:{tc_id:to}):{})});
   }
   if(!rows.length){$('#impr').textContent=`No new leads found. ${dup} already existed, ${bad} had an invalid number.`;return}
   for(let i=0;i<rows.length;i+=500){
@@ -566,7 +568,7 @@ async function doImport(){
     if(error){$('#impr').textContent='Error: '+error.message;return}
   }
   FILT.t=0;
-  $('#impr').textContent=`${rows.length} new leads added. ${dup} already existed, ${bad} had an invalid number.`;
+  $('#impr').textContent=`${rows.length} new leads added${tp?' and given to '+(tp.name||'user'):''}. ${dup} already existed, ${bad} had an invalid number.`;
   toast('Import done ✅');setTimeout(render,1200);
 }
 VIEW['admin:team']=async()=>{
@@ -617,6 +619,7 @@ const feRatios=r=>
   lr('Attend ratio (given → attended)',`<b>${pct(r.att,r.meet)}</b>`)+
   lr('Closing ratio (attended → deal)',`<b>${pct(r.deal,r.att)}</b>`)+
   lr('Deal per meeting given',`<b>${pct(r.deal,r.meet)}</b>`)+
+  lr('Calls made · Talk time',`<b>${r.calls||0}</b> · ${fmt(r.talk||0)}`)+
   lr('Pending meetings',`<b>${r.pending}</b>${r.overdue?` <span class="er">· ${r.overdue} overdue</span>`:''}`)+
   lr('Not interested · Follow-up',`${r.ni} · ${r.fu}`);
 const medal=(rows,r,k)=>{const b=rows.slice().sort((a,c)=>c[k]-a[k])[0];return b&&b.uid==r.uid&&r[k]>0?' 🥇':''};
@@ -665,12 +668,13 @@ VIEW['fe:today']=async()=>{
   if(error)throw error;
   let late=[];
   if(d==t){const r=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',t).order('meeting_date');late=r.data||[]}
+  const hs=await histMap([...data,...late].map(l=>l.id));
   const dn=['meeting_done','online_meet_done','deal_closed'],done=data.filter(l=>dn.includes(l.status)).length;
   const lab=d==t?'Today':d==shiftDate(t,1)?'Tomorrow':d==shiftDate(t,-1)?'Yesterday':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
   return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div></div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab=='Today'?'Meetings':lab,data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',data.length-done,'',data.length-done?'wr':'')}</div>`+
-  (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l)).join(''):'')+
-  (data.map(l=>leadCard(l)).join('')||empty('No meetings on this date.'));
+  (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l,hs[l.id]||[])).join(''):'')+
+  (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No meetings on this date.'));
 };
 const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['not_available','🚫'],['new','🆕']];
 let CMP=false;try{CMP=localStorage.getItem('cmp')=='1'}catch(e){}
