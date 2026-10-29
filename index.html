@@ -347,22 +347,35 @@ async function dealBanner(){
 function addLeadCard(){
   if(!showAdd)return `<button style="margin-bottom:10px" onclick="showAdd=true;render()">➕ Add Lead</button>`;
   return `<div class="card"><b>New property owner</b><div class="form" style="border:0;padding-top:4px">
-  <input id="an" placeholder="Owner name"><input id="ap" type="tel" placeholder="Mobile number (10 digits)">
+  <input id="an" placeholder="Owner name"><input id="ap" type="tel" placeholder="Mobile number (10 digits)" oninput="dupCheck(this.value)"><div id="dupw"></div>
   <input id="ar" placeholder="Society / Property name"><input id="al" placeholder="Area / Locality (e.g. Baner)">
   <div class="f2"><input id="ab" placeholder="BHK (e.g. 2 BHK)"><input id="as" type="number" placeholder="Area (sqft)"></div>
   <input id="ac" placeholder="Price (e.g. 85 L or 1.2 Cr)"><textarea id="am" rows="2" placeholder="Notes (optional)"></textarea>
-  <div class="acts"><button class="p" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div></div></div>`;
+  <div class="acts"><button class="p" id="svb" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div></div></div>`;
+}
+let DUPOK='';
+const dupRows=d=>d.map(l=>`<div style="margin-top:6px"><b>${esc(l.name||'-')}</b> · ${esc([l.property,l.bhk].filter(Boolean).join(' · ')||'no property')}<br><span class="mu">${tag(l.status)} ${[l.tc_name?'Telecaller: '+esc(l.tc_name):'',l.fe_name?'FE: '+esc(l.fe_name):''].filter(Boolean).join(' · ')||'Not assigned'}</span></div>`).join('');
+async function dupLookup(ph){const {data}=await sb.rpc('lookup_number',{n:ph});return data||[]}
+async function dupCheck(v){
+  const ph=ph10(v),box=$('#dupw');if(!box)return;
+  if(ph.length!=10){box.innerHTML='';return}
+  const d=await dupLookup(ph);if(ph10(($('#ap')||{}).value||'')!=ph)return;
+  box.innerHTML=d.length?`<div class="card" style="background:#fff6e0;border-color:#f0d9a0;margin:6px 0"><b>⚠️ This number is already in the CRM</b>${dupRows(d)}</div>`:'';
 }
 async function addLead(){
   const phone=ph10($('#ap').value);
   if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
+  if(DUPOK!=phone){
+    const d=await dupLookup(phone);
+    if(d.length){DUPOK=phone;$('#dupw').innerHTML=`<div class="card" style="background:#fff6e0;border-color:#f0d9a0;margin:6px 0"><b>⚠️ This number is already in the CRM</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Tap "Add anyway" only if this is a different property.</div></div>`;$('#svb').textContent='Add anyway';return}
+  }
   const pr=$('#ac').value.trim();
   const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),locality:$('#al').value.trim(),bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
   if(ME.role=='fe')row.fe_id=ME.id;
   if(ME.role=='telecaller')row.tc_id=ME.id;
   const {error}=await sb.from('leads').insert(row);
   if(error)return toast(error.message,1);
-  FILT.t=0;showAdd=false;toast('Lead added ✅');render();
+  FILT.t=0;showAdd=false;DUPOK='';toast('Lead added ✅');render();
 }
 async function loadFilt(){
   if(Date.now()-FILT.t<300000)return;
@@ -538,9 +551,24 @@ function colKey(h){
   if(/owner|naam|name/.test(h))return 'name';
   return null;
 }
+let SKIPPED=[];
+const MSGC={ok:['#e6f7ec','#9fd9b3','#14602f'],warn:['#fff4d6','#f0d9a0','#8a5a00'],err:['#fdeaea','#f2b3b3','#9b1c1c']};
+function impMsg(kind,text){const c=MSGC[kind];$('#impr').innerHTML=`<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:${c[0]};border:1px solid ${c[1]};color:${c[2]};font-size:14px;font-weight:600">${text}</div>`}
+function impSummary(added,dup,bad,sk,to){
+  SKIPPED=sk||[];
+  const kind=added>0?(dup||bad?'warn':'ok'):'warn';
+  const chips=[added?`<span style="background:#d4f0dc;color:#14602f;padding:3px 9px;border-radius:99px">✅ ${added} new added${to?' → '+esc(to):''}</span>`:'',dup?`<span style="background:#ffe8a8;color:#8a5a00;padding:3px 9px;border-radius:99px">⏭ ${dup} already in CRM</span>`:'',bad?`<span style="background:#f9cccc;color:#9b1c1c;padding:3px 9px;border-radius:99px">❌ ${bad} invalid number</span>`:''].filter(Boolean).join(' ');
+  const c=MSGC[added>0&&!dup&&!bad?'ok':(added>0?'ok':'warn')];
+  $('#impr').innerHTML=`<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:${c[0]};border:1px solid ${c[1]};color:${c[2]}"><div style="font-weight:700;margin-bottom:6px">${added?'Import done':'Nothing new to add — sab pehle se CRM mein hain'}</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:13px;font-weight:600">${chips}</div></div>`+(SKIPPED.length?`<div class="card" style="margin-top:8px;background:#fff6e0;border-color:#f0d9a0"><b>⏭ ${SKIPPED.length} skipped (already in CRM)</b>${SKIPPED.slice(0,30).map(x=>`<div style="margin-top:6px;font-size:13.5px"><b>${esc(x.name||'-')}</b> · ${esc(x.phone)} · ${esc([x.property,x.bhk].filter(Boolean).join(' · '))}<br><span class="mu">${esc(x.with)}</span></div>`).join('')}${SKIPPED.length>30?`<div class="mu" style="margin-top:6px">…and ${SKIPPED.length-30} more (download the list)</div>`:''}<div class="acts"><button onclick="dlSkipped()">⬇️ Download skipped list</button></div></div>`:'');
+}
+function dlSkipped(){
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const csv='Owner Name,Contact Number,Property Name,BHK,Already with\n'+SKIPPED.map(x=>[x.name,x.phone,x.property,x.bhk,x.with].map(q).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='skipped_duplicates.csv';a.click();
+}
 async function doImport(){
   const lines=$('#imp').value.split(/\r?\n/).filter(s=>s.trim());
-  if(!lines.length){$('#impr').textContent='Paste some data first.';return}
+  if(!lines.length){impMsg('err','❌ Pehle data paste karo ya file choose karo.');return}
   let first=splitLine(lines[0]);
   let map=first.map(colKey),body=lines.slice(1);
   if(!map.includes('phone')){ // no header found: old format Name, Mobile, Property, Price
@@ -548,9 +576,10 @@ async function doImport(){
   }
   const to=$('#impto')?$('#impto').value:'',tp=to&&P[to]?P[to]:null;
   const seen=new Set(),rows=[];let bad=0;
-  const ex=await pageAll(()=>sb.from('leads').select('phone,property,bhk'));
+  const ex=await pageAll(()=>sb.from('leads').select('phone,property,bhk,name,tc_id,fe_id'));const exMap={};
   const key=(p,pr,b)=>p+'|'+String(pr||'').toLowerCase().trim()+'|'+String(b||'').toLowerCase().trim();
-  ex.forEach(e=>seen.add(key(e.phone,e.property,e.bhk)));
+  ex.forEach(e=>{const k=key(e.phone,e.property,e.bhk);seen.add(k);exMap[k]=e});
+  const skipped=[];
   let dup=0;
   for(const ln of body){
     const c=splitLine(ln),r={};
@@ -559,17 +588,17 @@ async function doImport(){
     if(phone.length!=10){bad++;continue}
     let prop=r.property||'';if(/unspecified/i.test(prop))prop='';
     const k=key(phone,prop,r.bhk);
-    if(seen.has(k)){dup++;continue}seen.add(k);
+    if(seen.has(k)){dup++;const e=exMap[k];skipped.push({name:r.name||'',phone,property:prop,bhk:r.bhk||'',with:e?[e.tc_id&&P[e.tc_id]?'TC: '+P[e.tc_id].name:'',e.fe_id&&P[e.fe_id]?'FE: '+P[e.fe_id].name:''].filter(Boolean).join(' · ')||'In CRM (not assigned)':'Repeated in this file'});continue}seen.add(k);
     rows.push({name:r.name||'',phone,property:prop,locality:r.locality||'',bhk:r.bhk||'',sqft:parseInt(String(r.sqft||'').replace(/,/g,''))||null,price:r.price||'',price_l:parsePrice(r.price),remarks:r.remarks||'',...(tp?(tp.role=='fe'?{fe_id:to}:{tc_id:to}):{})});
   }
-  if(!rows.length){$('#impr').textContent=`No new leads found. ${dup} already existed, ${bad} had an invalid number.`;return}
+  if(!rows.length){impSummary(0,dup,bad,skipped);return}
   for(let i=0;i<rows.length;i+=500){
     const {error}=await sb.from('leads').insert(rows.slice(i,i+500));
-    if(error){$('#impr').textContent='Error: '+error.message;return}
+    if(error){impMsg('err','❌ Import fail hua: '+esc(error.message));return}
   }
   FILT.t=0;
-  $('#impr').textContent=`${rows.length} new leads added${tp?' and given to '+(tp.name||'user'):''}. ${dup} already existed, ${bad} had an invalid number.`;
-  toast('Import done ✅');setTimeout(render,1200);
+  impSummary(rows.length,dup,bad,skipped,tp?(tp.name||'user'):'');
+  toast('Import done ✅');if(!skipped.length)setTimeout(render,1200);
 }
 VIEW['admin:team']=async()=>{
   const {data}=await sb.from('profiles').select('*').order('role');
