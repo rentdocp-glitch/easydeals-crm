@@ -108,9 +108,9 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmt=s=>{s=Math.round(+s||0);const m=Math.floor(s/60),r=s%60;return m?m+' min '+r+' sec':r+' sec'};
 const dshort=x=>new Date(x).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
 const dtime=x=>new Date(x).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-const ST={new:'New',callback:'Call Back',ringing:'Ringing',followup:'Follow Up',meeting_assigned:'Meeting Assigned',meeting_done:'Meeting Done',online_meet_done:'Online Meet Done',not_interested:'Not Interested',deal_closed:'Deal Closed'};
+const ST={new:'New',callback:'Call Back',ringing:'Ringing',followup:'Follow Up',meeting_assigned:'Meeting Assigned',meeting_done:'Meeting Done',online_meet_done:'Online Meet Done',not_interested:'Not Interested',deal_closed:'Deal Closed',not_available:'Not Available'};
 const TCS=['meeting_assigned','followup','callback','ringing','meeting_done','deal_closed','not_interested'];
-const FES=['meeting_done','followup','not_interested','deal_closed','callback','ringing','online_meet_done'];
+const FES=['meeting_done','followup','not_interested','not_available','deal_closed','callback','ringing','online_meet_done'];
 const ALLS=Object.keys(ST).filter(k=>k!='new');
 const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
@@ -151,7 +151,7 @@ async function boot(user){
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
   telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup']],
-  fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['lk','🔎 Number Lookup']]};
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup']]};
 function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
@@ -463,6 +463,7 @@ VIEW['fe:asg']=()=>feList(['meeting_assigned']);
 VIEW['fe:fu']=()=>feList(['followup','callback','ringing','new']);
 VIEW['fe:done']=()=>feList(['meeting_done','online_meet_done']);
 VIEW['fe:deal']=()=>feList(['deal_closed']);
+VIEW['fe:na']=()=>feList(['not_available']);
 VIEW['fe:ni']=()=>feList(['not_interested']);
 // Admin
 const lr=(a,b)=>`<div class="lr"><div>${a}</div><div style="text-align:right;white-space:nowrap">${b}</div></div>`;
@@ -671,7 +672,7 @@ VIEW['fe:today']=async()=>{
   (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l)).join(''):'')+
   (data.map(l=>leadCard(l)).join('')||empty('No meetings on this date.'));
 };
-const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['new','🆕']];
+const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['not_available','🚫'],['new','🆕']];
 let CMP=false;try{CMP=localStorage.getItem('cmp')=='1'}catch(e){}
 document.body.classList.toggle('cmp',CMP);
 function toggleCmp(){CMP=!CMP;try{localStorage.setItem('cmp',CMP?'1':'0')}catch(e){}document.body.classList.toggle('cmp',CMP);closeDrawer();render()}
