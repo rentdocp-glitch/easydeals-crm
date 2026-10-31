@@ -418,7 +418,7 @@ function editForm(l){
   <label>Owner name</label><input id="en" value="${v(l.name)}">
   <label>Mobile number</label><input id="ep" type="tel" value="${v(l.phone)}">
   <label>Society / Property name</label><input id="er" value="${v(l.property)}">
-  <label>Area / Address</label><input id="el" value="${v(l.locality)}">
+  <label>Area / Address</label><input id="el" list="arl" value="${v(l.locality)}">${areaList}
   <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
   <label>Price</label><input id="ec" value="${v(fp(l))}" placeholder="85 L or 1.2 Cr">
   <label>Notes</label><textarea id="em" rows="2">${v(l.remarks)}</textarea>
@@ -429,7 +429,7 @@ async function saveEdit(id){
   const phone=ph10($('#ep').value);
   if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
   const pr=$('#ec').value.trim();
-  const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),locality:$('#el').value.trim(),bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
+  const na=normArea($('#el').value);const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),locality:na.area,...(na.address?{address:na.address}:{}),bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
   const ap=$('#easg').value;if(ap&&P[ap]){if(P[ap].role=='fe')upd.fe_id=ap;else upd.tc_id=ap}
   const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
@@ -465,7 +465,7 @@ function addLeadCard(){
   if(!showAdd)return `<button style="margin-bottom:10px" onclick="showAdd=true;render()">➕ Add Lead</button>`;
   return `<div class="card"><b>New property owner</b><div class="form" style="border:0;padding-top:4px">
   <input id="an" placeholder="Owner name"><input id="ap" type="tel" placeholder="Mobile number (10 digits)" oninput="dupCheck(this.value)"><div id="dupw"></div>
-  <input id="ar" placeholder="Society / Property name"><input id="al" placeholder="Area / Locality (e.g. Baner)">
+  <input id="ar" placeholder="Society / Property name"><input id="al" list="arl" placeholder="Area (pick from list, e.g. Baner)">${areaList}
   <div class="f2"><input id="ab" placeholder="BHK (e.g. 2 BHK)"><input id="as" type="number" placeholder="Area (sqft)"></div>
   <input id="ac" placeholder="Price (e.g. 85 L or 1.2 Cr)"><textarea id="am" rows="2" placeholder="Notes (optional)"></textarea>
   <div class="acts"><button class="p" id="svb" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div></div></div>`;
@@ -487,7 +487,7 @@ async function addLead(){
     if(d.length){DUPOK=phone;$('#dupw').innerHTML=`<div class="card" style="background:#fff6e0;border-color:#f0d9a0;margin:6px 0"><b>⚠️ This number is already in the CRM</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Tap "Add anyway" only if this is a different property.</div></div>`;$('#svb').textContent='Add anyway';return}
   }
   const pr=$('#ac').value.trim();
-  const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),locality:$('#al').value.trim(),bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
+  const na=normArea($('#al').value);const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),locality:na.area,...(na.address?{address:na.address}:{}),bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
   if(ME.role=='fe')row.fe_id=ME.id;
   if(ME.role=='telecaller')row.tc_id=ME.id;
   const {error}=await sb.from('leads').insert(row);
@@ -641,7 +641,7 @@ VIEW['admin:leads']=async()=>{
   const hs=await histMap(data.map(l=>l.id));
   return `<div class="card"><b>📥 Data import (from Sheet / Excel)</b><p class="mu">Copy the rows from your sheet <b>including the header row</b> and paste them here (or choose a CSV file). Columns are recognised by their names: Owner Name, Contact Number, Property Name, Area / Locality, BHK, Area (SQFT), Price. Column order does not matter.</p>
   <textarea id="imp" rows="5" placeholder="Paste header row + data rows here"></textarea>
- <label>Give these leads to</label><select id="impto"><option value="">Everyone (all telecallers, nobody specific)</option>${asgGrp('telecaller','Telecallers')}${asgGrp('fe','Field Executives')}</select>
+ <label>Give these leads to</label><select id="impto"><option value="__split">⚖️ Auto-assign · equal split</option>${asgGrp('telecaller','Specific telecaller')}${asgGrp('fe','Field Executives')}<option value="none">Unassigned (open to all)</option></select>
   <div class="acts"><input type="file" id="impf" accept=".csv,.txt" style="flex:1" onchange="loadFile(this)"><button class="p" onclick="doImport()">Import</button></div><div id="impr" class="mu"></div></div>`+
   searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
   (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing found.'))+(data.length>=100?'<p class="mu" style="text-align:center">Showing the latest 100. Use search or filters to find others.</p>':'');
@@ -668,6 +668,12 @@ function colKey(h){
   if(/owner|naam|name/.test(h))return 'name';
   return null;
 }
+const AREA_RULES=[["bavdhan|bhugaon|bhunde vasti", "Bavdhan", "411021"], ["\\bsus\\b", "Sus", "411021"], ["\\bbaner\\b", "Baner", "411045"], ["\\bpashan\\b", "Pashan", "411021"], ["balewadi|बालेवाडी", "Balewadi", "411045"], ["\\bmahalunge\\b", "Mahalunge", "411045"], ["\\baundh\\b", "Aundh", "411007"], ["\\bwakad\\b", "Wakad", "411057"], ["hinjawadi|hinjewadi", "Hinjawadi", "411057"], ["pimple saudagar", "Pimple Saudagar", "411027"], ["pimple nilakh", "Pimple Nilakh", "411027"], ["pimple gurav", "Pimple Gurav", "411061"], ["\\brahatani\\b", "Rahatani", "411017"], ["\\bravet\\b", "Ravet", "412101"], ["\\bkiwale\\b", "Kiwale", "412101"], ["\\bpunawale\\b", "Punawale", "411033"], ["\\btathawade\\b", "Tathawade", "411033"], ["\\bthergaon\\b", "Thergaon", "411033"], ["\\bkharadi\\b", "Kharadi", "411014"], ["viman nagar", "Viman Nagar", "411014"], ["hadapsar|magarpatta", "Hadapsar", "411028"], ["\\bmanjari\\b", "Manjari", "412307"], ["\\bwagholi\\b", "Wagholi", "412207"], ["\\bkesnand\\b", "Kesnand", "412207"], ["\\blohegaon\\b", "Lohegaon", "411047"], ["\\bdhanori\\b", "Dhanori", "411015"], ["\\bmundhwa\\b", "Mundhwa", "411036"], ["\\bkondhwa\\b", "Kondhwa", "411048"], ["\\bkatraj\\b", "Katraj", "411046"], ["\\bbibwewadi\\b", "Bibwewadi", "411037"], ["\\bambegaon\\b", "Ambegaon", "411046"], ["\\bdhayari\\b", "Dhayari", "411041"], ["\\bnarhe\\b", "Narhe", "411041"], ["vadgaon budruk", "Vadgaon Budruk", "411041"], ["\\bwarje\\b", "Warje", "411058"], ["\\bkarvenagar\\b", "Karvenagar", "411052"], ["\\bkothrud\\b", "Kothrud", "411038"], ["\\berandwane\\b", "Erandwane", "411004"], ["deccan", "Deccan Gymkhana", "411004"], ["pimpri colony", "Pimpri Colony", "411017"], ["\\bkalewadi\\b", "Kalewadi", "411017"], ["(?<!-)\\bchinchwad\\b", "Chinchwad", "411019"], ["\\bmoshi\\b", "Moshi", "412105"], ["\\bchikhali\\b", "Chikhali", "411062"], ["\\bnigdi\\b", "Nigdi", "411044"], ["\\bdapodi\\b", "Dapodi", "411012"], ["\\bsangvi\\b", "Sangvi", "411027"], ["\\bundri\\b", "Undri", "411060"], ["\\bphursungi\\b", "Phursungi", "412308"], ["\\bcharholi\\b", "Charholi", "412105"], ["\\bdighi\\b", "Dighi", "411015"], ["\\bswargate\\b", "Swargate", "411042"], ["sadashiv peth", "Sadashiv Peth", "411030"], ["\\bghorpadi\\b", "Ghorpadi", "411001"], ["\\bdhankawadi\\b", "Dhankawadi", "411043"], ["\\bdudulgaon\\b", "Dudulgaon", "412105"], ["\\bnanded\\b", "Nanded", "411041"], ["tingre nagar", "Tingre Nagar", "411032"], ["\\bkirkatwadi\\b", "Kirkatwadi", "411024"], ["\\bshivane\\b", "Shivane", "411023"], ["\\bbhukum\\b", "Bhukum", "412115"]].map(([r,a,pc])=>[new RegExp(r,'i'),a,pc]);
+const AREA_NAMES=[...new Set(AREA_RULES.map(x=>x[1]))].sort();
+function normArea(raw){const s=String(raw||'').trim();if(!s)return{area:'',address:''};
+  const toks=s.split(',');for(let i=toks.length-1;i>=0;i--){for(const [rx,a] of AREA_RULES){if(rx.test(toks[i])){return{area:a,address:a.toLowerCase()==s.toLowerCase()?'':s}}}}
+  return{area:s,address:''}}
+const areaList='<datalist id="arl">'+AREA_NAMES.map(a=>`<option value="${a}">`).join('')+'</datalist>';
 let SKIPPED=[];
 const MSGC={ok:['#e6f7ec','#9fd9b3','#14602f'],warn:['#fff4d6','#f0d9a0','#8a5a00'],err:['#fdeaea','#f2b3b3','#9b1c1c']};
 function impMsg(kind,text){const c=MSGC[kind];$('#impr').innerHTML=`<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:${c[0]};border:1px solid ${c[1]};color:${c[2]};font-size:14px;font-weight:600">${text}</div>`}
@@ -676,7 +682,7 @@ function impSummary(added,dup,bad,sk,to){
   const kind=added>0?(dup||bad?'warn':'ok'):'warn';
   const chips=[added?`<span style="background:#d4f0dc;color:#14602f;padding:3px 9px;border-radius:99px">✅ ${added} new added${to?' → '+esc(to):''}</span>`:'',dup?`<span style="background:#ffe8a8;color:#8a5a00;padding:3px 9px;border-radius:99px">⏭ ${dup} already in CRM</span>`:'',bad?`<span style="background:#f9cccc;color:#9b1c1c;padding:3px 9px;border-radius:99px">❌ ${bad} invalid number</span>`:''].filter(Boolean).join(' ');
   const c=MSGC[added>0&&!dup&&!bad?'ok':(added>0?'ok':'warn')];
-  $('#impr').innerHTML=`<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:${c[0]};border:1px solid ${c[1]};color:${c[2]}"><div style="font-weight:700;margin-bottom:6px">${added?'Import done':'Nothing new to add — sab pehle se CRM mein hain'}</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:13px;font-weight:600">${chips}</div></div>`+(SKIPPED.length?`<div class="card" style="margin-top:8px;background:#fff6e0;border-color:#f0d9a0"><b>⏭ ${SKIPPED.length} skipped (already in CRM)</b>${SKIPPED.slice(0,30).map(x=>`<div style="margin-top:6px;font-size:13.5px"><b>${esc(x.name||'-')}</b> · ${esc(x.phone)} · ${esc([x.property,x.bhk].filter(Boolean).join(' · '))}<br><span class="mu">${esc(x.with)}</span></div>`).join('')}${SKIPPED.length>30?`<div class="mu" style="margin-top:6px">…and ${SKIPPED.length-30} more (download the list)</div>`:''}<div class="acts"><button onclick="dlSkipped()">⬇️ Download skipped list</button></div></div>`:'');
+  $('#impr').innerHTML=`<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:${c[0]};border:1px solid ${c[1]};color:${c[2]}"><div style="font-weight:700;margin-bottom:6px">${added?'Import done':'Nothing new to add — all are already in the CRM'}</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:13px;font-weight:600">${chips}</div></div>`+(SKIPPED.length?`<div class="card" style="margin-top:8px;background:#fff6e0;border-color:#f0d9a0"><b>⏭ ${SKIPPED.length} skipped (already in CRM)</b>${SKIPPED.slice(0,30).map(x=>`<div style="margin-top:6px;font-size:13.5px"><b>${esc(x.name||'-')}</b> · ${esc(x.phone)} · ${esc([x.property,x.bhk].filter(Boolean).join(' · '))}<br><span class="mu">${esc(x.with)}</span></div>`).join('')}${SKIPPED.length>30?`<div class="mu" style="margin-top:6px">…and ${SKIPPED.length-30} more (download the list)</div>`:''}<div class="acts"><button onclick="dlSkipped()">⬇️ Download skipped list</button></div></div>`:'');
 }
 function dlSkipped(){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
@@ -685,13 +691,13 @@ function dlSkipped(){
 }
 async function doImport(){
   const lines=$('#imp').value.split(/\r?\n/).filter(s=>s.trim());
-  if(!lines.length){impMsg('err','❌ Pehle data paste karo ya file choose karo.');return}
+  if(!lines.length){impMsg('err','❌ Paste data or choose a file first.');return}
   let first=splitLine(lines[0]);
   let map=first.map(colKey),body=lines.slice(1);
   if(!map.includes('phone')){ // no header found: old format Name, Mobile, Property, Price
     map=['name','phone','property','price'];body=lines;
   }
-  const to=$('#impto')?$('#impto').value:'',tp=to&&P[to]?P[to]:null;
+  const sel=$('#impto')?$('#impto').value:'',split=sel=='__split',to=(split||sel=='none')?'':sel,tp=to&&P[to]?P[to]:null;
   const seen=new Set(),rows=[];let bad=0;
   const ex=await pageAll(()=>sb.from('leads').select('phone,property,bhk,name,tc_id,fe_id'));const exMap={};
   const key=(p,pr,b)=>p+'|'+String(pr||'').toLowerCase().trim()+'|'+String(b||'').toLowerCase().trim();
@@ -706,15 +712,24 @@ async function doImport(){
     let prop=r.property||'';if(/unspecified/i.test(prop))prop='';
     const k=key(phone,prop,r.bhk);
     if(seen.has(k)){dup++;const e=exMap[k];skipped.push({name:r.name||'',phone,property:prop,bhk:r.bhk||'',with:e?[e.tc_id&&P[e.tc_id]?'TC: '+P[e.tc_id].name:'',e.fe_id&&P[e.fe_id]?'FE: '+P[e.fe_id].name:''].filter(Boolean).join(' · ')||'In CRM (not assigned)':'Repeated in this file'});continue}seen.add(k);
-    rows.push({name:r.name||'',phone,property:prop,locality:r.locality||'',bhk:r.bhk||'',sqft:parseInt(String(r.sqft||'').replace(/,/g,''))||null,price:r.price||'',price_l:parsePrice(r.price),remarks:r.remarks||'',...(tp?(tp.role=='fe'?{fe_id:to}:{tc_id:to}):{})});
+    const na=normArea(r.locality);rows.push({name:r.name||'',phone,property:prop,locality:na.area,...(na.address?{address:na.address}:{}),bhk:r.bhk||'',sqft:parseInt(String(r.sqft||'').replace(/,/g,''))||null,price:r.price||'',price_l:parsePrice(r.price),remarks:r.remarks||'',...(tp?(tp.role=='fe'?{fe_id:to}:{tc_id:to}):{})});
   }
   if(!rows.length){impSummary(0,dup,bad,skipped);return}
+  let splitTxt='';
+  if(split){
+    const tcs=Object.values(P).filter(x=>x.role=='telecaller');
+    if(!tcs.length){impMsg('err','❌ No telecaller found. Please select one.');return}
+    const cnt={};tcs.forEach(t=>cnt[t.id]=0);ex.forEach(e=>{if(cnt[e.tc_id]!=null)cnt[e.tc_id]++});
+    const got={};tcs.forEach(t=>got[t.id]=0);
+    tcs.sort((a,b)=>cnt[a.id]-cnt[b.id]);rows.forEach((r,i)=>{const t=tcs[i%tcs.length];r.tc_id=t.id;got[t.id]++});
+    splitTxt=tcs.map(t=>(t.name||'?')+' '+got[t.id]).join(' · ');
+  }
   for(let i=0;i<rows.length;i+=500){
     const {error}=await sb.from('leads').insert(rows.slice(i,i+500));
     if(error){impMsg('err','❌ Import fail hua: '+esc(error.message));return}
   }
   FILT.t=0;
-  impSummary(rows.length,dup,bad,skipped,tp?(tp.name||'user'):'');
+  impSummary(rows.length,dup,bad,skipped,splitTxt||(tp?(tp.name||'user'):''));
   toast('Import done ✅');if(!skipped.length)setTimeout(render,1200);
 }
 function openDaily(id){DR.id=id;DR.day=isoToday();go('daily')}
@@ -783,6 +798,36 @@ let repTab='ov';
 const REPT={admin:[['ov','📊 Overview'],['tc','📞 Telecallers'],['fe','🚶 Field Exec']],telecaller:[['me','🎯 My Funnel'],['vs','🆚 vs Team']],fe:[['me','🎯 My Meetings'],['vs','🆚 vs Team']]};
 const repTabs=()=>{const l=REPT[ME.role];if(!l.find(t=>t[0]==repTab))repTab=l[0][0];return `<div class="chips" style="overflow-x:auto">${l.map(t=>`<button class="${repTab==t[0]?'on':''}" onclick="repTab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>`};
 const kpi=async()=>{const {data,error}=await sb.rpc('kpi',{since:sinceISO()});if(error)throw error;return data||[]};
+
+async function exportXlsx(btn,allTime){
+  const old=btn.textContent;btn.disabled=true;btn.textContent='⏳ Building Excel…';
+  try{
+    if(!window.XLSX){await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load the Excel library — check your internet'));document.head.appendChild(sc)})}
+    let all=[],from=0;
+    for(;;){const {data,error}=await sb.from('leads').select('*').order('created_at',{ascending:true}).range(from,from+999);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<1000)break;from+=1000}
+    const r0=RANGE;if(allTime)RANGE='all';let rows;try{rows=await kpi()}finally{RANGE=r0}
+    const nm=id=>id?((P[id]||{}).name||''):'';
+    const dt=v=>v?new Date(v).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    const leads=all.map((l,i)=>({'#':i+1,'Name':l.name||'','Phone':l.phone||'','Property':l.property||'','BHK':l.bhk||'','Sq.ft':l.sqft||'','Locality':l.locality||'','Price':l.price||'','Price (Lakh)':l.price_l||'','Status':ST[l.status]||l.status,'Telecaller':nm(l.tc_id),'Field Exec':nm(l.fe_id),'Follow-up date':l.follow_date||'','Follow-up time':l.follow_time||'','Meeting date':l.meeting_date||'','Meeting time':l.meeting_time||'','Remarks':l.remarks||'','Added on':dt(l.created_at)}));
+    const mm=s=>{s=Math.round(+s||0);return Math.floor(s/60)+' min'};
+    const tcs=rows.filter(r=>r.role=='telecaller'),fes=rows.filter(r=>r.role=='fe');
+    const pc=(a,b)=>b?Math.round(a*1000/b)/10+'%':'–';
+    const tcS=tcs.map(r=>({'Telecaller':r.name,'Leads owned':r.owned,'Unused data':r.untouched,'Data given':r.given,'Data touched':r.touched,'Meetings fixed':r.meet,'Attended':r.att,'Deals':r.deal,'Calls':r.calls,'Connected calls':r.connected,'Talk time':mm(r.talk),'Connect rate':pc(r.connected,r.calls),'Touched→Meeting':pc(r.meet,r.touched),'Meeting→Attended':pc(r.att,r.meet),'Attended→Deal':pc(r.deal,r.att)}));
+    const feS=fes.map(r=>({'Field Exec':r.name,'Meetings given':r.meet,'Attended':r.att,'Deals':r.deal,'Pending':r.pending,'Overdue':r.overdue,'Not interested':r.ni,'Follow-up':r.fu,'Calls':r.calls||0,'Talk time':mm(r.talk),'Attend ratio':pc(r.att,r.meet),'Closing ratio':pc(r.deal,r.att)}));
+    const cnt={};all.forEach(l=>{const k=(nm(l.tc_id)||'(no telecaller)')+'|'+(ST[l.status]||l.status);cnt[k]=(cnt[k]||0)+1});
+    const sts=Object.values(ST),tn=[...new Set(all.map(l=>nm(l.tc_id)||'(no telecaller)'))];
+    const wl=tn.map(t=>{const o={'Telecaller':t,'Total':0};sts.forEach(x=>{o[x]=cnt[t+'|'+x]||0;o.Total+=o[x]});return o});
+    const wb=XLSX.utils.book_new();
+    const add=(n,d,w)=>{const ws=XLSX.utils.json_to_sheet(d.length?d:[{Info:'No data'}]);if(w)ws['!cols']=w.map(x=>({wch:x}));XLSX.utils.book_append_sheet(wb,ws,n)};
+    add('Telecaller KPI',tcS,[16,12,12,11,12,14,10,8,8,14,12,12,16,16,14]);
+    add('Field Exec KPI',feS,[16,14,10,8,9,9,14,10,8,12,13,13]);
+    add('Lead workload',wl,[18,8,6,10,10,10,16,14,18,14,12,14]);
+    add('All Leads',leads,[5,18,13,30,7,7,22,10,11,16,12,12,13,13,13,13,34,20]);
+    XLSX.writeFile(wb,'EasyDeals_KPI_'+isoToday()+'.xlsx');
+    toast&&toast('✅ Excel downloaded ('+all.length+' leads)');
+  }catch(e){alert('Excel error: '+(e.message||e))}
+  btn.disabled=false;btn.textContent=old;
+}
 const rangeNote='<p class="mu" style="margin:0 2px 10px">Calls, data given, meetings, attended and deals follow the selected period (by the date each happened). Pending / overdue / unused data are live totals.</p>';
 const tcFunnel=r=>funnel([['Data given',+r.given],['Data touched',+r.touched],['Meetings fixed',+r.meet],['Attended',+r.att],['Deals closed',+r.deal]]);
 const tcRatios=r=>{
@@ -811,7 +856,7 @@ VIEW['admin:rep']=VIEW['telecaller:rep']=VIEW['fe:rep']=async()=>{
   const xp=ME.role=='telecaller'?sb.from('leads').select('*',{count:'exact',head:true}).eq('tc_id',ME.id).in('status',['followup','callback']).lte('follow_date',isoToday()):ME.role=='fe'?sb.from('leads').select('*',{count:'exact',head:true}).eq('fe_id',ME.id).eq('meeting_date',isoToday()):null;
   const [rows,xr]=await Promise.all([kpi(),xp||Promise.resolve({})]);
   const tcs=rows.filter(r=>r.role=='telecaller'),fes=rows.filter(r=>r.role=='fe');
-  const head=repTabs()+rangeChips()+rangeNote;
+  const head=repTabs()+rangeChips()+(ME.role=='admin'?`<button class="p" style="width:100%;margin:0 0 10px" onclick="exportXlsx(this)">⬇️ Download Excel (KPI + all leads)</button>`:'')+rangeNote;
   const T={given:sumF(tcs,'given'),touched:sumF(tcs,'touched'),meet:sumF(tcs,'meet'),att:sumF(tcs,'att'),deal:sumF(tcs,'deal'),calls:sumF(tcs,'calls'),talk:sumF(tcs,'talk'),connected:sumF(tcs,'connected'),owned:sumF(tcs,'owned'),untouched:sumF(tcs,'untouched')};
   const F={meet:sumF(fes,'meet'),att:sumF(fes,'att'),deal:sumF(fes,'deal'),pending:sumF(fes,'pending'),overdue:sumF(fes,'overdue')};
   if(ME.role=='admin'){
@@ -866,7 +911,7 @@ function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';
 function drawerBody(C){
   const list=TABS[ME.role]||[];
   return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+
-    (ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+
+    (ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
