@@ -51,6 +51,10 @@ button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);backg
 .stat b{display:block;font-size:22px}
 .form{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd);display:grid;gap:8px}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ms{position:relative}.msb{width:100%;text-align:left;background:#fff;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;font:inherit;color:var(--tx);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msp{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:320px;overflow:auto;padding:6px 6px 0}
+.msp label{display:flex;align-items:center;gap:10px;padding:10px 8px;font-size:15px;border-bottom:1px solid #f1f1f4}.msp input{width:20px;height:20px;min-height:0;padding:0;margin:0;flex:none}
+.msa{position:sticky;bottom:0;background:#fff;display:flex;gap:8px;padding:8px 2px}.msa button{flex:1;padding:10px;border-radius:10px}
 .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .acts button,.acts .btn{padding:7px 12px;font-size:14px;min-height:38px}
 .acts{gap:7px;margin-top:8px}
@@ -231,7 +235,7 @@ const ALLS=Object.keys(ST).filter(k=>k!='new');
 const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
 const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
-let DR={id:'',day:''};let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc='',fBhk='',fSt='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
+let DR={id:'',day:''};let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc=[],fBhk=[],fSt=[],msOpen='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
 
 function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
 const clean=s=>String(s||'').replace(/[,()%*]/g,' ').trim();
@@ -280,7 +284,7 @@ async function render(){
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,tab,DR.id,DR.day,q,fLoc,fBhk,fSt,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
+  const ck=[ME.role,tab,DR.id,DR.day,q,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
   const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -449,7 +453,7 @@ async function doDelete(id){
 }
 const empty=m=>`<div class="empty"><div class="ei">📭</div><b>${m}</b><span>Nothing to show yet</span></div>`;
 const skel=n=>Array.from({length:n||3},()=>'<div class="skc"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join('');
-const fCount=()=>(fLoc?1:0)+(fBhk?1:0)+(fSt?1:0);
+const fCount=()=>(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0);
 const searchBar=(ph,withF)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()" style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div></div>`;
 function doSearch(){q=$('#sq').value;openId=null;openK=null;render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
@@ -500,9 +504,13 @@ async function loadFilt(){
   FILT.loc=[...new Set(d.map(x=>x.locality).filter(Boolean))].sort();
   FILT.bhk=[...new Set(d.map(x=>x.bhk).filter(Boolean))].sort();FILT.t=Date.now();
 }
-const filterBar=()=>!showF?'':`<div class="f2" style="margin-bottom:8px"><select onchange="fLoc=this.value;render()"><option value="">All areas</option>${FILT.loc.map(x=>`<option ${x==fLoc?'selected':''}>${esc(x)}</option>`).join('')}</select><select onchange="fBhk=this.value;render()"><option value="">All BHK</option>${FILT.bhk.map(x=>`<option ${x==fBhk?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
-<select style="margin-bottom:10px" onchange="fSt=this.value;render()"><option value="">All statuses</option>${Object.entries(ST).map(([k,v])=>`<option value="${k}" ${k==fSt?'selected':''}>${v}</option>`).join('')}</select>`;
-const applyF=qy=>{if(fLoc)qy=qy.eq('locality',fLoc);if(fBhk)qy=qy.eq('bhk',fBhk);if(fSt)qy=qy.eq('status',fSt);return qy};
+const MSX={loc:()=>fLoc,bhk:()=>fBhk,st:()=>fSt},MSN={loc:'areas',bhk:'BHK',st:'statuses'};
+const msLabel=k=>{const a=MSX[k]();return a.length==0?'All '+MSN[k]:a.length==1?(k=='st'?ST[a[0]]:a[0]):a.length+' selected'};
+function msTog(k,v,on){const a=MSX[k](),i=a.indexOf(v);if(on&&i<0)a.push(v);if(!on&&i>=0)a.splice(i,1);const b=document.getElementById('msb_'+k);if(b)b.textContent=msLabel(k)+' ▾'}
+function msClr(k){MSX[k]().length=0;render()}
+function msBox(k,items){const sel=MSX[k]();return `<div class="ms"><button type="button" id="msb_${k}" class="msb" onclick="msOpen=msOpen=='${k}'?'':'${k}';render()">${esc(msLabel(k))} ▾</button>${msOpen==k?`<div class="msp">${items.map(([v,l])=>`<label><input type="checkbox" value="${esc(v)}" ${sel.includes(v)?'checked':''} onchange="msTog('${k}',this.value,this.checked)"> ${esc(l)}</label>`).join('')||'<div class="mu" style="padding:8px">Nothing to pick yet</div>'}<div class="msa"><button type="button" onclick="msClr('${k}')">Clear</button><button type="button" class="p" onclick="msOpen='';render()">Apply</button></div></div>`:''}</div>`}
+const filterBar=()=>!showF?'':`<div class="f2" style="margin-bottom:8px">${msBox('loc',FILT.loc.map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div><div style="margin-bottom:10px">${msBox('st',Object.entries(ST))}</div>`;
+const applyF=qy=>{if(fLoc.length)qy=qy.in('locality',fLoc);if(fBhk.length)qy=qy.in('bhk',fBhk);if(fSt.length)qy=qy.in('status',fSt);return qy};
 const srch=qq=>`name.ilike.%${qq}%,phone.ilike.%${qq}%,property.ilike.%${qq}%,locality.ilike.%${qq}%`;
 
 /* ---------- call timer + call form ---------- */
@@ -541,12 +549,12 @@ VIEW['telecaller:call']=async()=>{
   const flp=loadFilt();
   let qy=sb.from('leads').select('*').order('created_at',{ascending:true}).limit(50);
   const qq=clean(q);
-  if(qq)qy=qy.or(srch(qq));else if(!fSt)qy=qy.in('status',['new','callback','ringing','followup']);
+  if(qq)qy=qy.or(srch(qq));else if(!fSt.length)qy=qy.in('status',['new','callback','ringing','followup']);
   qy=applyF(qy);
   const {data,error}=await qy;if(error)throw error;
   const [hs]=await Promise.all([histMap(data.map(l=>l.id)),flp]);
   return searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
-    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc||fBhk||fSt?'Nothing found.':'No leads to call.'));
+    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc.length||fBhk.length||fSt.length?'Nothing found.':'No leads to call.'));
 };
 async function lookupAny(){
   const n=ph10($('#lkn').value),box=$('#lkr');
