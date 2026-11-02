@@ -109,9 +109,7 @@ public class MainActivity extends Activity {
             }
         });
         wv.loadUrl(HOME);
-        if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.READ_CALL_LOG}, 7);
-        }
+        askPermissions();
     }
 
     @Override
@@ -143,14 +141,30 @@ public class MainActivity extends Activity {
         }
     }
 
+    void askPermissions() {
+        ArrayList<String> need = new ArrayList<String>();
+        need.add(Manifest.permission.READ_CALL_LOG);
+        need.add(Manifest.permission.READ_PHONE_STATE);
+        if (android.os.Build.VERSION.SDK_INT >= 33) need.add("android.permission.POST_NOTIFICATIONS");
+        ArrayList<String> ask = new ArrayList<String>();
+        for (String p : need) if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) ask.add(p);
+        if (!ask.isEmpty()) requestPermissions(ask.toArray(new String[0]), 7);
+    }
+
     @Override
     public void onRequestPermissionsResult(int req, String[] perms, int[] grants) {
         if (req == 7) {
-            if (grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED) {
-                toast("Call log allowed. Call details will now show in CRM.");
+            boolean log = true, phone = true;
+            for (int i = 0; i < perms.length && i < grants.length; i++) {
+                boolean ok = grants[i] == PackageManager.PERMISSION_GRANTED;
+                if (Manifest.permission.READ_CALL_LOG.equals(perms[i])) log = ok;
+                if (Manifest.permission.READ_PHONE_STATE.equals(perms[i])) phone = ok;
+            }
+            if (log && phone) {
+                toast("Done. Call aate hi CRM batayega ki number kiska hai.");
                 lastSync = 0;
             } else {
-                toast("Call log not allowed. Call details will not show in CRM. (Phone Settings > Apps > EasyDeals CRM > Permissions)");
+                toast("Call log / Phone permission nahi mili. Phone Settings > Apps > EasyDeals CRM > Permissions mein Allow karo.");
             }
         }
     }
@@ -183,10 +197,33 @@ public class MainActivity extends Activity {
             JSONObject u = j.optJSONObject("user");
             String uid = u != null ? u.optString("id") : "";
             if (at.isEmpty() || uid.isEmpty() || exp * 1000 < System.currentTimeMillis() + 60000) return;
+            ensureDevice(at, uid);
             startSync(at, uid);
         } catch (Exception e) {
             // ignore, try again on next tick
         }
+    }
+
+    volatile boolean regBusy;
+
+    // one secret key per phone + user, used by CallReceiver for caller ID
+    void ensureDevice(final String at, final String uid) {
+        final SharedPreferences sp = getSharedPreferences("cid", 0);
+        if (regBusy || (!sp.getString("key", "").isEmpty() && uid.equals(sp.getString("uid", "")))) return;
+        regBusy = true;
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    String r = http("POST", SB + "/rest/v1/rpc/register_device", "{}", at, null).trim();
+                    if (r.startsWith("\"")) r = r.substring(1, r.length() - 1);
+                    if (r.length() >= 32) sp.edit().putString("key", r).putString("uid", uid).apply();
+                } catch (Exception e) {
+                    // try again on next tick
+                } finally {
+                    regBusy = false;
+                }
+            }
+        }).start();
     }
 
     void startSync(final String at, final String uid) {

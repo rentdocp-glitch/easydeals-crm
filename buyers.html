@@ -265,7 +265,7 @@ const pill=(s,n)=>{const c=(BSC[s]||'#eef0f3|#4a5361').split('|');return `<span 
 const isSold=p=>/^sold/i.test(p.status||'');
 
 /* ---------- state ---------- */
-let ME=null,PR=[],BL=[],OW=[],tab='props',openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
+let CE=[],ME=null,PR=[],BL=[],OW=[],tab='props',openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
 
 /* ---------- login ---------- */
 function showLogin(msg){
@@ -293,6 +293,7 @@ async function reload(first){
   try{
     [PR,BL]=await Promise.all([all('properties','*','id'),all('buyer_leads','*','id')]);
     const {data:ow,error}=await sb.from('leads').select('*').eq('status','deal_closed');if(error)throw error;OW=ow||[];
+    try{const since=new Date(Date.now()-7*864e5).toISOString();const {data:ce}=await sb.from('call_events').select('*').eq('missed',true).eq('called_back',false).in('bucket',['paid_owner','buyer']).gte('at',since).order('at',{ascending:false});CE=ce||[]}catch(e){CE=[]}
   }catch(e){$('#app').innerHTML=`<div class="errc"><div class="ei">⚠️</div><div><b>Data load nahi hua</b><div class="mu">${esc(e.message||e)}</div><div class="mu">Kya Supabase mein Step 1 ki SQL chal gayi hai?</div><div class="acts"><button class="p" onclick="reload()">⟳ Try again</button></div></div></div>`;return}
   render();
 }
@@ -342,6 +343,8 @@ function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
 const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
+function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · wapas call karo (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
+async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Ho gaya ✅');render()}
 VIEW.props=()=>{
   if(editP)return propForm(editP);
   if(openP)return propDetail(P(openP));
@@ -349,7 +352,7 @@ VIEW.props=()=>{
   let list=PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
   let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
   list=list.map(p=>({p,l:leadsOf(p.id)})).sort((a,b)=>b.l.length-a.l.length);
-  return `<div class="grid">
+  return missedCard()+`<div class="grid">
    <div class="card stat"><div class="mu">Buyer leads</div><b>${BL.length}</b></div>
    <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Aaj follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
    <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
