@@ -360,7 +360,7 @@ VIEW.props=()=>{
   <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>
   <input placeholder="📞 Number ya naam: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},350)" style="margin-bottom:10px">
   ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
-    <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal closed owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
+    <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
     <div class="mu">${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">Sold</b>':''}</div>
     <div>${stPills(l)}</div>${portalRow(p)}${ownerActs(p)}</div>`).join('')||(bHits.length?'':'<div class="empty"><div class="ei">🏢</div><b>Is naam/number ka koi owner nahi mila</b></div>')}
   ${bHits.length?`<div class="sec">🧑 Yeh number buyer leads mein hai (${bHits.length})</div>`+bHits.slice(0,20).map(b=>bCard(b,repeats())).join(''):''}`;
@@ -372,7 +372,7 @@ function propDetail(p){
   const ow=ph10(p.owner_phone);
   return `<button onclick="openP=null;render()" style="margin-bottom:10px">← Properties</button>
   <div class="card"><div class="row"><div><div class="nm" style="font-size:19px;font-weight:800">${esc(p.id)} · ${esc(p.project||'')}</div><div class="mu">${esc(p.bhk||'')} · ${esc(p.ptype||'')} · ${p.sqft?esc(p.sqft)+' sqft · ':''}${rs(p.price)} · ${esc(p.status||'')}</div></div><button onclick="editP=Object.assign({},P('${esc(p.id)}'));render()">✏️ Edit</button></div>
-   <div class="own" style="margin-top:10px">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal closed owner</span></div><div> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>`:'<span class="er">mobile nahi hai</span>'}</div>
+   <div class="own" style="margin-top:10px">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>`:'<span class="er">mobile nahi hai</span>'}</div>
    <div class="mu" style="margin-top:4px">${esc(p.address||p.locality||'')}</div>
    ${portalRow(p)}<div class="mu" style="margin-top:4px">${esc([p.id_99acres&&'99: '+p.id_99acres,p.id_magicbricks&&'MB: '+p.id_magicbricks,p.id_housing&&'HS: '+p.id_housing].filter(Boolean).join(' · '))}</div>
    <div class="acts">${links||'<span class="mu">Tour / video link abhi nahi jode · Edit se jodo</span>'}</div>

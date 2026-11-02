@@ -63,7 +63,7 @@ begin
   p := ed_p10(n);
   if length(p) < 10 then return jsonb_build_object('bucket','unknown','items','[]'::jsonb); end if;
 
-  -- A) Paying owner: properties table (owner ke ek se zyada number ho sakte hain)
+  -- A) Deal Closed Owner: properties table (owner ke ek se zyada number ho sakte hain)
   for x in
     select pr.*, (select count(*) from buyer_leads b where b.property_id = pr.id) as nleads,
            (select count(*) from buyer_leads b where b.property_id = pr.id and b.status in ('Site Visit Scheduled','Site Visit Done')) as nvisits
@@ -71,17 +71,17 @@ begin
     where exists (select 1 from regexp_split_to_table(coalesce(pr.owner_phone,''), '[/,;]') s where ed_p10(s) = p)
   loop
     r := r || jsonb_build_object('bucket','paid_owner',
-      'title','⭐ Paying owner · ' || coalesce(x.owner_name,'Owner'),
+      'title','⭐ Deal Closed Owner · ' || coalesce(x.owner_name,'Owner'),
       'detail', x.id || ' ' || coalesce(x.project,'') || coalesce(', ' || x.locality,'') || ' · ' || coalesce(x.bhk,'') ||
                 coalesce(' · ₹' || round(x.price/100000.0,1) || ' L','') ||
                 E'\n' || x.nleads || ' buyer leads · ' || x.nvisits || ' site visits' ||
                 case when x.status ilike 'sold%' then ' · SOLD' else '' end);
   end loop;
-  -- Paying owner jo team CRM mein Deal Closed hai par property abhi bani nahi
+  -- Deal Closed Owner jo team CRM mein Deal Closed hai par property abhi bani nahi
   for x in select l.* from leads l where l.status = 'deal_closed' and ed_p10(l.phone) = p
            and not exists (select 1 from properties pr where pr.owner_lead_id = l.id::text) loop
     r := r || jsonb_build_object('bucket','paid_owner',
-      'title','⭐ Paying owner · ' || coalesce(x.name,'Owner'),
+      'title','⭐ Deal Closed Owner · ' || coalesce(x.name,'Owner'),
       'detail', coalesce(x.property,'') || coalesce(', ' || x.locality,'') || coalesce(' · ' || x.bhk,'') || E'\nDeal closed (property card abhi nahi bana)');
   end loop;
 

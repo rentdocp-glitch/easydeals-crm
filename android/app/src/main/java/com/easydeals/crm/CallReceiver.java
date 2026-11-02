@@ -114,8 +114,8 @@ public class CallReceiver extends BroadcastReceiver {
         if (nm == null) return;
         boolean vip = "paid_owner".equals(bucket);
         if (Build.VERSION.SDK_INT >= 26) {
-            NotificationChannel a = new NotificationChannel(CH_VIP, "Paying owner calls", NotificationManager.IMPORTANCE_HIGH);
-            a.setDescription("Jin owners se paise liye hain unke call");
+            NotificationChannel a = new NotificationChannel(CH_VIP, "Deal Closed Owner calls", NotificationManager.IMPORTANCE_HIGH);
+            a.setDescription("Deal Closed Owners ke call");
             a.enableVibration(true);
             nm.createNotificationChannel(a);
             NotificationChannel b = new NotificationChannel(CH_CALL, "CRM caller ID", NotificationManager.IMPORTANCE_HIGH);
