@@ -244,7 +244,7 @@ const ph10=s=>String(s||'').replace(/\D/g,'').slice(-10);
 /* ---------- login ---------- */
 function showLogin(msg){
   $('#hdr').style.display='none';$('#nav').style.display='none';
-  $('#app').innerHTML=`<div class="login"><div style="font-size:42px;line-height:1">🏠</div><h1>EasyDeals CRM</h1><div class="mu" style="margin:-4px 0 6px">Sign in to continue</div>
+  $('#app').innerHTML=`<div class="login"><img src="icon-192.png" alt="Easy Deals" style="width:112px;height:112px;border-radius:26px;display:block;margin:0 auto 6px"><h1>EasyDeals CRM</h1><div class="mu" style="margin:-4px 0 6px">Sign in to continue</div>
   <input id="em" type="email" placeholder="Email" autocomplete="username">
   <input id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key=='Enter')login()">
   <button class="p" onclick="login()">Login</button><div class="er" id="lerr">${esc(msg||'')}</div></div>`;
