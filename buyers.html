@@ -326,6 +326,7 @@ function openDrawer(){
   <div class="ds">Naya</div>
   <div class="di" onclick="go('props');editP={};render()"><span>➕ Nayi Property</span></div>
   <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ Naya Buyer Lead</span></div>
+  <div class="di" onclick="go('mb')"><span>⬆️ Magicbricks Excel upload</span></div>
   <div class="ds">Backup</div>
   <div class="di" onclick="closeDrawer();backup()"><span>⬇️ Download backup <span class="mu">· CSV</span></span></div>`;
   $('#dr').classList.add('open');$('#ov').style.display='block';
@@ -530,6 +531,59 @@ VIEW.fu=()=>{
 };
 
 /* ---------- unassigned ---------- */
+
+/* ---------- Magicbricks Excel upload ---------- */
+let MBP=null;
+const mbFind=id=>{id=String(id||'').replace(/\D/g,'');return id?PR.find(p=>String(p.id_magicbricks||'').split(/[,\s]+/).map(x=>x.replace(/\D/g,'')).includes(id)):null};
+function mbDate(v){if(v instanceof Date)return v.toISOString().slice(0,10);const d=new Date(String(v||'').replace(/(\d)(AM|PM)/,'$1 $2'));return isNaN(d)?today():new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+VIEW.mb=()=>{
+  let h=`<div class="card"><b>⬆️ Magicbricks leads Excel upload</b>
+  <div class="mu" style="margin:6px 0 10px">Magicbricks → My Responses → Download (Excel). Wahi file yahan chuno. Har lead ka <b>Property Id</b> dekh kar CRM use sahi property se jodega. Jo leads pehle se CRM mein hain, woh dobara nahi judengi.</div>
+  <input type="file" accept=".xls,.xlsx,.csv" onchange="mbRead(this.files[0])"></div>`;
+  if(!MBP)return h;
+  const n=MBP.rows.filter(r=>!r.dup),m=n.filter(r=>r.pid),u=n.filter(r=>!r.pid),ids=[...new Set(u.map(r=>r.mbid))];
+  h+=`<div class="grid"><div class="card stat"><div class="mu">File mein leads</div><b>${MBP.rows.length}</b></div><div class="card stat"><div class="mu">Pehle se CRM mein</div><b>${MBP.rows.length-n.length}</b></div><div class="card stat"><div class="mu">Nayi · property mili</div><b class="ok">${m.length}</b></div><div class="card stat"><div class="mu">Nayi · property nahi mili</div><b class="${u.length?'wr':''}">${u.length}</b></div></div>`;
+  if(ids.length)h+=`<div class="card"><b>Yeh Magicbricks ID kis property ka hai?</b><div class="mu">Ek baar chun lo, CRM yaad rakhega aur aage se apne aap jodega.</div>${ids.map(id=>{const ex=u.find(r=>r.mbid==id);return `<div class="lr"><span><b>${esc(id)}</b><br><span class="mu">${esc(ex.desc||'')}</span></span><select style="max-width:55%" onchange="mbMap('${esc(id)}',this.value)"><option value="">Chuno…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>`}).join('')}</div>`;
+  h+=n.length?`<button class="p" style="width:100%" onclick="mbImport(this)">✅ ${n.length} nayi leads CRM mein daalo</button>`:'<div class="empty"><div class="ei">✅</div><b>Sab leads pehle se CRM mein hain</b></div>';
+  h+=`<div class="sec">Nayi leads (${n.length})</div>`+n.slice(0,40).map(r=>`<div class="lr"><span><b>${esc(r.name||'Buyer')}</b> · ${esc(mask(r.phone))}<br><span class="mu">${r.pid?esc(r.pid+' · '+(P(r.pid)||{}).project):'<b class="wr">Property nahi mili</b> · MB '+esc(r.mbid)} · ${dshort(r.date)}</span></span></div>`).join('');
+  return h;
+};
+async function mbRead(f){
+  if(!f)return;toast('File padh raha hoon…');
+  try{
+    if(!window.XLSX)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});const a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
+    const hi=a.findIndex(r=>r.some(c=>/property\s*id/i.test(c))&&r.some(c=>/mobile/i.test(c)));
+    if(hi<0)return toast('Is file mein "Property Id" aur "Mobile" column nahi mile',1);
+    const H=a[hi].map(c=>String(c).trim().toLowerCase()),col=k=>H.findIndex(c=>c.startsWith(k));
+    const ci={id:col('property id'),desc:col('brief'),name:col('name'),email:col('email'),mob:col('mobile'),loc:col('locality'),date:col('message date'),msg:col('message details'),who:col('contacted by')};
+    const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||'')));
+    const rows=[],seen=new Set();
+    a.slice(hi+1).forEach(r=>{const phone=ph10(r[ci.mob]);if(phone.length<10)return;const mbid=String(r[ci.id]||'').replace(/\D/g,'');const pr=mbFind(mbid);const key=phone+'|'+(pr?pr.id:mbid);
+      const dup=have.has(key)||seen.has(key);seen.add(key);
+      rows.push({phone,mbid,pid:pr?pr.id:null,name:String(r[ci.name]||'').trim(),email:String(r[ci.email]||'').trim(),desc:String(r[ci.desc]||'').trim(),loc:r[ci.loc],date:mbDate(r[ci.date]),who:String(r[ci.who]||''),dup})});
+    MBP={rows};render();toast(rows.length+' leads mili');
+  }catch(e){toast('File nahi padh paya: '+(e.message||e),1)}
+}
+async function mbMap(mbid,pid){
+  if(!pid)return;const p=P(pid);const cur=String(p.id_magicbricks||'').trim();const v=cur?cur+', '+mbid:mbid;
+  const ps=String(p.portal_status||'');const nps=/magicbricks\s*:/i.test(ps)?ps.replace(/magicbricks\s*:\s*[^|]*/i,'Magicbricks: Live'):(ps?ps+' | ':'')+'Magicbricks: Live';
+  const {error}=await sb.from('properties').update({id_magicbricks:v,portal_status:nps}).eq('id',pid);if(error)return toast(error.message,1);
+  p.id_magicbricks=v;p.portal_status=nps;
+  const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||'')));
+  MBP.rows.forEach(r=>{if(r.mbid==mbid){r.pid=pid;if(have.has(r.phone+'|'+pid))r.dup=true}});
+  toast('MB '+mbid+' → '+pid+' ✅');render();
+}
+async function mbImport(btn){
+  btn.disabled=true;btn.textContent='Daal raha hoon…';
+  const n=MBP.rows.filter(r=>!r.dup);let c=+String(nextCode()).replace(/\D/g,'');
+  const rows=n.map(r=>({code:'L-'+String(c++).padStart(4,'0'),lead_date:r.date,property_id:r.pid,source:'Magicbricks',listing_id:r.mbid,buyer_name:r.name||null,buyer_phone:r.phone,requirement:r.desc||null,remarks:[r.email,r.who&&r.who!='Individual'?r.who:''].filter(Boolean).join('; ')||null,status:'New'}));
+  for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('buyer_leads').insert(rows.slice(i,i+200));if(error){btn.disabled=false;btn.textContent='Dobara try karo';return toast(error.message,1)}}
+  const recent={};n.forEach(r=>{if(r.pid&&(!recent[r.pid]||r.date>recent[r.pid]))recent[r.pid]=r.date});
+  for(const [pid,d] of Object.entries(recent)){const p=P(pid);if(!p)continue;const ps=String(p.portal_status||'');const tag='Magicbricks: Live (lead '+dshort(d)+')';const nps=/magicbricks\s*:/i.test(ps)?ps.replace(/magicbricks\s*:\s*[^|]*/i,tag):(ps?ps+' | ':'')+tag;await sb.from('properties').update({portal_status:nps}).eq('id',pid)}
+  toast(rows.length+' leads CRM mein aa gayi ✅');MBP=null;await reload(true);go('mb');
+}
+
 VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
 
 /* ---------- deal closed owners ---------- */
