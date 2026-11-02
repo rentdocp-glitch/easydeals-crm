@@ -1,0 +1,30 @@
+name: Make logo icons
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  logo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-color-emoji
+          mkdir -p /tmp/f
+          curl -sSL -o /tmp/f/Poppins-Bold.ttf https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Bold.ttf
+          curl -sSL -o /tmp/f/Poppins-Medium.ttf https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Medium.ttf
+          ls -la /tmp/f
+          fc-list | grep -i emoji || true
+      - name: Install Pillow
+        run: pip install pillow
+      - name: Draw logo
+        run: python tools/make_logo.py
+      - name: Commit icons
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add icon-192.png icon-512.png android/app/src/main/res/drawable-nodpi/app_icon.png
+          git commit -m "Update Easy Deals logo icons" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_019Av4rYwRWnxmL8EhN7G1mF"
+          git push
