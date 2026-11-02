@@ -224,6 +224,14 @@ a{color:var(--pr2)}
 .sec{font-size:13px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 8px}
 .lnk{display:inline-flex;gap:5px;align-items:center}
 .lc .row{flex-wrap:nowrap}.lc .row .nm{flex:1;min-width:0}
+.own{display:flex;align-items:center;gap:8px;margin:2px 0 4px;flex-wrap:wrap}
+.own b{font-size:17px;color:#0f5a28;font-weight:800}
+.own .ob{background:#cdeed6;color:#0f5a28;border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:700}
+.pt .ps{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.ps.live{background:#e0f5e6;color:#1b6b34}.ps.off{background:#fde4e4;color:#9b1c1c}.ps.unk{background:#eef0f3;color:#4a5361}.ps.no{background:#f6f7f9;color:#9aa3b2}
+.oacts{display:flex;gap:8px;margin-top:8px}.oacts a{flex:1;text-align:center;padding:9px 8px;font-size:14px;font-weight:700;border-radius:11px;text-decoration:none}
+.oacts .c{background:#eaf1ff;color:#1e3a8a;border:1px solid #cfe0fb}.oacts .w{background:#25d366;color:#fff}
+.hitc{border:2px solid #15803d!important;background:#f3fff7}
 a.btn.g,a.btn.g:hover{color:#fff}
 </style>
 </head><body>
@@ -325,14 +333,21 @@ function closeDrawer(){$('#dr').classList.remove('open');$('#ov').style.display=
 const VIEW={};
 
 /* ---------- properties ---------- */
-const portalRow=p=>`<div class="pt"><span>99acres <span class="${p.id_99acres?'y':'n'}">${p.id_99acres?'✓':'✗'}</span></span><span>MB <span class="${p.id_magicbricks?'y':'n'}">${p.id_magicbricks?'✓':'✗'}</span></span><span>Housing <span class="${p.id_housing?'y':'n'}">${p.id_housing?'✓':'✗'}</span></span></div>`;
+const PORT=[['99acres','id_99acres','99acres'],['Magicbricks','id_magicbricks','MB'],['Housing','id_housing','Housing']];
+function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(name+'\\s*:\\s*([^|]+)','i'));const t=m?m[1].trim():'';
+  if(/^live/i.test(t))return ['live','✓ Live',t];
+  if(/not checked/i.test(t)||(!t&&p[idk]))return ['unk','? Check nahi',t||'ID hai, live check nahi hua'];
+  if(/not listed/i.test(t)||!p[idk])return ['no','✗ Listed nahi',t||'Is portal par listing nahi'];
+  return ['off','✗ '+t.split(' ')[0],t]}
+const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
+const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
 VIEW.props=()=>{
   if(editP)return propForm(editP);
   if(openP)return propDetail(P(openP));
   const t=today(),fu=fuList().length,un=BL.filter(b=>!b.property_id).length;
   let list=PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
-  if(q){const s=q.toLowerCase();list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s))}
+  let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
   list=list.map(p=>({p,l:leadsOf(p.id)})).sort((a,b)=>b.l.length-a.l.length);
   return `<div class="grid">
    <div class="card stat"><div class="mu">Buyer leads</div><b>${BL.length}</b></div>
@@ -340,11 +355,12 @@ VIEW.props=()=>{
    <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
    <div class="card stat" onclick="go('un')" style="cursor:pointer"><div class="mu">Unassigned</div><b class="${un?'wr':''}">${un}</b></div></div>
   <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>
-  <input placeholder="Search: ED-ID, project, owner, area" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},350)" style="margin-bottom:10px">
+  <input placeholder="📞 Number ya naam: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},350)" style="margin-bottom:10px">
   ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
-    <div class="row"><div class="nm">${esc(p.id)} · ${esc(p.project||'-')}</div><div class="big">${l.length}</div></div>
-    <div class="mu">${esc(p.owner_name||'Owner ?')} · ${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">Sold</b>':''}</div>
-    <div>${stPills(l)}</div>${portalRow(p)}</div>`).join('')||'<div class="empty"><div class="ei">🏢</div><b>Koi property nahi mili</b></div>'}`;
+    <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal closed owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
+    <div class="mu">${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">Sold</b>':''}</div>
+    <div>${stPills(l)}</div>${portalRow(p)}${ownerActs(p)}</div>`).join('')||(bHits.length?'':'<div class="empty"><div class="ei">🏢</div><b>Is naam/number ka koi owner nahi mila</b></div>')}
+  ${bHits.length?`<div class="sec">🧑 Yeh number buyer leads mein hai (${bHits.length})</div>`+bHits.slice(0,20).map(b=>bCard(b,repeats())).join(''):''}`;
 };
 function propDetail(p){
   if(!p)return '<div class="empty"><b>Property nahi mili</b></div>';
@@ -353,7 +369,7 @@ function propDetail(p){
   const ow=ph10(p.owner_phone);
   return `<button onclick="openP=null;render()" style="margin-bottom:10px">← Properties</button>
   <div class="card"><div class="row"><div><div class="nm" style="font-size:19px;font-weight:800">${esc(p.id)} · ${esc(p.project||'')}</div><div class="mu">${esc(p.bhk||'')} · ${esc(p.ptype||'')} · ${p.sqft?esc(p.sqft)+' sqft · ':''}${rs(p.price)} · ${esc(p.status||'')}</div></div><button onclick="editP=Object.assign({},P('${esc(p.id)}'));render()">✏️ Edit</button></div>
-   <div style="margin-top:8px"><b>${esc(p.owner_name||'Owner ?')}</b> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>`:'<span class="er">mobile nahi hai</span>'}</div>
+   <div class="own" style="margin-top:10px">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal closed owner</span></div><div> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>`:'<span class="er">mobile nahi hai</span>'}</div>
    <div class="mu" style="margin-top:4px">${esc(p.address||p.locality||'')}</div>
    ${portalRow(p)}<div class="mu" style="margin-top:4px">${esc([p.id_99acres&&'99: '+p.id_99acres,p.id_magicbricks&&'MB: '+p.id_magicbricks,p.id_housing&&'HS: '+p.id_housing].filter(Boolean).join(' · '))}</div>
    <div class="acts">${links||'<span class="mu">Tour / video link abhi nahi jode · Edit se jodo</span>'}</div>
@@ -378,6 +394,7 @@ function propForm(p){
   <div class="f2">${f('sqft','Area (sqft)','number')}${f('price','Expected price (₹, poora number)','number')}</div>
   <div class="f2">${f('id_99acres','99acres ID')}${f('id_magicbricks','Magicbricks ID')}</div>
   <div class="f2">${f('id_housing','Housing ID')}${f('date_added','Date added','date')}</div>
+  ${f('portal_status','Portal status (jaise: 99acres: Live | Housing: Expired | Magicbricks: Live)')}
   <div class="f2">${f('tour_url','Virtual tour link')}${f('video_url','YouTube video link')}</div>
   <div class="f2">${f('photos_url','Photos link')}${f('reel_url','Reel link')}</div>
   <div><label>Remarks</label><textarea id="pf_remarks" rows="3">${v('remarks')}</textarea></div>
@@ -385,7 +402,7 @@ function propForm(p){
   <button class="p" onclick="saveProp(${isNew})">💾 Save</button></div></div>`;
 }
 async function saveProp(isNew){
-  const K=['owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
+  const K=['portal_status','owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
   const row={};K.forEach(k=>{const e=$('#pf_'+k);if(e){const x=e.value.trim();row[k]=x===''?null:x}});
   ['sqft','price'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
   const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
