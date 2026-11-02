@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application' version '8.5.2'
+}
+
+android {
+    namespace 'com.easydeals.crm'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.easydeals.crm'
+        minSdk 24
+        targetSdk 34
+        versionCode (System.getenv('RUN_NO') ?: '1').toInteger()
+        versionName '1.0'
+    }
+    signingConfigs {
+        shared {
+            storeFile file('../easydeals.keystore')
+            storePassword 'easydeals123'
+            keyAlias 'easydeals'
+            keyPassword 'easydeals123'
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.shared
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
