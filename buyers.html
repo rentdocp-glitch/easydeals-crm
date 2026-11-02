@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1e3a8a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>EasyDeals Buyers</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e2e5ea;--pr:#1f4e78;--ok:#15803d;--wr:#b45309;--er:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:104px}
+header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--pr);color:#fff}
+header b{font-size:16px}#who{font-size:12px;opacity:.9}
+header button{position:relative;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:0;width:44px;height:44px;font-size:20px}
+.hl{display:flex;gap:10px;align-items:center}
+.bd{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:99px;font-size:11px;line-height:1;padding:3px 6px;min-width:18px;font-weight:700}
+main{max-width:900px;margin:auto;padding:12px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 10px rgba(0,0,0,.06);z-index:6}
+nav button{flex:1;border:0;border-radius:0;background:none;padding:10px 2px 9px;color:var(--mu);display:flex;flex-direction:column;align-items:center;gap:2px;min-height:62px}
+nav button .ni{font-size:26px;line-height:1}nav button .nl{font-size:12.5px}
+nav button.on{color:var(--pr);font-weight:700;border-top:4px solid var(--pr);background:#eef4fa}
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+#dr{position:fixed;top:0;bottom:0;left:0;width:82%;max-width:330px;background:#fff;z-index:21;transform:translateX(-105%);transition:transform .22s;display:flex;flex-direction:column;box-shadow:2px 0 16px rgba(0,0,0,.2)}
+#dr.open{transform:none}
+.dh{display:flex;gap:12px;align-items:center;padding:14px;border-bottom:1px solid var(--bd)}
+.dh .av{width:42px;height:42px;border-radius:50%;background:var(--pr);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+.dh .x{margin-left:auto;border:0;background:none;font-size:22px;padding:6px 10px}
+#drb{flex:1;overflow-y:auto;padding-bottom:8px}
+.ds{padding:14px 16px 6px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--mu);font-weight:700}
+.di{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-size:16px;cursor:pointer;border-bottom:1px solid #f0f2f5}
+.di:active{background:#eef4fa}
+.cnt{min-width:30px;text-align:center;padding:2px 9px;border-radius:99px;background:#eef2f7;font-weight:700;font-size:14px}
+.cnt.hi{background:var(--pr);color:#fff}.cnt.gd{background:#dcfce7;color:var(--ok)}
+.dbot{border-top:1px solid var(--bd);padding:12px 14px;display:flex;align-items:center;gap:10px}
+.dbot .em{font-size:12.5px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+input,select,textarea,button,.btn{font:inherit}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--tx)}
+button,.btn{display:inline-block;cursor:pointer;border:1px solid var(--bd);background:#fff;color:var(--tx);border-radius:8px;padding:8px 12px;text-decoration:none;text-align:center}
+.p{background:var(--pr);border-color:var(--pr);color:#fff}.g{background:var(--ok);border-color:var(--ok);color:#fff}.r{color:var(--er)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.alert{border-color:var(--ok);background:#ecfdf3;cursor:pointer}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between}
+.mu{color:var(--mu);font-size:12.5px}.er{color:var(--er)}.ok{color:var(--ok)}.wr{color:var(--wr)}
+.fol{margin-top:6px;padding:6px 10px;border-radius:10px;background:#eef4fb;border:1px solid #cfdff0;font-size:13.5px}.fol.tod{background:#fff6e0;border-color:#f0d9a0}.fol.late{background:#fdecec;border-color:#f3b9b9;color:#a61b1b}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;border:1px solid var(--bd);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:10px}
+.stat b{display:block;font-size:22px}
+.form{margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd);display:grid;gap:8px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ms{position:relative}.msb{width:100%;text-align:left;background:#fff;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;font:inherit;color:var(--tx);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msp{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:320px;overflow:auto;padding:6px 6px 0}
+.msp label{display:flex;align-items:center;gap:10px;padding:10px 8px;font-size:15px;border-bottom:1px solid #f1f1f4}.msp input{width:20px;height:20px;min-height:0;padding:0;margin:0;flex:none}
+.msa{position:sticky;bottom:0;background:#fff;display:flex;gap:8px;padding:8px 2px}.msa button{flex:1;padding:10px;border-radius:10px}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.acts button,.acts .btn{padding:7px 12px;font-size:14px;min-height:38px}
+.acts{gap:7px;margin-top:8px}
+.acts a.cl{background:#e8f0f9;color:var(--pr);border-color:#c5d8ee;font-weight:600}
+.acts button.cl{background:#e8f0f9;color:var(--pr);border-color:#c5d8ee;font-weight:600}
+.acts button.ic{padding:7px 10px;min-width:40px}
+.lc{padding:10px 12px;margin-bottom:8px}
+.lc .nm{font-size:17px;font-weight:700;line-height:1.25;word-break:break-word}
+.lc .ph{display:flex;align-items:center;gap:8px;margin-top:2px;flex-wrap:wrap}
+.lc .ph a.t{font-size:15px;font-weight:600}
+.lc .wa{margin:0;padding:2px 9px;font-size:12px}
+.lc .wh{margin-top:4px;font-size:14px;color:#334155}
+.lc .chp{margin-top:4px;gap:5px}.lc .tag{font-size:11.5px;padding:1px 8px}
+.lc .note{margin-top:5px;padding:5px 8px;font-size:13px;cursor:pointer}
+.lc .hs{margin-top:4px}.lc .hs .mu{font-size:12px}
+.cmp .lc{padding:8px 10px;margin-bottom:6px}.cmp .cp{display:none}.cmp .acts{margin-top:6px}.cmp .acts button{min-height:34px;padding:5px 11px}
+.acts a.wi{background:#25d366;border-color:#25d366;color:#fff;padding:7px 10px;display:inline-flex;align-items:center;justify-content:center}
+.hero{background:linear-gradient(135deg,#17406a,#2f7fc4);color:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 6px 16px rgba(23,64,106,.28)}
+.hero .hg{font-size:21px;font-weight:700}.hero .hs2{opacity:.85;font-size:13px;margin-top:2px}
+.hero .hn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;text-align:center}
+.hero .hn>div{background:rgba(255,255,255,.14);border-radius:12px;padding:10px 4px}
+.hero .hn b{display:block;font-size:26px;line-height:1.1}.hero .hn span{font-size:12px;opacity:.9}
+.hero .hb{margin-top:14px;width:100%;border:0;border-radius:12px;background:#fff;color:#17406a;font-weight:700;font-size:16px;padding:12px;min-height:46px}
+.fn{display:grid;grid-template-columns:104px 1fr 38px 44px;gap:8px;align-items:center;margin:6px 0;font-size:13.5px}
+.fn .fb{background:#eef2f7;border-radius:99px;height:10px;overflow:hidden}.fn .fb i{display:block;height:100%;background:var(--pr);border-radius:99px}
+.fn b{text-align:right}.fn .fp{font-size:12px;color:var(--mu);text-align:right}
+.chips{display:flex;gap:6px;margin-bottom:10px}.chips button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.login{max-width:340px;margin:12vh auto;display:grid;gap:10px;text-align:center}
+#toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:9;max-width:90%}
+#toast.err{background:var(--er)}
+#tmr{font-weight:700}
+a{color:var(--pr)}
+.wa{display:inline-block;margin-left:10px;padding:3px 11px;border-radius:99px;background:#25d366;color:#fff;font-size:13px;text-decoration:none;vertical-align:middle}
+.lr{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.lr:last-child{border-bottom:0}
+.sm{padding:9px 14px!important;font-size:14px!important;min-height:40px!important}
+.chp{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.note{margin-top:6px;padding:6px 8px;background:#fffbea;border:1px solid #f1e3a6;border-radius:8px;font-size:13.5px;white-space:pre-wrap}
+label{font-size:12.5px;color:var(--mu)}
+textarea{resize:vertical}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="ui2">
+/* ===== Premium UI layer (overrides only; markup & logic unchanged) ===== */
+:root{--bg:#f2f4fa;--card:#fff;--tx:#0f172a;--mu:#64748b;--bd:#e5e8f1;--pr:#1e3a8a;--pr2:#2563eb;--pr3:#3b82f6;--ok:#15803d;--wr:#b45309;--er:#b91c1c;
+--r:16px;--r2:12px;--sh1:0 1px 2px rgba(15,23,42,.05),0 1px 3px rgba(15,23,42,.04);--sh2:0 4px 14px rgba(15,23,42,.07),0 1px 3px rgba(15,23,42,.05);--sh3:0 12px 32px rgba(30,58,138,.18);
+--grad:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);--ease:cubic-bezier(.22,.8,.3,1)}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(1000px 420px at 85% -80px,#dbe6ff 0,transparent 70%),var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;padding-bottom:112px}
+h1,h2,h3{letter-spacing:-.02em}
+/* header */
+header{background:var(--grad);padding:10px 14px;box-shadow:0 6px 20px rgba(30,58,138,.28);border-bottom:1px solid rgba(255,255,255,.12)}
+header b{font-size:17px;font-weight:800;letter-spacing:-.01em}#who{font-size:12.5px;opacity:.85;font-weight:500}
+header button{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.18);border-radius:12px;transition:background .2s,transform .15s var(--ease)}
+header button:hover{background:rgba(255,255,255,.26)}header button:active{transform:scale(.92)}
+.bd{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 0 2px #1e3a8a;animation:pop .35s var(--ease)}
+main{max-width:1000px;padding:16px 14px}
+/* nav */
+nav{left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:1000px;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border:1px solid var(--bd);border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -8px 28px rgba(15,23,42,.08);padding:4px 6px calc(4px + env(safe-area-inset-bottom,0))}
+nav button{position:relative;min-height:60px;border-radius:14px;color:#7a869a;transition:color .2s,background .2s,transform .15s var(--ease);font-weight:500}
+nav button{background:transparent;border:0;box-shadow:none}nav button:hover{box-shadow:none;background:#f3f6fc}nav button:active{transform:scale(.94);box-shadow:none}
+nav button .ni{font-size:23px;transition:transform .25s var(--ease)}nav button .nl{font-size:12px;font-weight:600}
+nav button.on,nav button.on:hover{color:var(--pr);border-top:0;background:linear-gradient(180deg,#e6efff,#f3f7ff);font-weight:700;box-shadow:none}
+nav button.on .ni{transform:translateY(-1px) scale(1.12)}
+nav button.on::before{content:"";position:absolute;top:0;left:50%;width:26px;height:3px;margin-left:-13px;border-radius:0 0 4px 4px;background:var(--grad)}
+/* drawer */
+#ov{background:rgba(15,23,42,.5);backdrop-filter:blur(2px);animation:fade .2s ease}
+#dr{width:84%;max-width:340px;border-radius:0 22px 22px 0;transition:transform .3s var(--ease);box-shadow:12px 0 40px rgba(15,23,42,.25)}
+.dh{padding:18px 16px;background:var(--grad);color:#fff;border-bottom:0;border-radius:0 22px 0 0}.dh .mu{color:rgba(255,255,255,.8)}
+.dh .av{background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.55);width:46px;height:46px}.dh .x{color:#fff;border-radius:10px;border:0}
+.ds{padding:18px 18px 6px;font-size:11.5px;letter-spacing:.08em;color:#94a3b8}
+.di{padding:13px 18px;font-size:15.5px;font-weight:500;border-bottom:0;margin:2px 8px;border-radius:12px;transition:background .15s,transform .15s var(--ease)}
+.di:hover{background:#f1f5fd}.di:active{background:#e3ecfb;transform:scale(.985)}
+.cnt{background:#eef2fb;color:#334155;font-size:13px}.cnt.hi{background:var(--grad);color:#fff}.cnt.gd{background:#dcfce7;color:var(--ok)}
+.dbot{padding:14px 16px;background:#fafbfe}
+/* forms & buttons */
+input,select,textarea{padding:11px 13px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;min-height:44px;transition:border-color .15s,box-shadow .15s}
+input:hover,select:hover,textarea:hover{border-color:#cbd5e6}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pr2);box-shadow:0 0 0 4px rgba(37,99,235,.14)}
+::placeholder{color:#9aa6b8}
+button,.btn{border:1.5px solid var(--bd);border-radius:12px;padding:9px 14px;font-weight:600;background:#fff;color:#1e293b;box-shadow:var(--sh1);transition:transform .15s var(--ease),box-shadow .2s,background .2s,border-color .2s,color .2s;-webkit-tap-highlight-color:transparent}
+button:hover,.btn:hover{box-shadow:var(--sh2);border-color:#cfd7e6}
+button:active,.btn:active{transform:scale(.96);box-shadow:none}
+button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.p{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.32)}.p:hover{border-color:transparent;box-shadow:0 8px 22px rgba(37,99,235,.42);filter:brightness(1.05)}
+.g{background:linear-gradient(135deg,#15803d,#22a35a);border-color:transparent;box-shadow:0 6px 16px rgba(21,128,61,.28)}
+.r{color:var(--er);border-color:#f5cccc;background:#fff8f8}
+:focus-visible{outline:3px solid rgba(37,99,235,.55);outline-offset:2px;border-radius:10px}
+.acts button,.acts .btn{border-radius:11px;font-size:14px}
+.acts a.cl,.acts button.cl{background:#eaf1ff;color:var(--pr);border-color:#cfe0fb}
+.acts a.wi{background:linear-gradient(135deg,#1fbe5b,#25d366);border-color:transparent;box-shadow:0 5px 14px rgba(37,211,102,.35)}
+.wa{background:linear-gradient(135deg,#1fbe5b,#25d366);box-shadow:0 3px 10px rgba(37,211,102,.3)}
+/* cards */
+.card{border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh1);transition:box-shadow .25s,transform .25s var(--ease),border-color .25s}
+@media(hover:hover){.card:hover{box-shadow:var(--sh2);border-color:#d8deec}}
+.lc{padding:14px 16px;margin-bottom:10px}
+.lc .nm{font-size:17.5px;font-weight:700;letter-spacing:-.01em}
+.lc .ph a.t{font-size:15px;font-weight:600;color:var(--pr2);text-decoration:none}
+.lc .wh{color:#475569}
+.alert{background:linear-gradient(135deg,#ecfdf3,#f3fff8);border-color:#a7e3bf}
+.note{background:#fffbea;border:1px solid #f3e6ae;border-radius:12px}
+.fol{border-radius:12px;font-weight:500}
+.tag{padding:3px 10px;font-weight:600;font-size:11.5px;border-radius:99px;background:#f8fafc}
+.lr{padding:11px 0;border-bottom:1px solid #eef1f7}
+.form{border-top:1px dashed #d8deec}
+label{font-weight:600;color:#64748b}
+/* dashboard */
+.grid{gap:12px;margin-bottom:12px}
+.grid .stat,.card.stat{padding:16px;position:relative;overflow:hidden}
+.card.stat::after{content:"";position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle,rgba(37,99,235,.12),transparent 70%)}
+.stat b{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.stat .mu,.card.stat .mu{font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+.hero{background:linear-gradient(135deg,#142e6e 0%,#1e4fc4 55%,#3b82f6 100%);border-radius:22px;padding:20px;box-shadow:var(--sh3);position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;right:-40px;top:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.2),transparent 70%)}
+.hero .hg{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.hero .hn>div{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:14px;backdrop-filter:blur(6px)}
+.hero .hn b{font-size:25px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hero .hb{border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,.18);color:#142e6e}.hero .hb:hover{filter:none;transform:translateY(-1px)}
+.fn .fb{height:10px;background:#e8edf7}.fn .fb i{background:var(--grad);transition:width .8s var(--ease)}
+.chips{gap:8px;flex-wrap:wrap}.chips button{border-radius:99px;padding:7px 15px;font-size:14px}.chips button.on{background:var(--grad);border-color:transparent;box-shadow:0 5px 14px rgba(37,99,235,.3)}
+/* login */
+.login{max-width:380px;margin:9vh auto;padding:30px 24px;background:#fff;border:1px solid var(--bd);border-radius:24px;box-shadow:var(--sh3);animation:rise .5s var(--ease)}
+.login h1{font-size:25px;margin:0 0 6px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* toast */
+#toast{background:#0f172a;border-radius:14px;padding:12px 18px;box-shadow:0 12px 32px rgba(15,23,42,.35);font-weight:500;animation:rise .3s var(--ease)}
+#toast.err{background:linear-gradient(135deg,#b91c1c,#dc2626)}
+a{color:var(--pr2)}
+/* states */
+.empty{text-align:center;padding:38px 20px;margin:10px 0;color:var(--mu)}
+.empty .ei{display:inline-flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#eaf1ff,#f4f8ff);font-size:30px;margin-bottom:10px;box-shadow:inset 0 0 0 1px #d6e3fb}
+.empty b{display:block;color:var(--tx);font-size:16px;margin-bottom:2px}
+.errc{display:flex;gap:12px;align-items:flex-start;background:#fff7f7;border:1px solid #f4c7c7;border-radius:var(--r);padding:16px;color:#7f1d1d}
+.errc .ei{font-size:24px}.errc b{display:block;margin-bottom:2px}.errc .mu{color:#9b4a4a}
+.sk{background:linear-gradient(90deg,#e9edf6 25%,#f6f8fc 50%,#e9edf6 75%);background-size:200% 100%;animation:shim 1.2s infinite linear;border-radius:12px}
+.skc{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.skc .sk{height:14px;margin-bottom:10px}.skc .sk:first-child{height:20px;width:55%}.skc .sk:nth-child(2){width:35%}.skc .sk:last-child{width:80%;margin-bottom:0}
+/* motion */
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{0%{transform:scale(.4)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+@keyframes shim{to{background-position:-200% 0}}
+#app>*{animation:rise .42s var(--ease) both}
+#app>*:nth-child(2){animation-delay:.04s}#app>*:nth-child(3){animation-delay:.08s}#app>*:nth-child(4){animation-delay:.12s}#app>*:nth-child(5){animation-delay:.15s}#app>*:nth-child(n+6){animation-delay:.18s}
+/* desktop */
+@media(min-width:900px){
+ body{padding-bottom:96px}
+ main{padding:24px 20px}
+ #app{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+ #app>*{grid-column:1/-1}#app>.lc{grid-column:auto}
+ .hero{padding:26px}.hero .hn b{font-size:32px}
+ #dr{max-width:360px}
+}
+@media(max-width:380px){nav button .nl{font-size:11px}.hero .hn b{font-size:24px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+<style id="bx">
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;margin:3px 4px 0 0;white-space:nowrap}
+.pt{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--mu)}
+.pt .y{color:var(--ok);font-weight:700}.pt .n{color:#b6bfcc;font-weight:700}
+.big{font-size:22px;font-weight:800;color:var(--pr)}
+.beta{background:#fff6e0;border:1px solid #f0d9a0;color:#7a5200;border-radius:12px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+.hist{border-left:3px solid #dbe4f3;padding:2px 0 2px 10px;margin:6px 0;font-size:13px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl th,.tbl td{padding:7px 6px;border-bottom:1px solid #eef1f7;text-align:center}.tbl th{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.03em}.tbl td:first-child,.tbl th:first-child{text-align:left}
+.tw{overflow-x:auto}
+.warn{background:#fdecec;border:1px solid #f3b9b9;color:#9b1c1c;border-radius:12px;padding:8px 12px;font-size:13.5px;margin:6px 0}
+.sec{font-size:13px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 8px}
+.lnk{display:inline-flex;gap:5px;align-items:center}
+.lc .row{flex-wrap:nowrap}.lc .row .nm{flex:1;min-width:0}
+a.btn.g,a.btn.g:hover{color:#fff}
+</style>
+</head><body>
+<header id="hdr" style="display:none"><div class="hl"><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who">Admin · Buyers</span></div></div><div style="display:flex;gap:8px"><button onclick="location.href='./'" aria-label="Main CRM" title="Main CRM">↩</button><button onclick="reload()" aria-label="Refresh" title="Refresh">⟳</button></div></header>
+<main id="app"></main>
+<nav id="nav" style="display:none"></nav>
+<div id="ov" onclick="closeDrawer()"></div>
+<aside id="dr"><div class="dh"><div class="av">A</div><div><b id="dnm">Admin</b><div class="mu">Buyers (sirf admin)</div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL='https://sfvpslsexobukgerkixi.supabase.co';
+const SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';
+const sb=window.SB_MOCK||supabase.createClient(SB_URL,SB_KEY);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ph10=s=>String(s||'').split('/')[0].replace(/\D/g,'').slice(-10);
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const dshort=x=>x?new Date(x).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';
+const dtime=x=>x?new Date(x).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+const rs=n=>{n=+n;if(!n)return '';return n>=1e7?'₹'+(n/1e7).toFixed(2).replace(/\.?0+$/,'')+' Cr':'₹'+(n/1e5).toFixed(2).replace(/\.?0+$/,'')+' L'};
+const mask=p=>{p=ph10(p);return p?p.slice(0,2)+'xxxxxx'+p.slice(8):''};
+function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
+
+/* ---------- constants ---------- */
+const BST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Not Interested','Deal Closed'];
+const BSC={'New':'#e8eefc|#1f4e9c','Contacted':'#eef0f3|#4a5361','Follow-up':'#e3f3ff|#0b5a8a','Site Visit Scheduled':'#e9e2fb|#5b3aa8','Site Visit Done':'#e0f5e6|#1b6b34','Not Interested':'#fde4e4|#9b1c1c','Deal Closed':'#cdeed6|#0f5a28'};
+const PEND=['New','Contacted','Follow-up','Site Visit Scheduled'];
+const SRC=['99acres','Magicbricks','Housing.com','Website','Other'];
+const pill=(s,n)=>{const c=(BSC[s]||'#eef0f3|#4a5361').split('|');return `<span class="pill" style="background:${c[0]};color:${c[1]}">${esc(s)}${n!=null?' '+n:''}</span>`};
+const isSold=p=>/^sold/i.test(p.status||'');
+
+/* ---------- state ---------- */
+let ME=null,PR=[],BL=[],OW=[],tab='props',openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
+
+/* ---------- login ---------- */
+function showLogin(msg){
+  $('#hdr').style.display='none';$('#nav').style.display='none';
+  $('#app').innerHTML=`<div class="login"><img src="icon-192.png" alt="Easy Deals" style="width:96px;height:96px;border-radius:24px;display:block;margin:0 auto 6px"><h1>EasyDeals CRM</h1><div class="mu" style="margin:-4px 0 6px">Buyers · sirf admin</div>
+  <input id="em" type="email" placeholder="Email" autocomplete="username">
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key=='Enter')login()">
+  <button class="p" onclick="login()">Login</button><div class="er" id="lerr">${esc(msg||'')}</div></div>`;
+}
+async function login(){const {data,error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(error){$('#lerr').textContent='Wrong email or password.';return}boot(data.user)}
+async function logout(){await sb.auth.signOut();ME=null;showLogin()}
+async function boot(user){
+  const {data:me}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  if(!me){showLogin('Profile not found.');return}
+  if(me.role!='admin'){$('#app').innerHTML=`<div class="login"><h1>EasyDeals CRM</h1><p>Yeh page sirf admin ke liye hai.</p><a class="btn p" href="./">Main CRM kholo</a></div>`;return}
+  ME=me;ME.email=user.email||'';$('#dem').textContent=ME.email;$('#dnm').textContent=ME.name||'Admin';
+  $('#hdr').style.display='flex';$('#nav').style.display='flex';
+  await reload(true);
+}
+
+/* ---------- data ---------- */
+async function all(t,sel,ord){let out=[],from=0;for(;;){let x=sb.from(t).select(sel||'*').range(from,from+999);if(ord)x=x.order(ord);const {data,error}=await x;if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000}return out}
+async function reload(first){
+  if(!first)toast('Refreshing…');
+  try{
+    [PR,BL]=await Promise.all([all('properties','*','id'),all('buyer_leads','*','id')]);
+    const {data:ow,error}=await sb.from('leads').select('*').eq('status','deal_closed');if(error)throw error;OW=ow||[];
+  }catch(e){$('#app').innerHTML=`<div class="errc"><div class="ei">⚠️</div><div><b>Data load nahi hua</b><div class="mu">${esc(e.message||e)}</div><div class="mu">Kya Supabase mein Step 1 ki SQL chal gayi hai?</div><div class="acts"><button class="p" onclick="reload()">⟳ Try again</button></div></div></div>`;return}
+  render();
+}
+const P=id=>PR.find(p=>p.id==id);
+const leadsOf=id=>BL.filter(b=>b.property_id==id);
+function repeats(){const m={};BL.forEach(b=>{const k=ph10(b.buyer_phone)+'|'+(b.property_id||'');if(ph10(b.buyer_phone))m[k]=(m[k]||0)+1});return m}
+const countBy=(arr,k)=>arr.reduce((m,x)=>(m[x[k]]=(m[x[k]]||0)+1,m),{});
+const nextId=()=>{const n=PR.map(p=>+String(p.id).replace(/\D/g,'')||0);return 'ED-'+String((n.length?Math.max(...n):0)+1).padStart(3,'0')};
+const nextCode=()=>{const n=BL.map(b=>+String(b.code||'').replace(/\D/g,'')||0);return 'L-'+String((n.length?Math.max(...n):0)+1).padStart(4,'0')};
+
+/* ---------- shell ---------- */
+const NAV=[['props','🏢 Properties'],['buyers','🧑‍🤝‍🧑 Buyers'],['fu','🔁 Follow-up'],['deal','✅ Deal Closed'],['rep','📈 Report']];
+function go(t){tab=t;openP=null;openB=null;q='';editP=null;addB=false;newFromLead=null;dupOk=false;closeDrawer();render();window.scrollTo(0,0)}
+function render(){
+  $('#nav').innerHTML=NAV.map(([id,lab])=>{const i=lab.indexOf(' ');return `<button class="${tab==id?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`}).join('');
+  let h='';
+  try{h=(VIEW[tab]||VIEW.props)()}catch(e){console.error(e);h=`<div class="errc"><div class="ei">⚠️</div><div><b>Kuch gadbad hui</b><div class="mu">${esc(e.message||e)}</div></div></div>`}
+  $('#app').innerHTML=`<div class="beta">🧪 Test version · sirf admin ko dikhta hai · team ka app isse nahi badla</div>`+h;
+}
+function openDrawer(){
+  const un=BL.filter(b=>!b.property_id).length;
+  $('#drb').innerHTML=`<div class="di" onclick="location.href='./'"><span>↩ Main CRM (team wala)</span></div>
+  <div class="ds">Buyers</div>
+  <div class="di" onclick="go('props')"><span>🏢 Properties</span><span class="cnt">${PR.filter(p=>!isSold(p)).length}</span></div>
+  <div class="di" onclick="go('buyers')"><span>🧑‍🤝‍🧑 Buyer Leads</span><span class="cnt">${BL.length}</span></div>
+  <div class="di" onclick="go('fu')"><span>🔁 Follow-up</span><span class="cnt hi">${fuList().length}</span></div>
+  <div class="di" onclick="go('un')"><span>❓ Unassigned leads</span><span class="cnt ${un?'hi':''}">${un}</span></div>
+  <div class="di" onclick="go('deal')"><span>✅ Deal Closed owners</span><span class="cnt">${OW.length}</span></div>
+  <div class="di" onclick="go('rep')"><span>📈 Property-wise Report</span></div>
+  <div class="ds">Naya</div>
+  <div class="di" onclick="go('props');editP={};render()"><span>➕ Nayi Property</span></div>
+  <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ Naya Buyer Lead</span></div>
+  <div class="ds">Backup</div>
+  <div class="di" onclick="closeDrawer();backup()"><span>⬇️ Download backup <span class="mu">· CSV</span></span></div>`;
+  $('#dr').classList.add('open');$('#ov').style.display='block';
+}
+function closeDrawer(){$('#dr').classList.remove('open');$('#ov').style.display='none'}
+const VIEW={};
+
+/* ---------- properties ---------- */
+const portalRow=p=>`<div class="pt"><span>99acres <span class="${p.id_99acres?'y':'n'}">${p.id_99acres?'✓':'✗'}</span></span><span>MB <span class="${p.id_magicbricks?'y':'n'}">${p.id_magicbricks?'✓':'✗'}</span></span><span>Housing <span class="${p.id_housing?'y':'n'}">${p.id_housing?'✓':'✗'}</span></span></div>`;
+const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
+VIEW.props=()=>{
+  if(editP)return propForm(editP);
+  if(openP)return propDetail(P(openP));
+  const t=today(),fu=fuList().length,un=BL.filter(b=>!b.property_id).length;
+  let list=PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
+  if(q){const s=q.toLowerCase();list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s))}
+  list=list.map(p=>({p,l:leadsOf(p.id)})).sort((a,b)=>b.l.length-a.l.length);
+  return `<div class="grid">
+   <div class="card stat"><div class="mu">Buyer leads</div><b>${BL.length}</b></div>
+   <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Aaj follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
+   <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
+   <div class="card stat" onclick="go('un')" style="cursor:pointer"><div class="mu">Unassigned</div><b class="${un?'wr':''}">${un}</b></div></div>
+  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>
+  <input placeholder="Search: ED-ID, project, owner, area" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},350)" style="margin-bottom:10px">
+  ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
+    <div class="row"><div class="nm">${esc(p.id)} · ${esc(p.project||'-')}</div><div class="big">${l.length}</div></div>
+    <div class="mu">${esc(p.owner_name||'Owner ?')} · ${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">Sold</b>':''}</div>
+    <div>${stPills(l)}</div>${portalRow(p)}</div>`).join('')||'<div class="empty"><div class="ei">🏢</div><b>Koi property nahi mili</b></div>'}`;
+};
+function propDetail(p){
+  if(!p)return '<div class="empty"><b>Property nahi mili</b></div>';
+  const l=leadsOf(p.id).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))),sc=countBy(l,'status'),src=countBy(l,'source'),rp=repeats();
+  const links=[['tour_url','🎥 Tour'],['video_url','▶️ Video'],['photos_url','🖼 Photos'],['reel_url','📱 Reel']].filter(k=>p[k[0]]).map(k=>`<a class="btn" target="_blank" rel="noopener" href="${esc(p[k[0]])}">${k[1]}</a>`).join('');
+  const ow=ph10(p.owner_phone);
+  return `<button onclick="openP=null;render()" style="margin-bottom:10px">← Properties</button>
+  <div class="card"><div class="row"><div><div class="nm" style="font-size:19px;font-weight:800">${esc(p.id)} · ${esc(p.project||'')}</div><div class="mu">${esc(p.bhk||'')} · ${esc(p.ptype||'')} · ${p.sqft?esc(p.sqft)+' sqft · ':''}${rs(p.price)} · ${esc(p.status||'')}</div></div><button onclick="editP=Object.assign({},P('${esc(p.id)}'));render()">✏️ Edit</button></div>
+   <div style="margin-top:8px"><b>${esc(p.owner_name||'Owner ?')}</b> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>`:'<span class="er">mobile nahi hai</span>'}</div>
+   <div class="mu" style="margin-top:4px">${esc(p.address||p.locality||'')}</div>
+   ${portalRow(p)}<div class="mu" style="margin-top:4px">${esc([p.id_99acres&&'99: '+p.id_99acres,p.id_magicbricks&&'MB: '+p.id_magicbricks,p.id_housing&&'HS: '+p.id_housing].filter(Boolean).join(' · '))}</div>
+   <div class="acts">${links||'<span class="mu">Tour / video link abhi nahi jode · Edit se jodo</span>'}</div>
+   <div class="acts"><button class="g" onclick="ownerReport('${esc(p.id)}')">📤 Owner ko report bhejo</button></div></div>
+  <div class="grid"><div class="card stat"><div class="mu">Total leads</div><b>${l.length}</b></div><div class="card stat"><div class="mu">Pending</div><b>${l.filter(b=>PEND.includes(b.status)).length}</b></div><div class="card stat"><div class="mu">Site visits</div><b>${(sc['Site Visit Scheduled']||0)+(sc['Site Visit Done']||0)}</b></div><div class="card stat"><div class="mu">Portal</div><div style="font-size:13px;margin-top:4px">${Object.entries(src).map(([k,v])=>esc(k)+' '+v).join(' · ')||'-'}</div></div></div>
+  <div class="sec">Buyer leads (${l.length})</div>
+  ${l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>Abhi koi buyer lead nahi</b></div>'}`;
+}
+function propForm(p){
+  const isNew=!p.id;const v=k=>esc(p[k]==null?'':p[k]);
+  const f=(k,lab,t)=>`<div><label>${lab}</label><input id="pf_${k}" ${t?`type="${t}"`:''} value="${v(k)}"></div>`;
+  return `<button onclick="editP=null;newFromLead=null;render()" style="margin-bottom:10px">← Cancel</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">${isNew?'➕ Nayi Property':'✏️ '+esc(p.id)}</div>
+  ${newFromLead?`<div class="mu">Owner lead se: ${esc(newFromLead.name||'')} · ${esc(newFromLead.phone||'')}</div>`:''}
+  <div class="form">
+  <div class="f2"><div><label>Property ID</label><input id="pf_id" value="${isNew?nextId():v('id')}" ${isNew?'':'disabled'}></div><div><label>Status</label><select id="pf_status">${['Available - Sale','Available - Rent','On Hold','Sold','Rented'].map(s=>`<option ${p.status==s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+  <div class="f2">${f('owner_name','Owner name')}${f('owner_phone','Owner mobile')}</div>
+  ${f('project','Property / Project name')}
+  <div class="f2">${f('bhk','BHK')}${f('ptype','Type (Flat / Villa / Shop)')}</div>
+  ${f('address','Address')}
+  <div class="f2">${f('locality','Area / Locality')}${f('city','City')}</div>
+  <div class="f2">${f('sqft','Area (sqft)','number')}${f('price','Expected price (₹, poora number)','number')}</div>
+  <div class="f2">${f('id_99acres','99acres ID')}${f('id_magicbricks','Magicbricks ID')}</div>
+  <div class="f2">${f('id_housing','Housing ID')}${f('date_added','Date added','date')}</div>
+  <div class="f2">${f('tour_url','Virtual tour link')}${f('video_url','YouTube video link')}</div>
+  <div class="f2">${f('photos_url','Photos link')}${f('reel_url','Reel link')}</div>
+  <div><label>Remarks</label><textarea id="pf_remarks" rows="3">${v('remarks')}</textarea></div>
+  <div id="pf_err"></div>
+  <button class="p" onclick="saveProp(${isNew})">💾 Save</button></div></div>`;
+}
+async function saveProp(isNew){
+  const K=['owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
+  const row={};K.forEach(k=>{const e=$('#pf_'+k);if(e){const x=e.value.trim();row[k]=x===''?null:x}});
+  ['sqft','price'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
+  const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
+  if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID aur project name zaroori hai.</div>';return}
+  if(isNew){
+    if(P(id)){$('#pf_err').innerHTML=`<div class="warn">${esc(id)} pehle se hai. Duplicate property nahi bana sakte.</div>`;return}
+    const ph=ph10(row.owner_phone),pj=(row.project||'').toLowerCase();
+    const same=PR.find(p=>(ph&&ph10(p.owner_phone)==ph&&(p.project||'').toLowerCase()==pj));
+    if(same&&!dupOk){dupOk=true;$('#pf_err').innerHTML=`<div class="warn">Isi owner aur project ki property ${esc(same.id)} pehle se hai. Phir bhi banani ho to Save dobara dabao.</div>`;return}
+    row.id=id;if(newFromLead)row.owner_lead_id=String(newFromLead.id);
+    const {error}=await sb.from('properties').insert(row);if(error)return toast(error.message,1);
+  }else{const {error}=await sb.from('properties').update(row).eq('id',id);if(error)return toast(error.message,1)}
+  toast('Property saved ✅');editP=null;newFromLead=null;dupOk=false;openP=id;tab='props';await reload(true);
+}
+
+/* ---------- owner report (WhatsApp, buyer numbers masked) ---------- */
+function ownerReport(id){
+  const p=P(id),l=leadsOf(id),sc=countBy(l,'status'),src=countBy(l,'source');
+  const wk=new Date(Date.now()-7*864e5).toISOString().slice(0,10),w=l.filter(b=>String(b.lead_date)>=wk).length;
+  const recent=l.slice().sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).slice(0,8);
+  const txt=`*Easy Deals - Property Report*
+${p.project} (${p.id})
+Date: ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
+
+Namaste ${p.owner_name||''} ji,
+Aapki property par ab tak *${l.length} buyer enquiries* aayi hain${w?` (pichhle 7 din mein ${w})`:''}.
+
+*Portal-wise:*
+${Object.entries(src).map(([k,v])=>`• ${k}: ${v}`).join('\n')||'• -'}
+
+*Status:*
+${BST.filter(s=>sc[s]).map(s=>`• ${s}: ${sc[s]}`).join('\n')||'• -'}
+
+*Recent enquiries:*
+${recent.map(b=>`• ${dshort(b.lead_date)} - ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)}) - ${b.source||''}`).join('\n')||'• -'}
+${[p.tour_url&&'Tour: '+p.tour_url,p.video_url&&'Video: '+p.video_url].filter(Boolean).join('\n')}
+Dhanyavaad,
+Team Easy Deals`;
+  const ow=ph10(p.owner_phone);
+  $('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Wapas</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Owner report · ${esc(p.id)}</div><div class="mu">Buyer ke poore number aur email report mein nahi jaate.</div>
+  <textarea id="rtx" rows="18" style="margin-top:10px;font-size:13.5px">${esc(txt)}</textarea>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#rtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" target="_blank" href="#" onclick="this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#rtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;
+}
+
+/* ---------- buyers ---------- */
+function bCard(b,rp){
+  const p=P(b.property_id),ph=ph10(b.buyer_phone),rep=rp[ph+'|'+(b.property_id||'')]>1,o=openB==b.id,late=b.next_fu&&b.next_fu<today()&&PEND.includes(b.status);
+  const waTxt=`Namaste ${b.buyer_name||''}, Easy Deals se baat kar rahe hain. Aapne ${p?p.project+', '+(p.locality||''):'property'} ke liye enquiry ki thi.`+(p&&p.tour_url?`\nVirtual tour: ${p.tour_url}`:'')+(p&&p.video_url?`\nVideo: ${p.video_url}`:'');
+  return `<div class="card lc"><div onclick="openB=${o?'null':b.id};render();${o?'':'loadHist('+b.id+')'}" style="cursor:pointer">
+   <div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
+   <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Unassigned</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
+   <div>${pill(b.status||'New')}${rep?'<span class="pill" style="background:#fde4e4;color:#9b1c1c">Repeat - review</span>':''}${/not a buyer/i.test(b.remarks||'')?'<span class="pill" style="background:#f1e6dc;color:#7a4a1f">Not a buyer</span>':''}</div>
+   ${b.next_fu?`<div class="fol ${late?'late':b.next_fu==today()?'tod':''}">🔁 Next follow-up: ${dshort(b.next_fu)}</div>`:''}${b.visit_at?`<div class="fol">📅 Visit: ${dtime(b.visit_at)}</div>`:''}
+   ${b.requirement?`<div class="mu" style="margin-top:4px">${esc(b.requirement)}</div>`:''}</div>
+   <div class="acts">${ph?`<a class="btn cl" href="tel:${ph}">📞 ${ph}</a><a class="btn wi" target="_blank" href="https://wa.me/91${ph}?text=${encodeURIComponent(waTxt)}">WhatsApp${p&&p.tour_url?' + tour':''}</a>`:''}</div>
+   ${o?bForm(b):''}</div>`;
+}
+function bForm(b){
+  return `<div class="form"><div class="f2"><div><label>Status</label><select id="bs_st">${BST.map(s=>`<option ${b.status==s?'selected':''}>${s}</option>`).join('')}</select></div><div><label>Next follow-up</label><input id="bs_nf" type="date" value="${esc(b.next_fu||'')}"></div></div>
+  <div class="f2"><div><label>Site visit (date-time)</label><input id="bs_va" type="datetime-local" value="${b.visit_at?new Date(new Date(b.visit_at).getTime()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16):''}"></div><div><label>Property</label><select id="bs_p"><option value="">Unassigned</option>${PR.map(p=>`<option value="${esc(p.id)}" ${b.property_id==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div></div>
+  <div><label>Note (kya baat hui)</label><textarea id="bs_note" rows="2" placeholder="Jaise: weekend visit chahiye, budget 90 L"></textarea></div>
+  <button class="p" onclick="saveB(${b.id})">💾 Save</button>
+  <div class="mu" style="margin-top:6px">Remarks: ${esc(b.remarks||'-')} ${b.listing_id?'· Listing '+esc(b.listing_id):''}</div>
+  <div id="hist_${b.id}">${histHtml(b.id)}</div></div>`;
+}
+const histHtml=id=>hist[id]?(hist[id].length?'<div class="sec">History</div>'+hist[id].map(h=>`<div class="hist"><b>${esc(h.status||'')}</b> <span class="mu">${dtime(h.at)}</span><br>${esc(h.note||'')}</div>`).join(''):'<div class="mu">Abhi koi history nahi.</div>'):'<div class="mu">History load ho rahi hai…</div>';
+async function loadHist(id){const {data}=await sb.from('buyer_history').select('*').eq('buyer_id',id).order('at',{ascending:false});hist[id]=data||[];const e=$('#hist_'+id);if(e)e.innerHTML=histHtml(id)}
+async function saveB(id){
+  const b=BL.find(x=>x.id==id),st=$('#bs_st').value,nf=$('#bs_nf').value||null,va=$('#bs_va').value,pid=$('#bs_p').value||null,note=$('#bs_note').value.trim();
+  const upd={status:st,next_fu:nf,visit_at:va?new Date(va).toISOString():null,property_id:pid};
+  if(note||st!=b.status)upd.last_fu=today();
+  const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
+  if(note||st!=b.status){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+b.status+' → '+st)})}
+  Object.assign(b,upd);delete hist[id];openB=null;toast('Saved ✅');render();
+}
+function filtB(list){
+  if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(b=>[b.buyer_name,b.code,b.requirement,b.remarks].join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(b.buyer_phone).includes(d)))}
+  if(fSt)list=list.filter(b=>b.status==fSt);if(fSrc)list=list.filter(b=>b.source==fSrc);if(fP)list=list.filter(b=>b.property_id==fP);
+  return list;
+}
+VIEW.buyers=()=>{
+  if(addB)return addBForm();
+  const rp=repeats(),list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id),show=list.slice(0,60);
+  return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ Naya buyer lead</button></div>
+  <input placeholder="Search: naam, number, L-ID" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},400)">
+  <div class="f2" style="margin:8px 0"><select onchange="fSt=this.value;render()"><option value="">Sab status</option>${BST.map(s=>`<option ${fSt==s?'selected':''}>${s}</option>`).join('')}</select><select onchange="fSrc=this.value;render()"><option value="">Sab portal</option>${SRC.map(s=>`<option ${fSrc==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <select onchange="fP=this.value;render()" style="margin-bottom:10px"><option value="">Sab properties</option>${PR.map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select>
+  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>60?' · pehli 60 dikh rahi hain, search se dhundo':''}</div>
+  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>Koi lead nahi mili</b></div>'}`;
+};
+function addBForm(){
+  return `<button onclick="addB=false;dupOk=false;render()" style="margin-bottom:10px">← Cancel</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">➕ Naya buyer lead</div><div class="form">
+  <div class="f2"><div><label>Buyer name</label><input id="ab_n"></div><div><label>Mobile</label><input id="ab_m" type="tel" inputmode="numeric"></div></div>
+  <div><label>Property</label><select id="ab_p"><option value="">Unassigned (baad mein jodo)</option>${PR.filter(p=>!isSold(p)).map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>
+  <div class="f2"><div><label>Portal</label><select id="ab_s">${SRC.map(s=>`<option>${s}</option>`).join('')}</select></div><div><label>Lead date</label><input id="ab_d" type="date" value="${today()}"></div></div>
+  <div><label>Requirement</label><input id="ab_r" placeholder="2 BHK, budget 90 L"></div>
+  <div><label>Remarks</label><textarea id="ab_x" rows="2"></textarea></div>
+  <div id="ab_err"></div><button class="p" onclick="saveNewB()">💾 Save</button></div></div>`;
+}
+async function saveNewB(){
+  const ph=ph10($('#ab_m').value),pid=$('#ab_p').value||null;
+  if(ph.length!=10){$('#ab_err').innerHTML='<div class="warn">10 digit mobile number daalo.</div>';return}
+  const ex=BL.filter(b=>ph10(b.buyer_phone)==ph);
+  const same=ex.find(b=>(b.property_id||null)==pid);
+  if(same&&!dupOk){dupOk=true;$('#ab_err').innerHTML=`<div class="warn">Yeh buyer is property ke liye pehle se hai (${esc(same.code||'')} · ${esc(same.status||'')}). Phir bhi add karna ho to Save dobara dabao, "Repeat - review" mark lagega.</div>`;return}
+  const row={code:nextCode(),lead_date:$('#ab_d').value||today(),property_id:pid,source:$('#ab_s').value,buyer_name:$('#ab_n').value.trim()||null,buyer_phone:ph,requirement:$('#ab_r').value.trim()||null,remarks:$('#ab_x').value.trim()||null,status:'New'};
+  const {error}=await sb.from('buyer_leads').insert(row);if(error)return toast(error.message,1);
+  toast('Lead added ✅'+(ex.length&&!same?' · yeh buyer doosri property mein bhi hai':''));addB=false;dupOk=false;await reload(true);
+}
+
+/* ---------- follow-up ---------- */
+const fuList=()=>{const t=today();return BL.filter(b=>PEND.includes(b.status)&&b.next_fu&&b.next_fu<=t)};
+VIEW.fu=()=>{
+  const rp=repeats(),t=today(),due=fuList().sort((a,b)=>String(a.next_fu).localeCompare(String(b.next_fu)));
+  const vis=BL.filter(b=>b.status=='Site Visit Scheduled'&&b.visit_at&&b.visit_at.slice(0,10)>=t).sort((a,b)=>String(a.visit_at).localeCompare(String(b.visit_at)));
+  const fresh=BL.filter(b=>b.status=='New'&&!b.next_fu&&b.property_id&&!isSold(P(b.property_id)||{})&&!/not a buyer/i.test(b.remarks||'')).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).slice(0,15);
+  return `<div class="sec">📅 Aane wali site visits (${vis.length})</div>${vis.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">Koi visit fixed nahi.</div>'}
+  <div class="sec">🔁 Aaj / overdue follow-up (${due.length})</div>${due.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">Aaj ka koi follow-up baaki nahi 🎉</div>'}
+  <div class="sec">🆕 Nayi leads jinse abhi baat nahi hui (latest 15)</div>${fresh.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">Sab leads se baat ho chuki.</div>'}`;
+};
+
+/* ---------- unassigned ---------- */
+VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
+
+/* ---------- deal closed owners ---------- */
+VIEW.deal=()=>{
+  if(editP)return propForm(editP);
+  const linked=o=>PR.find(p=>String(p.owner_lead_id||'')==String(o.id)||(ph10(o.phone)&&ph10(p.owner_phone)==ph10(o.phone)));
+  const rows=OW.map(o=>({o,p:linked(o)})),todo=rows.filter(r=>!r.p),done=rows.filter(r=>r.p);
+  const card=({o,p})=>`<div class="card lc"><div class="row"><div class="nm">${esc(o.name||'Owner')}</div>${p?`<span class="pill" style="background:#cdeed6;color:#0f5a28">${esc(p.id)}</span>`:''}</div>
+   <div class="mu">${esc(o.phone||'')} · ${esc([o.property,o.bhk,o.locality].filter(Boolean).join(' · '))}${o.price?' · '+esc(o.price):''}</div>
+   <div class="acts">${p?`<button onclick="tab='props';openP='${esc(p.id)}';render()">🏢 Property kholo (${leadsOf(p.id).length} leads)</button>`:`<button class="p" onclick='mkFromLead(${JSON.stringify(String(o.id))})'>➕ Property banao</button>`}</div></div>`;
+  return `<div class="mu" style="margin:0 2px 10px">Team ke CRM mein jo owners "Deal Closed" hain, woh yahan dikhte hain. Property banane ke baad unki buyer leads jodi ja sakti hain.</div>
+  <div class="sec">Property banana baaki (${todo.length})</div>${todo.map(card).join('')||'<div class="mu" style="margin:0 2px">Sab deal closed owners ki property ban chuki ✅</div>'}
+  <div class="sec">Property ban chuki (${done.length})</div>${done.map(card).join('')}`;
+};
+function mkFromLead(id){
+  const o=OW.find(x=>String(x.id)==id);if(!o)return;newFromLead=o;
+  const pr=o.price_l?Math.round(+o.price_l*1e5):(+String(o.price||'').replace(/[^\d.]/g,'')||null);
+  editP={owner_name:o.name||'',owner_phone:o.phone||'',project:o.property||'',bhk:o.bhk||'',locality:o.locality||'',address:o.address||'',sqft:o.sqft||'',price:pr&&pr>1e5?pr:'',ptype:'Flat',city:'Pune',status:'Available - Sale',date_added:today(),remarks:o.remarks||''};
+  render();window.scrollTo(0,0);
+}
+
+/* ---------- report ---------- */
+let rSold=false;
+VIEW.rep=()=>{
+  const ps=PR.filter(p=>rSold||!isSold(p)).map(p=>{const l=leadsOf(p.id),c=countBy(l,'status');return {p,t:l.length,c,pen:l.filter(b=>PEND.includes(b.status)).length}}).sort((a,b)=>b.t-a.t);
+  const src=countBy(BL.filter(b=>rSold||!isSold(P(b.property_id)||{})),'source');
+  const H=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Deal Closed'],AB={'New':'New','Contacted':'Cont.','Follow-up':'F-up','Site Visit Scheduled':'Visit sch.','Site Visit Done':'Visit done','Deal Closed':'Closed'};
+  return `<div class="chips"><button class="${rSold?'':'on'}" onclick="rSold=false;render()">Sold ke bina</button><button class="${rSold?'on':''}" onclick="rSold=true;render()">Sold ke saath</button></div>
+  <div class="card"><b>Portal-wise leads</b>${Object.entries(src).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="lr"><span>${esc(k||'-')}</span><b>${v}</b></div>`).join('')}</div>
+  <div class="card"><b>Property-wise report</b><div class="tw"><table class="tbl"><tr><th>Property</th><th>Total</th>${H.map(h=>`<th>${AB[h]}</th>`).join('')}<th>Pending</th></tr>
+  ${ps.map(r=>`<tr onclick="tab='props';openP='${esc(r.p.id)}';render()" style="cursor:pointer"><td><b>${esc(r.p.id)}</b><br><span class="mu">${esc(r.p.project||'')}</span></td><td><b>${r.t}</b></td>${H.map(h=>`<td>${r.c[h]||''}</td>`).join('')}<td class="${r.pen?'wr':''}"><b>${r.pen||''}</b></td></tr>`).join('')}</table></div></div>`;
+};
+
+/* ---------- backup ---------- */
+function csv(rows){if(!rows.length)return '';const k=Object.keys(rows[0]);return [k.join(',')].concat(rows.map(r=>k.map(x=>{const v=r[x]==null?'':String(r[x]);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(','))).join('\n')}
+function dl(name,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+txt],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function backup(){const d=today();dl(`easydeals-properties-${d}.csv`,csv(PR));setTimeout(()=>dl(`easydeals-buyer-leads-${d}.csv`,csv(BL)),600);toast('Backup download ho raha hai ✅')}
+
+sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLogin());
+</script>
+</body></html>
