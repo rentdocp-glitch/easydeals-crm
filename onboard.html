@@ -232,6 +232,7 @@ body{padding-bottom:24px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SB_URL='https://sfvpslsexobukgerkixi.supabase.co',SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';
+const DRIVE_URL=''; // Google Drive upload (Apps Script) - setup baaki
 const sb=window.SB_MOCK||supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -344,6 +345,7 @@ function render(){
   s.f.forEach(x=>{
     if(x.row)h+=`<div class="g2">${x.row.map(y=>`<div>${fieldHtml(y)}</div>`).join('')}</div>`;
     else if(x.row3)h+=`<div class="g3">${x.row3.map(y=>`<div>${fieldHtml(y)}</div>`).join('')}</div>`;
+    else if(x.photos&&!DRIVE_URL&&D.photo_mode=='Abhi camera se')h+=`<div class="err">Photos ab Google Drive mein jayengi. Uska setup abhi baaki hai, tab tak <b>"Baad mein professional shoot"</b> chuno.</div>`;
     else if(x.photos)h+=D.photo_mode=='Abhi camera se'?`<div class="q">Photos (kam se kam 5) <em>*</em></div><input type="file" accept="image/*" multiple onchange="addPhotos(this.files)"><div class="ph">${PH.map((p,i)=>`<div><img src="${p.url}"><b onclick="PH.splice(${i},1);render()">✕</b></div>`).join('')}</div><div class="mu">${PH.length} photo chune · har photo chhoti karke save hogi</div>`:'';
     else h+=fieldHtml(x);
   });
@@ -354,7 +356,8 @@ function pick(k,o){const f=FIELDS.find(x=>x.k==k);if(f.multi){const a=D[k]||[];D
 function check(i){
   const miss=[];FIELDS.filter(f=>f.step==i).forEach(f=>{const req=f.req||(f.reqIf&&f.reqIf(D));const v=D[f.k];if(req&&(v==null||String(v).trim()==''||(Array.isArray(v)&&!v.length)))miss.push(f.lab)});
   if(i==0){if(D.owner_phone&&ph10(D.owner_phone).length!=10)miss.push('Mobile 10 digit ka hona chahiye');if(D.pincode&&!/^\d{6}$/.test(String(D.pincode).trim()))miss.push('Pin code 6 digit ka hona chahiye')}
-  if(i==3&&D.photo_mode=='Abhi camera se'&&PH.length<5)miss.push('Kam se kam 5 photos ('+PH.length+' chuni)');
+  if(i==3&&D.photo_mode=='Abhi camera se'&&!DRIVE_URL)miss.push('Photos ka Drive setup baaki hai: "Baad mein professional shoot" chuno');
+  else if(i==3&&D.photo_mode=='Abhi camera se'&&PH.length<5)miss.push('Kam se kam 5 photos ('+PH.length+' chuni)');
   return miss;
 }
 function go(d){if(d>0){const m=check(step);if(m.length){$('#er').innerHTML=`<div class="err"><b>Yeh bharna baaki hai:</b><br>• ${m.map(esc).join('<br>• ')}</div>`;$('#er').scrollIntoView({behavior:'smooth'});return}}step=Math.max(0,Math.min(3,step+d));saveDraft();render();scrollTo(0,0)}
@@ -372,7 +375,7 @@ async function submit(){
   saving=true;const btn=document.querySelector('.bar .p');btn.disabled=true;
   try{
     const paths=[];
-    for(let i=0;i<PH.length;i++){btn.textContent=`Photo ${i+1}/${PH.length} upload…`;const p=`pending/${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`;const {error}=await sb.storage.from('property-photos').upload(p,PH[i].blob,{contentType:'image/jpeg'});if(error)throw error;paths.push(p)}
+    /* photos Supabase mein nahi jaati; Google Drive upload setup ke baad yahan judega */
     btn.textContent='Save ho raha hai…';
     const p={};MAIN.forEach(k=>{if(D[k]!=null&&D[k]!=='')p[k]=D[k]});
     p.owner_phone=ph10(D.owner_phone);if(D.owner_phone2)p.owner_phone2=ph10(D.owner_phone2);
