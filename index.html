@@ -309,11 +309,11 @@ async function histMap(ids){
   }catch(e){}
   const m={};(data||[]).forEach(c=>(m[c.lead_id]=m[c.lead_id]||[]).push(c));return m;
 }
-const PHC={},dIcon={out:'↗️ Outgoing',in:'↙️ Incoming',missed:'❌ Missed',rejected:'🚫 Rejected'};
+const PHC={},dIcon={out:'↗️ Outgoing',in:'↙️ Incoming',missed:'❌ Missed',rejected:'🚫 Rejected'},dCol={out:'#1d4ed8',in:'#15803d',missed:'#dc2626',rejected:'#ea580c'};
 const tmS=x=>new Date(x).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
 function phoneLine(l){
   const a=PHC[l.id];if(!a||!a.length)return '';
-  return '<div class="hs cp"><div class="mu"><b>📱 Phone call log</b></div>'+a.slice(0,3).map(c=>`<div class="mu">${dIcon[c.direction]||esc(c.direction)} · ${c.duration_sec?fmt(c.duration_sec):'not connected'} · ${esc(P[c.by_id]?.name||'?')} · ${dshort(c.started_at)}, ${tmS(c.started_at)}</div>`).join('')+(a.length>3?`<div class="mu">+${a.length-3} more calls</div>`:'')+'</div>';
+  return '<div class="hs cp"><div class="mu"><b>📱 Phone call log</b></div>'+a.slice(0,3).map(c=>`<div class="mu"><b style="color:${dCol[c.direction]||'inherit'}">${dIcon[c.direction]||esc(c.direction)}</b> · ${c.duration_sec?'<b style="color:#15803d">'+fmt(c.duration_sec)+'</b>':'<span style="color:#dc2626">not connected</span>'} · ${esc(P[c.by_id]?.name||'?')} · ${dshort(c.started_at)}, ${tmS(c.started_at)}</div>`).join('')+(a.length>3?`<div class="mu">+${a.length-3} more calls</div>`:'')+'</div>';
 }
 const hist=cs=>cs&&cs.length?'<div class="mu">Call history: '+cs.slice(0,5).map(c=>esc(P[c.by_id]?.name||'?')+' – '+fmt(c.duration_sec)+' ('+dshort(c.created_at)+')').join(' • ')+(cs.length>5?' • +'+(cs.length-5)+' more':'')+'</div>':'<div class="mu">No calls on this lead yet</div>';
 const fp=l=>{if(l.price_l!=null&&l.price_l!==''){const v=+l.price_l;return v>=100?(+(v/100).toFixed(2))+' Cr':(+v.toFixed(2))+' L'}return l.price||''};
