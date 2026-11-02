@@ -10,7 +10,7 @@ android {
         applicationId 'com.easydeals.crm'
         minSdk 24
         targetSdk 34
-        versionCode (System.getenv('RUN_NO') ?: '1').toInteger()
+        versionCode Integer.parseInt(System.getenv('RUN_NO') ?: '1')
         versionName '1.0'
     }
     signingConfigs {
