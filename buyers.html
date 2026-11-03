@@ -526,7 +526,7 @@ function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<d
   ${!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel ya Virtual tour link abhi nahi juda. Property Edit mein jodo, message aur achha banega.</div>':''}</div>`;scrollTo(0,0)}
 
 /* ---------- owner weekly report (WhatsApp, buyer numbers masked) ---------- */
-const ORW=['Listing refreshed on portals','New Reel posted','New photos added','Virtual tour added','Featured / premium boost'];
+const ORW=['Online listings refreshed','New Reel posted on social media','New photos added','Virtual tour added','Premium boost / promoted ad','Shared with our buyer network'];
 let OR=null;
 function orLoad(id){let x={};try{x=JSON.parse(localStorage.getItem('orp_'+id)||'{}')}catch(e){}return Object.assign({days:7,work:[],fb:'',mkt:'',plan:'',ask:'',list:true},x)}
 function orSave(){try{localStorage.setItem('orp_'+OR.p.id,JSON.stringify(OR.in))}catch(e){}}
@@ -548,22 +548,21 @@ function orStats(){
 }
 function orText(){
   const p=OR.p,I=OR.in,S=orStats(),f=d=>d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
-  const portals=[['99acres','id_99acres','99acres'],['Housing','id_housing','Housing.com'],['Magicbricks','id_magicbricks','Magicbricks']].map(([k,idk,nm])=>{const s=pStat(p,k,idk);return s[0]=='live'?`• ${nm} – Live${p[idk]?' (ID '+String(p[idk]).split(',')[0].trim()+')':''}`:''}).filter(Boolean);
   const L=[`*Easy Deals – Weekly Property Report*`,`${p.project||''} (${p.id})`,`${f(S.from)} – ${f(S.now)}`,'',`Dear ${p.owner_name||'Sir/Madam'},`,(I.days==7?`Here is this week's update on your property.`:`Here is the update on your property for the last ${I.days} days.`),''];
-  L.push(`📢 *Paid promotion by Easy Deals*`);
-  if(portals.length){L.push(`Your property is being promoted through our paid premium packages on:`);portals.forEach(x=>L.push(x))}else L.push(`Your property listings are being refreshed on the portals.`);
+  L.push(`📢 *Marketing by Easy Deals*`);
+  L.push(`Your property is actively promoted through Easy Deals' paid digital marketing – premium online listings, social media and our own buyer network.`);
   if(I.work.length)L.push(`Work done: ${I.work.join(', ')}.`);
   L.push('');L.push(I.days==7?`📊 *This week*`:`📊 *Last ${I.days} days*`);
-  L.push(`• New enquiries: ${S.nl.length}${S.nl.length?' ('+Object.entries(S.src).map(([k,v])=>k+' '+v).join(', ')+')':''}`);
+  L.push(`• New buyer enquiries generated: ${S.nl.length}`);
   if(S.fol)L.push(`• Buyers followed up: ${S.fol}`);
   if(S.wa)L.push(`• Property details shared on WhatsApp: ${S.wa}`);
   if(S.vd)L.push(`• Site visits done: ${S.vd}`);
-  if(I.list&&S.nl.length){L.push('');L.push(`*Recent enquiries*`);S.nl.slice().sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).filter((b,i,a)=>a.findIndex(x=>ph10(x.buyer_phone)==ph10(b.buyer_phone))==i).slice(0,5).forEach(b=>L.push(`• ${dshort(b.lead_date)} – ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)}) – ${b.source||''}`))}
+  if(I.list&&S.nl.length){L.push('');L.push(`*Recent enquiries*`);S.nl.slice().sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).filter((b,i,a)=>a.findIndex(x=>ph10(x.buyer_phone)==ph10(b.buyer_phone))==i).slice(0,5).forEach(b=>L.push(`• ${dshort(b.lead_date)} – ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)})`))}
   if(I.fb.trim()){L.push('');L.push(`💬 *Buyer feedback*`);L.push(I.fb.trim())}
   if(I.mkt.trim()){L.push('');L.push(`📈 *Market update*`);L.push(I.mkt.trim())}
   if(S.up.length||I.plan.trim()){L.push('');L.push(`🗓 *Next week*`);if(S.up.length)L.push(`${S.up.length} site visit${S.up.length>1?'s':''} scheduled: ${S.up.slice(0,4).map(b=>new Date(b.visit_at).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})).join('; ')}`);if(I.plan.trim())L.push(I.plan.trim())}
   if(I.ask.trim()){L.push('');L.push(`🙏 *We need from you*`);L.push(I.ask.trim())}
-  L.push('');L.push(`📌 *Total so far:* ${S.l.length} enquiries · ${S.tv} site visit${S.tv==1?'':'s'}`);
+  L.push('');L.push(`📌 *Total so far:* ${S.l.length} buyer enquiries generated · ${S.tv} site visit${S.tv==1?'':'s'}`);
   if(p.service_till)L.push(`Your service is active till ${new Date(p.service_till).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}.`);
   L.push('');L.push(`We will keep you updated every week.`);L.push('');L.push(`Regards,`);L.push(`Team Easy Deals`);
   return L.join('\n');
@@ -585,7 +584,7 @@ function orShow(){
   <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" style="width:auto;min-height:0" ${I.list?'checked':''} onchange="OR.in.list=this.checked;orUpd()"> Recent enquiries list (number chhupe hue)</label></div>
   <div class="sec">Report (bhejne se pehle yahan badal sakte ho)</div>
   <textarea id="rtx" rows="22" style="font-size:13.5px">${esc(orText())}</textarea>
-  <div class="mu">Calls, WhatsApp aur visit ki ginti CRM ki History se apne aap aati hai. Buyer ke poore number report mein nahi jaate.</div>
+  <div class="mu">Report mein kisi portal ka naam ya Listing ID nahi jaata. Buyer ke poore number bhi nahi jaate.</div>
   <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#rtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="orSent();this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#rtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
 function orSent(){const p=OR.p,d=Object.assign({},p.details||{},{last_report_at:new Date().toISOString().slice(0,10)});p.details=d;sb.from('properties').update({details:d}).eq('id',p.id).then(()=>{})}
 
