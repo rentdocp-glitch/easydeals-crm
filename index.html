@@ -521,7 +521,7 @@ const msLabel=k=>{const a=MSX[k]();return a.length==0?'All '+MSN[k]:a.length==1?
 function msTog(k,v,on){const a=MSX[k](),i=a.indexOf(v);if(on&&i<0)a.push(v);if(!on&&i>=0)a.splice(i,1);const b=document.getElementById('msb_'+k);if(b)b.textContent=msLabel(k)+' ▾'}
 function msClr(k){MSX[k]().length=0;render()}
 function msBox(k,items){const sel=MSX[k]();return `<div class="ms"><button type="button" id="msb_${k}" class="msb" onclick="msOpen=msOpen=='${k}'?'':'${k}';render()">${esc(msLabel(k))} ▾</button>${msOpen==k?`<div class="msp">${items.map(([v,l])=>`<label><input type="checkbox" value="${esc(v)}" ${sel.includes(v)?'checked':''} onchange="msTog('${k}',this.value,this.checked)"> ${esc(l)}</label>`).join('')||'<div class="mu" style="padding:8px">Nothing to pick yet</div>'}<div class="msa"><button type="button" onclick="msClr('${k}')">Clear</button><button type="button" class="p" onclick="msOpen='';render()">Apply</button></div></div>`:''}</div>`}
-const filterBar=()=>!showF?'':`<div class="f2" style="margin-bottom:8px">${msBox('loc',FILT.loc.map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div><div style="margin-bottom:10px">${msBox('st',Object.entries(ST))}</div>`;
+const filterBar=()=>!showF?'':`<div class="f2" style="margin-bottom:8px;position:relative;z-index:42">${msBox('loc',FILT.loc.map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div><div style="margin-bottom:10px;position:relative;z-index:41">${msBox('st',Object.entries(ST))}</div>`;
 const applyF=qy=>{if(fLoc.length)qy=qy.in('locality',fLoc);if(fBhk.length)qy=qy.in('bhk',fBhk);if(fSt.length)qy=qy.in('status',fSt);return qy};
 const srch=qq=>`name.ilike.%${qq}%,phone.ilike.%${qq}%,property.ilike.%${qq}%,locality.ilike.%${qq}%`;
 
