@@ -971,6 +971,6 @@ function bellGo(){
 }
 
 /* ---------- start ---------- */
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator){const hadSW=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW&&!window.__swr){window.__swr=1;location.reload()}})}
 sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLogin());
 </script></body></html>
