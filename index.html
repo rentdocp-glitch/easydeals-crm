@@ -285,7 +285,7 @@ const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
-  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!(tab=='xfer'&&ME.role=='admin')&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!(tab=='xfer'&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
@@ -474,8 +474,8 @@ async function doDelete(id){
 const empty=m=>`<div class="empty"><div class="ei">📭</div><b>${m}</b><span>Nothing to show yet</span></div>`;
 const skel=n=>Array.from({length:n||3},()=>'<div class="skc"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join('');
 const fCount=()=>(fZn.length?1:0)+(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0);
-const searchBar=(ph,withF)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" autocomplete="off" onkeydown="if(event.key=='Enter')doSearch()" ${withF?'oninput="sugQ(this.value)"':''} style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div>${withF?'<div id="sqs"></div>':''}</div>`;
-function doSearch(){q=$('#sq').value;openId=null;openK=null;render()}
+const searchBar=(ph,withF,sg)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" autocomplete="off" onkeydown="if(event.key=='Enter')doSearch()" ${withF||sg?'oninput="sugQ(this.value)"':''} style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div>${withF||sg?'<div id="sqs"></div>':''}</div>`;
+function doSearch(){q=$('#sq').value;openId=null;openK=null;if(ME.role=='fe'&&tab!='fs'){if(!q.trim())return;tab='fs'}render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
 const setSeen=a=>{try{localStorage.setItem('seen_'+ME.id,JSON.stringify(a))}catch(e){}};
 async function dealBanner(){
@@ -961,7 +961,7 @@ function sugQ(v){clearTimeout(SUG.t);const box=$('#sqs');const t=String(v||'').t
   SUG.t=setTimeout(()=>sugRun(t),300)}
 async function sugRun(t){
   const id=++SUG.n,d=t.replace(/\D/g,''),w=t.replace(/[,()%]/g,' ').trim();
-  let qy=sb.from('leads').select('id,name,phone,property,locality,status,tc_id,fe_id').limit(8);
+  let qy=sb.from('leads').select('id,name,phone,property,locality,status,tc_id,fe_id').limit(8);if(ME.role=='fe')qy=qy.eq('fe_id',ME.id);
   qy=d.length>=4&&d.length>=w.replace(/\s/g,'').length-2?qy.ilike('phone','%'+d+'%'):qy.or(`name.ilike.%${w}%,property.ilike.%${w}%`);
   const {data}=await qy;if(id!=SUG.n)return;const box=$('#sqs');if(!box||!$('#sq')||$('#sq').value.trim()!=t)return;
   const hl=(s,x)=>{s=String(s||'');if(!x)return esc(s);const i=s.toLowerCase().indexOf(x.toLowerCase());return i<0?esc(s):esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+x.length))+'</mark>'+esc(s.slice(i+x.length))};
@@ -1105,6 +1105,12 @@ const isoToday=()=>new Date().toLocaleDateString('en-CA');
 const shiftDate=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return x.toLocaleDateString('en-CA')};
 let mDate=null;
 function setMD(v){if(v){mDate=v;render()}}
+VIEW['fe:fs']=async()=>{
+  const qq=String(q||'').trim();
+  let data=[];if(qq){const d=qq.replace(/\D/g,'');let qy=sb.from('leads').select('*').eq('fe_id',ME.id).limit(50);qy=d.length>=4?qy.ilike('phone','%'+d+'%'):qy.or(srch(qq.replace(/[,()%]/g,' ')));const r=await qy;if(r.error)throw r.error;data=r.data||[]}
+  const hs=await histMap(data.map(l=>l.id));
+  return `<button onclick="q='';go('today')" style="margin-bottom:10px">← Today</button>`+searchBar('Owner ka naam ya number',0,1)+`<div class="mu" style="margin:0 2px 8px">${data.length} result · sirf aapki leads</div>`+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Kuch nahi mila'));
+};
 VIEW['fe:today']=async()=>{
   const t=isoToday(),d=mDate||t;
   const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).eq('meeting_date',d).order('meeting_time',{ascending:true,nullsFirst:false});
@@ -1114,7 +1120,7 @@ VIEW['fe:today']=async()=>{
   const hs=await histMap([...data,...late].map(l=>l.id));
   const dn=['meeting_done','online_meet_done','deal_closed'],done=data.filter(l=>dn.includes(l.status)).length;
   const lab=d==t?'Today':d==shiftDate(t,1)?'Tomorrow':d==shiftDate(t,-1)?'Yesterday':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
-  return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div></div>
+  return searchBar('Owner ka naam ya number',0,1)+`<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div></div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab=='Today'?'Meetings':lab,data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',data.length-done,'',data.length-done?'wr':'')}</div>`+
   (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l,hs[l.id]||[])).join(''):'')+
   (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No meetings on this date.'));
