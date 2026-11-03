@@ -198,6 +198,7 @@ a{color:var(--pr2)}
 @keyframes pop{0%{transform:scale(.4)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes shim{to{background-position:-200% 0}}
 #app>*{animation:rise .42s var(--ease) both}
+#app>*:has(.msp){position:relative;z-index:50}
 #app>*:nth-child(2){animation-delay:.04s}#app>*:nth-child(3){animation-delay:.08s}#app>*:nth-child(4){animation-delay:.12s}#app>*:nth-child(5){animation-delay:.15s}#app>*:nth-child(n+6){animation-delay:.18s}
 /* desktop */
 @media(min-width:900px){
@@ -375,7 +376,7 @@ async function submit(){
   saving=true;const btn=document.querySelector('.bar .p');btn.disabled=true;
   try{
     const paths=[];
-    /* photos Supabase mein nahi jaati; Google Drive upload setup ke baad yahan judega */
+    /* photos Supabase mein nahi jaati: save ke baad seedha Google Drive mein (driveUpload) */
     btn.textContent='Save ho raha hai…';
     const p={};MAIN.forEach(k=>{if(D[k]!=null&&D[k]!=='')p[k]=D[k]});
     p.owner_phone=ph10(D.owner_phone);if(D.owner_phone2)p.owner_phone2=ph10(D.owner_phone2);
@@ -384,9 +385,26 @@ async function submit(){
     const det={};FIELDS.filter(f=>!MAIN.includes(f.k)).forEach(f=>{const v=D[f.k];if(v!=null&&v!==''&&!(Array.isArray(v)&&!v.length))det[f.k]=v});
     det.filled_by=ME.name||'';det.filled_at=new Date().toISOString();p.details=det;
     const {data:id,error}=await sb.rpc('onboard_property',{p});if(error)throw error;
-    DONE={id,p};clearDraft();render();scrollTo(0,0);
+    DONE={id,p,ph:{total:PH.length,done:0,fail:0,folder:''}};clearDraft();render();scrollTo(0,0);if(PH.length&&DRIVE_URL)driveUpload();
   }catch(e){const m=String(e.message||e);toast(/duplicate/.test(m)?'Yeh property pehle se hai: '+m.replace(/.*duplicate:\s*/,''):'Save nahi hua: '+m,1);btn.disabled=false;btn.textContent='✅ Save karo'}
   saving=false;
+}
+
+/* ---------- photos -> Google Drive ---------- */
+const b64=blob=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(blob)});
+async function driveUpload(){
+  const st=DONE.ph;st.fail=0;
+  const {data:{session}}=await sb.auth.getSession();const token=session&&session.access_token;
+  const title=[DONE.p.project,DONE.p.owner_name].filter(Boolean).join(' - ');
+  for(let i=st.done;i<PH.length;i++){
+    try{
+      const res=await fetch(DRIVE_URL,{method:'POST',body:JSON.stringify({token,ed:DONE.id,title,name:`${DONE.id}-${String(i+1).padStart(2,'0')}.jpg`,mime:'image/jpeg',data:await b64(PH[i].blob)})});
+      const j=await res.json();if(!j.ok)throw new Error(j.error||'upload');st.done=i+1;st.folder=j.folder||st.folder;
+    }catch(e){st.fail++;st.err=String(e.message||e);break}
+    showDone();
+  }
+  if(st.done&&st.folder){try{await sb.rpc('ed_set_photos',{pid:DONE.id,folder:st.folder,n:st.done})}catch(e){}}
+  showDone();
 }
 
 /* ---------- after save ---------- */
@@ -415,6 +433,7 @@ function desc(p){const d=p.details||{};return [`${p.bhk} ${p.ptype=='Flat'?'apar
 function showDone(){
   const {id,p}=DONE;const ow=ph10(p.owner_phone);
   $('#app').innerHTML=`<div class="card" style="text-align:center;border:2px solid #15803d"><div style="font-size:42px">✅</div><div style="font-size:21px;font-weight:800">Property save ho gayi</div><div class="big" style="font-size:30px;font-weight:800;color:var(--pr)">${esc(id)}</div><div class="mu">${esc(p.owner_name)} · ${esc(p.project)} ${esc(p.flat_no||'')}</div></div>
+  ${DONE.ph&&DONE.ph.total?`<div class="card"><b>📷 Photos → Google Drive</b><div class="mu">${DONE.ph.done}/${DONE.ph.total} upload hui${DONE.ph.done<DONE.ph.total&&!DONE.ph.fail?' · chal raha hai… page band mat karna':''}</div>${DONE.ph.fail?`<div class="err">Kuch photos upload nahi hui (${esc(DONE.ph.err||'')}). Net check karke dobara try karo.</div><button class="p" onclick="driveUpload()">🔁 Dobara upload karo</button>`:''}${DONE.ph.done==DONE.ph.total?'<div class="ok">✅ Saari photos Drive mein '+esc(DONE.id)+' folder mein save</div>':''}</div>`:''}
   <div class="card"><b>1. Owner ko summary bhejo</b><div class="mu">WhatsApp khulega, message taiyaar hoga, aapko bas Send dabana hai.</div>
   <div class="acts"><a class="btn g" style="color:#fff" target="_blank" href="https://wa.me/91${ow}?text=${encodeURIComponent(summary(id,p))}">📲 WhatsApp ${esc(p.owner_name)}</a></div></div>
   <div class="card"><b>2. Portal par daalne ki details</b><div class="mu">Office mein portal ka form bharte waqt yahan se copy karo.</div><div class="acts"><a class="btn" href="?copy=${encodeURIComponent(id)}">📋 Portal copy screen</a></div></div>
