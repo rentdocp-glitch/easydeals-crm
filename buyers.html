@@ -402,6 +402,7 @@ function propForm(p){
   ${f('portal_status','Portal status (jaise: 99acres: Live | Housing: Expired | Magicbricks: Live)')}
   <div class="f2">${f('reel_url','📱 Instagram Reel link')}${f('tour_url','🎥 Virtual tour link')}</div>
   <div class="f2">${f('video_url','▶️ YouTube link (optional)')}${f('photos_url','🖼 Photos folder (sirf aapke liye)')}</div>
+  <div><label>📍 Google Maps location link (site visit message ke liye)</label><input id="pf_maps" value="${esc((p.details||{}).maps||'')}" placeholder="Maps mein property → Share → Copy link"></div>
   <div><label>Remarks</label><textarea id="pf_remarks" rows="3">${v('remarks')}</textarea></div>
   <div id="pf_err"></div>
   <button class="p" onclick="saveProp(${isNew})">💾 Save</button></div></div>`;
@@ -410,6 +411,7 @@ async function saveProp(isNew){
   const K=['portal_status','owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
   const row={};K.forEach(k=>{const e=$('#pf_'+k);if(e){const x=e.value.trim();row[k]=x===''?null:x}});
   ['sqft','price'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
+  {const m=($('#pf_maps')||{}).value;if(m!=null){const old=(!isNew&&editP&&editP.details)||{};row.details=Object.assign({},old,{maps:m.trim()||null})}}
   const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
   if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID aur project name zaroori hai.</div>';return}
   if(isNew){
@@ -448,6 +450,44 @@ function pitch(p,name){
   L.push('');L.push('Site visit ke liye apna convenient din aur time reply kar dijiye.');L.push('— Team Easy Deals');
   return L.join('\n');
 }
+/* ---------- WhatsApp templates (buyer lead) ---------- */
+const WT=[['details','🏡 Property details'],['noans','📵 Call nahi utha'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 Visit ke baad'],['similar','🏘 Aur options']];
+const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
+let waB=null,waK=null;
+const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/mahina':''}`};
+const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 '+p.landmark+' ke paas');return L};
+const pMedia=p=>[[p.reel_url,'📱 Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>x[0]&&String(x[0]).trim()).map(x=>x[1]+': '+x[0]);
+function similarProps(p,b){
+  const bhk=p&&p.bhk?String(p.bhk).match(/\d/):null,loc=p&&p.locality;
+  return PR.filter(x=>!isSold(x)&&(!p||x.id!=p.id)).map(x=>({x,s:(bhk&&String(x.bhk||'').includes(bhk[0])?2:0)+(loc&&x.locality==loc?1:0)+(x.reel_url||x.tour_url?0.5:0)})).sort((a,c)=>c.s-a.s).slice(0,3).map(o=>o.x);
+}
+function waText(k,b){
+  const p=P(b.property_id),nm=b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?' '+b.buyer_name.split(' ')[0]:'',hi=`Namaste${nm} 🙏`,sign='— Team Easy Deals';
+  const vt=b.visit_at?new Date(b.visit_at):null,vd=vt?vt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'}):'(date)',vh=vt?vt.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}):'(time)';
+  if(!p&&k!='noans'&&k!='similar')return `${hi}\nEasy Deals se baat kar rahe hain. Aapki property enquiry ke liye dhanyavaad. Aapko kis area aur budget mein property chahiye? Reply kar dijiye, matching options bhej denge.\n${sign}`;
+  if(k=='details')return pitch(p,nm.trim());
+  if(k=='noans')return `${hi}\nEasy Deals se message kar rahe hain. Aapne${b.source?' '+b.source+' par':''} ${p?'*'+pShort(p)+'*':'property'} ke liye enquiry ki thi. Aapko call kiya tha par baat nahi ho payi.\n\nAap kab free hain? Time bata dijiye, hum call kar lenge. Ya yahin "DETAILS" likh dijiye, poori jankari bhej denge.\n${sign}`;
+  if(k=='fu'){const m=pMedia(p);return `${hi}\n*${pShort(p)}* abhi bhi available hai.\n${m.length?'\n'+m.join('\n')+'\n':''}\nKya aap is hafte site visit karna chahenge? Weekend par bhi visit ho sakta hai. Aapka convenient din aur time reply kar dijiye.\n${sign}`}
+  if(k=='visit')return `${hi}\n✅ *Site visit confirm*\n\n🏡 ${pShort(p)}\n📅 ${vd}, ${vh}\n${pLoc(p).join('\n')}\n\nHumari team ka member aapko wahan milega. Nikalne se pehle ek message kar dijiye. Plan badle to pehle bata dijiye.\n${sign}`;
+  if(k=='remind')return `${hi}\nYaad dila rahe hain: aaj ${vh} par site visit hai.\n\n🏡 ${pShort(p)}\n${pLoc(p).join('\n')}\n\nAap aa rahe hain na? Bas "Haan" reply kar dijiye. Time badalna ho to bata dijiye.\n${sign}`;
+  if(k=='after')return `${hi}\n${p.project||'Property'} ka visit karne ke liye dhanyavaad!\n\nProperty kaisi lagi? Bas number reply kar dijiye:\n1️⃣ Pasand aayi, aage baat karni hai\n2️⃣ Price par baat karni hai\n3️⃣ Family ke saath dobara dekhna hai\n4️⃣ Aur options dikhaiye\n${sign}`;
+  if(k=='similar'){const L=similarProps(p,b);if(!L.length)return `${hi}\nAapki requirement ke hisaab se nayi property aate hi hum aapko bhejenge.\n${sign}`;
+    const nums=['1️⃣','2️⃣','3️⃣'];return `${hi}\nAapki requirement ke hisaab se kuch aur achhe options:\n\n`+L.map((x,i)=>`${nums[i]} *${pShort(x)}*${pMedia(x).length?'\n   '+pMedia(x)[0]:''}`).join('\n\n')+`\n\nKoi pasand aaye to uska number reply kar dijiye, poori details aur visit arrange kar denge.\n${sign}`}
+  return pitch(p,nm.trim());
+}
+function waOpen(id){waB=BL.find(x=>x.id==id);if(!waB)return;waK=WTdef(waB);waShow()}
+function waShow(){const b=waB,p=P(b.property_id),ph=ph10(b.buyer_phone),t=waText(waK,b);
+  const warn=[];if(waK=='details'&&p&&!p.reel_url&&!p.tour_url)warn.push('Is property ka Reel / Virtual tour link nahi juda. Property Edit mein jodo.');
+  if((waK=='visit'||waK=='remind')&&!b.visit_at)warn.push('Visit ka date-time nahi bhara. Lead kholkar "Site visit" bharo, phir message bhejo.');
+  if((waK=='visit'||waK=='remind')&&p&&!(p.details||{}).maps)warn.push('Google Maps location link nahi juda. Property Edit mein jodo, buyer ko rasta asaani se milega.');
+  $('#app').innerHTML=`<button onclick="waB=null;render()" style="margin-bottom:10px">← Wapas</button>
+  <div class="card"><div class="nm" style="font-size:17px;font-weight:800">💬 ${esc(b.buyer_name||'Buyer')} ko WhatsApp</div><div class="mu">${esc(p?p.id+' · '+(p.project||''):'Property judi nahi')} · ${esc(b.status||'New')}</div>
+  <div class="sec">Kaunsa message?</div><div class="chips" style="flex-wrap:wrap">${WT.map(w=>`<button class="${waK==w[0]?'on':''}" onclick="waK='${w[0]}';waShow()">${w[1]}</button>`).join('')}</div>
+  ${warn.map(w=>`<div class="warn">${esc(w)}</div>`).join('')}
+  <textarea id="wtx" rows="15" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
+  <div class="mu">Bhejne se pehle yahan kuch bhi badal sakte ho.</div>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ph?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="waSent();this.href='https://wa.me/91${ph}?text='+encodeURIComponent($('#wtx').value)">WhatsApp par bhejo</a>`:'<span class="er">Buyer ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
+function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp bheja: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
 function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Wapas</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Buyer ko bhejne ka message · ${esc(id)}</div><div class="mu">Yahi message lead ke WhatsApp button se apne aap jaata hai. Yahan se copy karke kisi ko bhi bhej sakte ho.</div>
   <textarea id="ptx" rows="16" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
@@ -487,14 +527,13 @@ Team Easy Deals`;
 /* ---------- buyers ---------- */
 function bCard(b,rp){
   const p=P(b.property_id),ph=ph10(b.buyer_phone),rep=rp[ph+'|'+(b.property_id||'')]>1,o=openB==b.id,late=b.next_fu&&b.next_fu<today()&&PEND.includes(b.status);
-  const waTxt=pitch(p,b.buyer_name);
   return `<div class="card lc"><div onclick="openB=${o?'null':b.id};render();${o?'':'loadHist('+b.id+')'}" style="cursor:pointer">
    <div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
    <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Unassigned</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
    <div>${pill(b.status||'New')}${rep?'<span class="pill" style="background:#fde4e4;color:#9b1c1c">Repeat - review</span>':''}${/not a buyer/i.test(b.remarks||'')?'<span class="pill" style="background:#f1e6dc;color:#7a4a1f">Not a buyer</span>':''}</div>
    ${b.next_fu?`<div class="fol ${late?'late':b.next_fu==today()?'tod':''}">🔁 Next follow-up: ${dshort(b.next_fu)}</div>`:''}${b.visit_at?`<div class="fol">📅 Visit: ${dtime(b.visit_at)}</div>`:''}
    ${b.requirement?`<div class="mu" style="margin-top:4px">${esc(b.requirement)}</div>`:''}</div>
-   <div class="acts">${ph?`<a class="btn cl" href="tel:${ph}">📞 ${ph}</a><a class="btn wi" target="_blank" href="https://wa.me/91${ph}?text=${encodeURIComponent(waTxt)}">WhatsApp${p&&(p.reel_url||p.tour_url)?' + reel/tour':' + details'}</a>`:''}</div>
+   <div class="acts">${ph?`<a class="btn cl" href="tel:${ph}">📞 ${ph}</a><button class="btn wi" onclick="event.stopPropagation();waOpen(${b.id})">💬 WhatsApp message</button>`:''}</div>
    ${o?bForm(b):''}</div>`;
 }
 function bForm(b){
