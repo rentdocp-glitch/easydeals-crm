@@ -428,27 +428,27 @@ async function saveProp(isNew){
 
 /* ---------- buyer ko property message ---------- */
 function pitch(p,name){
-  if(!p)return `Namaste ${name||''}, Easy Deals se baat kar rahe hain. Aapki property enquiry ke baare mein call kiya tha.`;
+  if(!p)return `Hello${name?' '+name:''},\nThank you for your property enquiry with Easy Deals. Please share your preferred location and budget, and we will send you matching options.\n\nRegards,\nTeam Easy Deals`;
   const d=p.details||{},n=x=>x!=null&&String(x).trim()!=='';
   const area=p.carpet||p.sqft,typ=(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat';
   const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';
   const L=[];
-  L.push(`Namaste${name?' '+name:''} 🙏`);
-  L.push(`Aapne jis property ke liye enquiry ki thi, uski details:`);
+  L.push(`Hello${name?' '+name:''},`);
+  L.push(`Thank you for your enquiry. Here are the details of the property:`);
   L.push('');
   L.push(`🏡 *${[p.bhk,typ].filter(n).join(' ')} for ${sale?'Sale':'Rent'}*`);
   L.push(`🏢 ${p.project||''}${n(p.locality)?', '+p.locality:''}`);
-  if(sale&&p.price)L.push(`💰 ${rs(p.price).replace(/ L$/,' Lakh')}`);else if(p.rent)L.push(`💰 ₹${Number(p.rent).toLocaleString('en-IN')} / mahina`);
+  if(sale&&p.price)L.push(`💰 ${rs(p.price).replace(/ L$/,' Lakh')}`);else if(p.rent)L.push(`💰 ₹${Number(p.rent).toLocaleString('en-IN')} per month`);
   const sp=[n(area)?`Carpet ${area} sqft`:'',n(p.builtup)?`Built-up ${p.builtup} sqft`:''].filter(Boolean).join(' · ');if(sp)L.push(`📐 ${sp}`);
   if(n(p.floor_no))L.push(`🏬 Floor ${p.floor_no}${n(p.total_floors)?' of '+p.total_floors:''}`);
-  const fe=[p.furnishing,n(p.baths)?p.baths+' bathroom':'',n(p.balconies)?p.balconies+' balcony':''].filter(n).join(' · ');if(fe)L.push(`🛋 ${fe}`);
+  const fe=[p.furnishing,n(p.baths)?p.baths+' bathroom'+(p.baths>1?'s':''):'',n(p.balconies)?p.balconies+(p.balconies>1?' balconies':' balcony'):''].filter(n).join(' · ');if(fe)L.push(`🛋 ${fe}`);
   const ex=[(d.parking||[]).length?'🚗 '+d.parking.map(x=>x.replace(/ car$/,' parking')).join(', '):'',n(d.facing)?'🧭 '+d.facing+' facing':''].filter(Boolean);if(ex.length)L.push(ex.join(' · '));
   if((d.amenities||[]).length)L.push(`✨ ${d.amenities.slice(0,6).join(', ')}`);
   if(n(d.usp))L.push(`⭐ ${d.usp}`);
-  if(n(p.landmark))L.push(`📍 ${p.landmark} ke paas`);
+  if(n(p.landmark))L.push(`📍 Near ${p.landmark}`);
   const md=[[p.reel_url,'📱 Instagram Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>n(x[0]));
   if(md.length){L.push('');md.forEach(x=>L.push(`${x[1]}: ${x[0]}`))}
-  L.push('');L.push('Site visit ke liye apna convenient din aur time reply kar dijiye.');L.push('— Team Easy Deals');
+  L.push('');L.push('Would you like to schedule a site visit? Please reply with a convenient day and time.');L.push('');L.push('Regards,');L.push('Team Easy Deals');
   return L.join('\n');
 }
 /* ---------- WhatsApp templates (buyer lead) ---------- */
@@ -485,25 +485,25 @@ function wqSend(a,id){const b=BL.find(x=>x.id==id);a.href='https://wa.me/91'+ph1
 function wqSkip(id){WQS.add(id);wqShow()}
 function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: message nahi bhejna'}).then(()=>{delete hist[id]});wqShow()}
 function wqOpen(){wqOn=true;wqDone=0;wqShow()}
-const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/mahina':''}`};
-const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 '+p.landmark+' ke paas');return L};
+const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/month':''}`};
+const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 Near '+p.landmark);return L};
 const pMedia=p=>[[p.reel_url,'📱 Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>x[0]&&String(x[0]).trim()).map(x=>x[1]+': '+x[0]);
 function similarProps(p,b){
   const bhk=p&&p.bhk?String(p.bhk).match(/\d/):null,loc=p&&p.locality;
   return PR.filter(x=>!isSold(x)&&(!p||x.id!=p.id)).map(x=>({x,s:(bhk&&String(x.bhk||'').includes(bhk[0])?2:0)+(loc&&x.locality==loc?1:0)+(x.reel_url||x.tour_url?0.5:0)})).sort((a,c)=>c.s-a.s).slice(0,3).map(o=>o.x);
 }
 function waText(k,b){
-  const p=P(b.property_id),nm=b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?' '+b.buyer_name.split(' ')[0]:'',hi=`Namaste${nm} 🙏`,sign='— Team Easy Deals';
-  const vt=b.visit_at?new Date(b.visit_at):null,vd=vt?vt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'}):'(date)',vh=vt?vt.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}):'(time)';
-  if(!p&&k!='noans'&&k!='similar')return `${hi}\nEasy Deals se baat kar rahe hain. Aapki property enquiry ke liye dhanyavaad. Aapko kis area aur budget mein property chahiye? Reply kar dijiye, matching options bhej denge.\n${sign}`;
+  const p=P(b.property_id),nm=b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?' '+b.buyer_name.split(' ')[0]:'',hi=`Hello${nm},`,sign='Regards,\nTeam Easy Deals';
+  const vt=b.visit_at?new Date(b.visit_at):null,vd=vt?vt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}):'(date)',vh=vt?vt.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}).toUpperCase():'(time)';
+  if(!p&&k!='noans'&&k!='similar')return `${hi}\nThank you for your property enquiry with Easy Deals. Please share your preferred location and budget, and we will send you matching options.\n\n${sign}`;
   if(k=='details')return pitch(p,nm.trim());
-  if(k=='noans')return `${hi}\nEasy Deals se message kar rahe hain. Aapne${b.source?' '+b.source+' par':''} ${p?'*'+pShort(p)+'*':'property'} ke liye enquiry ki thi. Aapko call kiya tha par baat nahi ho payi.\n\nAap kab free hain? Time bata dijiye, hum call kar lenge. Ya yahin "DETAILS" likh dijiye, poori jankari bhej denge.\n${sign}`;
-  if(k=='fu'){const m=pMedia(p);return `${hi}\n*${pShort(p)}* abhi bhi available hai.\n${m.length?'\n'+m.join('\n')+'\n':''}\nKya aap is hafte site visit karna chahenge? Weekend par bhi visit ho sakta hai. Aapka convenient din aur time reply kar dijiye.\n${sign}`}
-  if(k=='visit')return `${hi}\n✅ *Site visit confirm*\n\n🏡 ${pShort(p)}\n📅 ${vd}, ${vh}\n${pLoc(p).join('\n')}\n\nHumari team ka member aapko wahan milega. Nikalne se pehle ek message kar dijiye. Plan badle to pehle bata dijiye.\n${sign}`;
-  if(k=='remind')return `${hi}\nYaad dila rahe hain: aaj ${vh} par site visit hai.\n\n🏡 ${pShort(p)}\n${pLoc(p).join('\n')}\n\nAap aa rahe hain na? Bas "Haan" reply kar dijiye. Time badalna ho to bata dijiye.\n${sign}`;
-  if(k=='after')return `${hi}\n${p.project||'Property'} ka visit karne ke liye dhanyavaad!\n\nProperty kaisi lagi? Bas number reply kar dijiye:\n1️⃣ Pasand aayi, aage baat karni hai\n2️⃣ Price par baat karni hai\n3️⃣ Family ke saath dobara dekhna hai\n4️⃣ Aur options dikhaiye\n${sign}`;
-  if(k=='similar'){const L=similarProps(p,b);if(!L.length)return `${hi}\nAapki requirement ke hisaab se nayi property aate hi hum aapko bhejenge.\n${sign}`;
-    const nums=['1️⃣','2️⃣','3️⃣'];return `${hi}\nAapki requirement ke hisaab se kuch aur achhe options:\n\n`+L.map((x,i)=>`${nums[i]} *${pShort(x)}*${pMedia(x).length?'\n   '+pMedia(x)[0]:''}`).join('\n\n')+`\n\nKoi pasand aaye to uska number reply kar dijiye, poori details aur visit arrange kar denge.\n${sign}`}
+  if(k=='noans')return `${hi}\nThis is Easy Deals. You recently enquired${b.source?' on '+b.source:''} about ${p?'*'+pShort(p)+'*':'a property'}. We tried calling you but could not connect.\n\nPlease let us know a convenient time to call, or simply reply "DETAILS" and we will share complete information here.\n\n${sign}`;
+  if(k=='fu'){const m=pMedia(p);return `${hi}\nJust a quick follow-up: *${pShort(p)}* is still available.\n${m.length?'\n'+m.join('\n')+'\n':''}\nWould you like to visit the property this week? Weekend visits can also be arranged. Please reply with a convenient day and time.\n\n${sign}`}
+  if(k=='visit')return `${hi}\n✅ *Your site visit is confirmed*\n\n🏡 ${pShort(p)}\n📅 ${vd}, ${vh}\n${pLoc(p).join('\n')}\n\nOur team member will meet you at the property. Kindly message us when you are on your way, and let us know in advance if your plans change.\n\n${sign}`;
+  if(k=='remind')return `${hi}\nA friendly reminder of your site visit today at ${vh}.\n\n🏡 ${pShort(p)}\n${pLoc(p).join('\n')}\n\nPlease reply "YES" to confirm, or let us know if you would like to reschedule.\n\n${sign}`;
+  if(k=='after')return `${hi}\nThank you for visiting ${p.project||'the property'}. We hope you liked it.\n\nPlease share your feedback by replying with a number:\n1️⃣ I liked it, let's discuss further\n2️⃣ I would like to discuss the price\n3️⃣ I want to visit again with family\n4️⃣ Please show me other options\n\n${sign}`;
+  if(k=='similar'){const L=similarProps(p,b);if(!L.length)return `${hi}\nWe will share new properties matching your requirement as soon as they are available.\n\n${sign}`;
+    const nums=['1️⃣','2️⃣','3️⃣'];return `${hi}\nBased on your requirement, here are a few more options you may like:\n\n`+L.map((x,i)=>`${nums[i]} *${pShort(x)}*${pMedia(x).length?'\n   '+pMedia(x)[0]:''}`).join('\n\n')+`\n\nIf any of these interest you, just reply with its number and we will share full details and arrange a visit.\n\n${sign}`}
   return pitch(p,nm.trim());
 }
 function waOpen(id){waB=BL.find(x=>x.id==id);if(!waB)return;waK=WTdef(waB);waShow()}
@@ -534,19 +534,21 @@ function ownerReport(id){
 ${p.project} (${p.id})
 Date: ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
 
-Namaste ${p.owner_name||''} ji,
-Aapki property par ab tak *${l.length} buyer enquiries* aayi hain${w?` (pichhle 7 din mein ${w})`:''}.
+Dear ${p.owner_name||'Sir/Madam'},
+Your property has received *${l.length} buyer enquiries* so far${w?` (${w} in the last 7 days)`:''}.
 
-*Portal-wise:*
+*Enquiries by portal:*
 ${Object.entries(src).map(([k,v])=>`• ${k}: ${v}`).join('\n')||'• -'}
 
-*Status:*
+*Current status:*
 ${BST.filter(s=>sc[s]).map(s=>`• ${s}: ${sc[s]}`).join('\n')||'• -'}
 
 *Recent enquiries:*
 ${recent.map(b=>`• ${dshort(b.lead_date)} - ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)}) - ${b.source||''}`).join('\n')||'• -'}
-${[p.tour_url&&'Tour: '+p.tour_url,p.video_url&&'Video: '+p.video_url].filter(Boolean).join('\n')}
-Dhanyavaad,
+${[p.tour_url&&'Virtual tour: '+p.tour_url,p.video_url&&'Video: '+p.video_url].filter(Boolean).join('\n')}
+We will keep you updated on every development.
+
+Regards,
 Team Easy Deals`;
   const ow=ph10(p.owner_phone);
   $('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Wapas</button>

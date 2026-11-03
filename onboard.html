@@ -413,15 +413,17 @@ function summary(id,p){
   return `*Easy Deals - Property Registration*
 Property ID: ${id}
 
-Namaste ${p.owner_name} ji, aapki property ki details:
+Dear ${p.owner_name},
+Thank you for choosing Easy Deals. Please find your property details below:
 • ${p.bhk||''} ${p.ptype||''}, ${p.project}${p.wing?', '+p.wing:''}${p.flat_no?' - '+p.flat_no:''}
-• Floor ${p.floor_no||''} / ${p.total_floors||''}, ${p.locality||''}
+• Floor ${p.floor_no||''} of ${p.total_floors||''}, ${p.locality||''}
 • Carpet ${p.carpet||'-'} sqft · Built-up ${p.builtup||'-'} sqft
 • ${p.furnishing||''} · ${p.occupancy||''}
-${p.price?'• Expected price: '+rs(p.price)+'\n':''}${p.rent?'• Rent: ₹'+p.rent+'/mahina\n':''}• Plan: ${p.plan||''} · Amount: ₹${p.plan_amount||''} (${p.payment_mode||''})
-${p.service_till?'• Service: '+new Date(p.service_till).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' tak\n':''}
-Kuch galat ho to isi number par bata dijiye. Sab sahi hai to "OK" likh dijiye.
-Dhanyavaad,
+${p.price?'• Expected price: '+rs(p.price)+'\n':''}${p.rent?'• Expected rent: ₹'+p.rent+' per month\n':''}• Plan: ${p.plan||''} · Amount: ₹${p.plan_amount||''} (${p.payment_mode||''})
+${p.service_till?'• Service valid till: '+new Date(p.service_till).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'\n':''}
+Please review these details. Reply "OK" if everything is correct, or let us know any changes on this number.
+
+Regards,
 Team Easy Deals`;
 }
 function desc(p){const d=p.details||{};return [`${p.bhk} ${p.ptype=='Flat'?'apartment':(p.ptype||'').toLowerCase()} for ${p.intent=='Rent'?'rent':'sale'} in ${p.project}, ${p.locality}, ${p.city||'Pune'}.`,
