@@ -216,6 +216,7 @@ a{color:var(--pr2)}
 .zt{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:#fde68a;color:#7c4a03}
 .zrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid #eef1f6;cursor:pointer}
 .zteam{margin-top:8px;padding:8px 10px;border-radius:10px;background:#eef4ff;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sugl{margin-top:8px;border:1px solid #e3e8f0;border-radius:12px;overflow:hidden;background:#fff}.sugi{padding:9px 11px;border-bottom:1px solid #eef1f6;cursor:pointer}.sugi:last-child{border-bottom:0}.sugi:active{background:#eef4ff}.sugi mark{background:#fde68a;padding:0 1px;border-radius:3px}
 </style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
@@ -278,20 +279,20 @@ async function boot(user){
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team'],['zones','🗺 Zones & Areas']],
   telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup']],
-  fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup']]};
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup']]};
 function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
   if(tab!='st'&&tab!='rep'&&tab!='daily'&&!(tab=='xfer'&&ME.role=='admin')&&!list.find(t=>t[0]==tab))tab=list[0][0];
-  const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','done']};
+  const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,tab,DR.id,DR.day,q,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
+  const ck=[ME.role,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
   const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -473,7 +474,7 @@ async function doDelete(id){
 const empty=m=>`<div class="empty"><div class="ei">📭</div><b>${m}</b><span>Nothing to show yet</span></div>`;
 const skel=n=>Array.from({length:n||3},()=>'<div class="skc"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join('');
 const fCount=()=>(fZn.length?1:0)+(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0);
-const searchBar=(ph,withF)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()" style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div></div>`;
+const searchBar=(ph,withF)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" autocomplete="off" onkeydown="if(event.key=='Enter')doSearch()" ${withF?'oninput="sugQ(this.value)"':''} style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div>${withF?'<div id="sqs"></div>':''}</div>`;
 function doSearch(){q=$('#sq').value;openId=null;openK=null;render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
 const setSeen=a=>{try{localStorage.setItem('seen_'+ME.id,JSON.stringify(a))}catch(e){}};
@@ -952,6 +953,43 @@ async function xGo(){
 }
 async function xUndo(){const u=XF.last;if(!u)return;for(let i=0;i<u.ids.length;i+=150){const {error}=await sb.from('leads').update({[u.key]:u.prev}).in('id',u.ids.slice(i,i+150));if(error)return toast(error.message,1)}
   XF.last=null;for(const k in VC)delete VC[k];toast('↩ Wapas pehle jaisa');render()}
+
+/* ---------- live search suggestions (number or name, while typing) ---------- */
+let SUG={t:null,n:0};
+function sugQ(v){clearTimeout(SUG.t);const box=$('#sqs');const t=String(v||'').trim(),d=t.replace(/\D/g,'');
+  if(!box)return;if(d.length<4&&t.replace(/[^a-z]/gi,'').length<3){box.innerHTML='';return}
+  SUG.t=setTimeout(()=>sugRun(t),300)}
+async function sugRun(t){
+  const id=++SUG.n,d=t.replace(/\D/g,''),w=t.replace(/[,()%]/g,' ').trim();
+  let qy=sb.from('leads').select('id,name,phone,property,locality,status,tc_id,fe_id').limit(8);
+  qy=d.length>=4&&d.length>=w.replace(/\s/g,'').length-2?qy.ilike('phone','%'+d+'%'):qy.or(`name.ilike.%${w}%,property.ilike.%${w}%`);
+  const {data}=await qy;if(id!=SUG.n)return;const box=$('#sqs');if(!box||!$('#sq')||$('#sq').value.trim()!=t)return;
+  const hl=(s,x)=>{s=String(s||'');if(!x)return esc(s);const i=s.toLowerCase().indexOf(x.toLowerCase());return i<0?esc(s):esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+x.length))+'</mark>'+esc(s.slice(i+x.length))};
+  const isNum=d.length>=4&&d.length>=w.replace(/\s/g,'').length-2;
+  box.innerHTML=(data&&data.length)?`<div class="sugl">${data.map(l=>`<div class="sugi" onclick="sugPick(${esc(JSON.stringify(ph10(l.phone)||l.name||''))})"><div><b>${isNum?esc(l.name||'-'):hl(l.name||'-',w)}</b> <span class="tag">${esc(ST[l.status]||l.status||'')}</span></div><div class="mu">${isNum?hl(l.phone,d):esc(l.phone||'')} · ${isNum?esc(l.property||''):hl(l.property||'',w)}${l.locality?' · '+esc(l.locality):''}${[l.tc_id&&P[l.tc_id]?'📞 '+P[l.tc_id].name:'',l.fe_id&&P[l.fe_id]?'🚶 '+P[l.fe_id].name:''].filter(Boolean).map(x=>' · '+esc(x)).join('')}</div></div>`).join('')}</div>`
+    :`<div class="mu" style="padding:6px 4px">Koi match nahi${isNum?'':' · spelling thodi badal ke dekho'}</div>`}
+function sugPick(v){$('#sq').value=v;$('#sqs').innerHTML='';doSearch()}
+
+/* ---------- FE: aaj kis kis ko call kiya ---------- */
+let cDate=null;
+VIEW['fe:fcalls']=async()=>{
+  const t=isoToday(),d=cDate||t,a=new Date(d+'T00:00:00'),b=new Date(a);b.setDate(b.getDate()+1);
+  const [dc,mc]=await Promise.all([
+    pageAll(()=>sb.from('device_calls').select('phone,direction,duration_sec,started_at,lead_id').eq('by_id',ME.id).gte('started_at',a.toISOString()).lt('started_at',b.toISOString()).order('started_at',{ascending:false})),
+    sb.from('calls').select('lead_id,phone,duration_sec,created_at,outcome').eq('by_id',ME.id).gte('created_at',a.toISOString()).lt('created_at',b.toISOString()).order('created_at',{ascending:false}).then(r=>r.data||[],()=>[])]);
+  const rows=dc.map(c=>({ph:ph10(c.phone),dir:c.direction,sec:c.duration_sec||0,at:c.started_at,lid:c.lead_id})).concat(mc.map(c=>({ph:ph10(c.phone),dir:'out',sec:c.duration_sec||0,at:c.created_at,lid:c.lead_id,man:1})));
+  rows.sort((x,y)=>String(y.at).localeCompare(String(x.at)));
+  const phs=[...new Set(rows.map(r=>r.ph).filter(Boolean))];const nm={};
+  for(let i=0;i<phs.length;i+=100){const {data}=await sb.from('leads').select('name,phone,property,status').in('phone',phs.slice(i,i+100));(data||[]).forEach(l=>{nm[ph10(l.phone)]=l})}
+  const ids=[...new Set(rows.filter(r=>r.lid&&!nm[r.ph]).map(r=>r.lid))];if(ids.length){const {data}=await sb.from('leads').select('id,name,phone,property,status').in('id',ids);(data||[]).forEach(l=>{rows.filter(r=>r.lid==l.id).forEach(r=>nm[r.ph]=nm[r.ph]||l)})}
+  const talk=rows.reduce((s,r)=>s+r.sec,0),conn=rows.filter(r=>r.sec>0).length,miss=rows.filter(r=>r.dir=='missed'||r.dir=='rejected').length;
+  const lab=d==t?'Aaj':d==shiftDate(t,-1)?'Kal':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  const ic={out:'↗️',in:'↙️',missed:'❗',rejected:'⛔'};
+  return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="cDate='${shiftDate(d,-1)}';render()" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="if(this.value){cDate=this.value;render()}" style="min-height:44px"><button onclick="cDate='${shiftDate(d,1)}';render()" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="cDate=null;render()" style="min-height:44px">Today</button></div></div>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab+' calls',rows.length)}${tile('Baat hui',conn,'',conn?'ok':'')}${tile('Talk time',talk>=60?Math.floor(talk/60)+' min':talk+' sec',talk>=60?(talk%60)+' sec':'')}</div>
+  ${miss?`<div class="mu" style="margin:4px 2px 8px">❗ ${miss} missed / cut call</div>`:''}
+  <div class="card">${rows.map(r=>{const l=nm[r.ph];return `<div class="lr" style="display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;align-items:center"><div style="min-width:0"><b>${ic[r.dir]||'📞'} ${esc(l?l.name||'Owner':'Naya number')}</b>${l?` <span class="tag">${esc(ST[l.status]||'')}</span>`:''}<div class="mu">${esc(l&&l.property?l.property+' · ':'')}${new Date(r.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}${r.man?' · timer se':''}</div></div><div style="text-align:right;white-space:nowrap"><a href="tel:${r.ph}">${esc(r.ph)}</a><div class="mu">${r.sec?fmt(r.sec):r.dir=='in'||r.dir=='out'?'baat nahi hui':'—'}</div></div></div>`}).join('')||'<div class="mu" style="padding:8px">Is din koi call nahi mili. Calls tabhi dikhti hain jab phone mein EasyDeals CRM app (APK) chalu ho.</div>'}</div>`;
+};
 async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
 
