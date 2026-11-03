@@ -213,6 +213,8 @@ a{color:var(--pr2)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 <style id="bx">
+.zch{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}.zch button{min-height:42px;border-radius:10px;font-weight:700;padding:6px 4px}.zch button.on{background:var(--pr,#1d4ed8);color:#fff;border-color:transparent}
+.zsug{background:#fff6e0;border:1px solid #f0d9a0;color:#7a5200;border-radius:10px;padding:9px 10px;margin:6px 0;font-size:14px}
 .pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;margin:3px 4px 0 0;white-space:nowrap}
 .pt{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--mu)}
 .pt .y{color:var(--ok);font-weight:700}.pt .n{color:#b6bfcc;font-weight:700}
@@ -292,7 +294,7 @@ async function all(t,sel,ord){let out=[],from=0;for(;;){let x=sb.from(t).select(
 async function reload(first){
   if(!first)toast('Refreshing…');
   try{
-    [PR,BL]=await Promise.all([all('properties','*','id'),all('buyer_leads','*','id')]);
+    [PR,BL]=await Promise.all([all('properties','*','id'),all('buyer_leads','*','id'),loadZA(true)]);
     const {data:ow,error}=await sb.from('leads').select('*').eq('status','deal_closed');if(error)throw error;OW=ow||[];
     try{const {count}=await sb.from('leads').select('id',{count:'exact',head:true});OWN_N=count||0}catch(e){}
     try{const {data:ws}=await sb.from('buyer_history').select('buyer_id').like('note','💬 WhatsApp%').limit(5000);WS=new Set((ws||[]).map(x=>x.buyer_id))}catch(e){}
@@ -354,6 +356,8 @@ VIEW.props=()=>{
   if(openP)return propDetail(P(openP));
   const t=today(),fu=fuList().length,un=BL.filter(b=>!b.property_id).length;
   let list=PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
+  const zbar=zUI()?`<div class="chips" style="overflow-x:auto;flex-wrap:nowrap">${[['','Sab zone']].concat(ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name])).concat([['none','❓ Bina zone']]).map(([k,l])=>{const n=k==''?list.length:k=='none'?list.filter(p=>!p.zone_id).length:list.filter(p=>p.zone_id==k).length;return `<button class="${pZ==k?'on':''}" style="white-space:nowrap" onclick="pZ='${k}';pA='';render()">${esc(l)} ${n}</button>`}).join('')}</div>${pZ&&pZ!='none'?`<select style="margin-bottom:10px" onchange="pA=this.value;render()"><option value="">Sab area (${esc(zName(pZ))})</option>${zAreas(pZ).map(a=>`<option value="${a.id}" ${pA==a.id?'selected':''}>${esc(a.name)} (${list.filter(p=>p.area_id==a.id).length})</option>`).join('')}</select>`:''}`:'';
+  if(pZ=='none')list=list.filter(p=>!p.zone_id);else if(pZ)list=list.filter(p=>p.zone_id==pZ);if(pA)list=list.filter(p=>p.area_id==pA);
   let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
   list=list.map(p=>({p,l:leadsOf(p.id)})).sort((a,b)=>b.l.length-a.l.length);
   const cap=[];if(BL.length>=3000)cap.push(`Buyer leads ${BL.length.toLocaleString('en-IN')} ho gayi hain`);if(OWN_N>=15000)cap.push(`Owner data ${OWN_N.toLocaleString('en-IN')} ho gaya hai`);
@@ -363,7 +367,7 @@ VIEW.props=()=>{
    <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Aaj follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
    <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
    <div class="card stat" onclick="go('un')" style="cursor:pointer"><div class="mu">Unassigned</div><b class="${un?'wr':''}">${un}</b></div></div>
-  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>
+  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>${zbar}
   <input placeholder="📞 Number ya naam: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},350)" style="margin-bottom:10px">
   ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
     <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
@@ -399,7 +403,7 @@ function propForm(p){
   ${f('project','Property / Project name')}
   <div class="f2">${f('bhk','BHK')}${f('ptype','Type (Flat / Villa / Shop)')}</div>
   ${f('address','Address')}
-  <div class="f2">${f('locality','Area / Locality')}${f('city','City')}</div>
+  ${zUI()?zonePicker('p',p.locality)+`<div class="f2">${f('city','City')}<div></div></div>`:`<div class="f2">${f('locality','Area / Locality')}${f('city','City')}</div>`}
   <div class="f2">${f('sqft','Area (sqft)','number')}${f('price','Expected price (₹, poora number)','number')}</div>
   <div class="f2">${f('id_99acres','99acres ID')}${f('id_magicbricks','Magicbricks ID')}</div>
   <div class="f2">${f('id_housing','Housing ID')}${f('date_added','Date added','date')}</div>
@@ -415,6 +419,7 @@ async function saveProp(isNew){
   const K=['portal_status','owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
   const row={};K.forEach(k=>{const e=$('#pf_'+k);if(e){const x=e.value.trim();row[k]=x===''?null:x}});
   ['sqft','price'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
+  if(zUI()){const z=await zpVal('p',isNew);if(z.err){$('#pf_err').innerHTML=`<div class="warn">${esc(z.err)}</div>`;return}if(!z.keep){row.locality=z.locality;row.area_id=z.area_id||null}}
   {const m=($('#pf_maps')||{}).value;if(m!=null){const old=(!isNew&&editP&&editP.details)||{};row.details=Object.assign({},old,{maps:m.trim()||null})}}
   const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
   if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID aur project name zaroori hai.</div>';return}
@@ -428,6 +433,57 @@ async function saveProp(isNew){
   }else{const {error}=await sb.from('properties').update(row).eq('id',id);if(error)return toast(error.message,1)}
   toast('Property saved ✅');editP=null;newFromLead=null;dupOk=false;openP=id;tab='props';await reload(true);
 }
+
+/* ---------- zones & areas (master in Supabase, no hardcoded list) ---------- */
+let ZA={ok:false,zones:[],areas:[],team:false,t:0},ZP={},pZ='',pA='';
+const edNorm=t=>String(t||'').toLowerCase().replace(/\b(phase|ph)\s*[-.]?\s*\d+\b/g,'').replace(/\b(budruk|bk)\b/g,'bk').replace(/\b(khurd|kh)\b/g,'kh').replace(/[^a-z0-9]/g,'').replace(/w/g,'v').replace(/(ee|ii)/g,'i').replace(/aa/g,'a').replace(/(oo|uu)/g,'u')||String(t||'').toLowerCase().replace(/\s+/g,'');
+async function loadZA(force){
+  if(!force&&ZA.ok&&Date.now()-ZA.t<600000)return;
+  try{const [z,a,s]=await Promise.all([sb.from('zones').select('*').order('sort'),sb.from('areas').select('*').order('name'),sb.from('app_settings').select('*').eq('k','zone_ui_team')]);
+    if(z.error||a.error)throw z.error||a.error;ZA={ok:true,zones:z.data||[],areas:a.data||[],team:!!((s.data||[])[0]||{}).v,t:Date.now()};
+    const m={};ZA.areas.filter(x=>x.status=='approved').forEach(x=>{if(x.norm)m[x.norm]=x;(x.aliases||[]).forEach(al=>{const k=edNorm(al);if(k)m[k]=m[k]||x})});ZA.map=m;
+  }catch(e){ZA.ok=false}
+}
+const zUI=()=>ZA.ok&&ZA.zones.length;
+const zName=id=>(ZA.zones.find(z=>z.id==id)||{}).name||'';
+const zAreas=zid=>ZA.areas.filter(a=>a.status=='approved'&&a.zone_id==zid).sort((a,b)=>a.name.localeCompare(b.name));
+const areaOf=loc=>{if(!ZA.map)return null;const s=String(loc||'');if(!edNorm(s))return null;return ZA.map[edNorm(s)]||ZA.map[edNorm(s.split('(')[0].split('/')[0].split(',')[0])]||null};
+/* bigram similarity for duplicate hints */
+function zSim(a,b){a=edNorm(a);b=edNorm(b);if(!a||!b)return 0;if(a==b)return 1;const bg=s=>{const m={};for(let i=0;i<s.length-1;i++){const k=s.substr(i,2);m[k]=(m[k]||0)+1}return m};const A=bg(a),B=bg(b);let n=0,t=0;for(const k in A){t+=A[k];if(B[k])n+=Math.min(A[k],B[k])}for(const k in B)t+=B[k];return t?2*n/t:0}
+const zBest=(t,ex)=>ZA.areas.filter(a=>a.status=='approved'&&a.id!=ex).map(a=>({a,s:Math.max(zSim(t,a.name),...(a.aliases||[]).map(x=>zSim(t,x)))})).sort((x,y)=>y.s-x.s)[0];
+
+/* ---- picker: Zone chips -> Area dropdown -> Other ---- */
+function zonePicker(px,loc){
+  const a=areaOf(loc);ZP[px]={z:a?a.zone_id:null,a:a?a.id:null,other:false,touched:false,orig:loc||'',pick:null};
+  if(!a&&loc){ZP[px].other=true}
+  return `<div id="zp_${px}">${zpInner(px)}</div>`;
+}
+function zpInner(px){
+  const s=ZP[px],areas=s.z?zAreas(s.z):[];
+  return `<label>Zone</label><div class="zch">${ZA.zones.filter(z=>z.active||z.id==s.z).map(z=>`<button type="button" class="${s.z==z.id?'on':''}" onclick="zpZone('${px}',${z.id})">${esc(z.name)}</button>`).join('')}</div>
+  ${s.z?`<label>Area <span class="mu">(sirf ${esc(zName(s.z))} ke)</span></label><select id="zpa_${px}" onchange="zpArea('${px}',this.value)"><option value="">— Area chuno —</option>${areas.map(a=>`<option value="${a.id}" ${s.a==a.id&&!s.other?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="other" ${s.other?'selected':''}>➕ Other (list mein nahi hai)</option></select>`:(s.orig?`<div class="mu" style="margin:4px 0 6px">Abhi likha hai: <b>${esc(s.orig)}</b> · zone chuno</div>`:'')}
+  ${s.z&&s.other?`<label>Area ka asli naam likho</label><input id="zpo_${px}" value="${esc(s.other===true&&s.orig&&!areaOf(s.orig)?s.orig:'')}" placeholder="Jaise: Pimple Gurav" oninput="zpSug('${px}')"><div id="zps_${px}"></div><div class="mu">Naya area admin ke approval ke liye jayega. Lead abhi save ho jayegi.</div>`:''}`;
+}
+function zpRe(px){const e=$('#zp_'+px);if(e)e.innerHTML=zpInner(px);if(ZP[px].other&&ZP[px].z)zpSug(px)}
+function zpZone(px,z){const s=ZP[px];s.touched=true;if(s.z!=z){s.z=z;s.a=null;s.other=s.orig&&!areaOf(s.orig)?true:false}zpRe(px)}
+function zpArea(px,v){const s=ZP[px];s.touched=true;if(v=='other'){s.other=true;s.a=null}else{s.other=false;s.a=v?+v:null}zpRe(px)}
+function zpSug(px){const s=ZP[px],i=$('#zpo_'+px),box=$('#zps_'+px);if(!i||!box)return;s.pick=null;const t=i.value.trim();if(t.length<3){box.innerHTML='';return}
+  const ex=areaOf(t);const b=ex?{a:ex,s:1}:zBest(t);
+  if(b&&b.s>=0.6)box.innerHTML=`<div class="zsug">🤔 Kya aapka matlab <b>${esc(b.a.name)}</b> (${esc(zName(b.a.zone_id))}) hai?<div class="acts" style="margin-top:6px"><button type="button" class="p" onclick="zpUse('${px}',${b.a.id})">Haan, ${esc(b.a.name)}</button><button type="button" onclick="this.closest('.zsug').remove()">Nahi, naya area</button></div></div>`;
+  else box.innerHTML=''}
+function zpUse(px,id){const a=ZA.areas.find(x=>x.id==id),s=ZP[px];s.z=a.zone_id;s.a=a.id;s.other=false;s.touched=true;zpRe(px)}
+/* -> {locality, area_id} | {keep:true} | {err} */
+async function zpVal(px,required){
+  const s=ZP[px];if(!s)return{keep:true};
+  if(!s.touched&&!required)return{keep:true};
+  if(!s.z)return required?{err:'Zone chuno'}:{keep:true};
+  if(!s.other){if(!s.a)return{err:'Area chuno (ya Other)'};const a=ZA.areas.find(x=>x.id==s.a);return{locality:a.name,area_id:a.id}}
+  const t=(($('#zpo_'+px)||{}).value||'').trim();if(t.length<3)return{err:'Other mein area ka naam likho'};
+  const ex=areaOf(t);if(ex)return{locality:ex.name,area_id:ex.id};
+  const {data,error}=await sb.rpc('area_request',{t,z:s.z});if(error)return{err:error.message};
+  ZA.t=0;return data.status=='approved'?{locality:data.name,area_id:data.id}:{locality:data.name,area_id:null,pending:true};
+}
+
 
 /* ---------- buyer ko property message ---------- */
 function pitch(p,name){

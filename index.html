@@ -211,6 +211,11 @@ a{color:var(--pr2)}
 }
 @media(max-width:380px){nav button .nl{font-size:11px}.hero .hn b{font-size:24px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.zch{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}.zch button{min-height:42px;border-radius:10px;font-weight:700;padding:6px 4px}.zch button.on{background:var(--pr,#1d4ed8);color:#fff;border-color:transparent}
+.zsug{background:#fff6e0;border:1px solid #f0d9a0;color:#7a5200;border-radius:10px;padding:9px 10px;margin:6px 0;font-size:14px}
+.zt{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:#fde68a;color:#7c4a03}
+.zrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid #eef1f6;cursor:pointer}
+.zteam{margin-top:8px;padding:8px 10px;border-radius:10px;background:#eef4ff;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 </style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
@@ -263,6 +268,7 @@ async function boot(user){
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
+  await loadZA(true);
   render();
   clearInterval(poll);
   poll=setInterval(()=>{if(!ME||document.hidden||openId||noteId||showAdd)return;const a=document.activeElement;if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))return;render()},45000);
@@ -270,7 +276,7 @@ async function boot(user){
 
 /* ---------- shell ---------- */
 const TABS={
-  admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team']],
+  admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team'],['zones','🗺 Zones & Areas']],
   telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup']],
   fe:[['rep','📊 My KPI'],['today','📅 Today'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup']]};
 function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
@@ -285,7 +291,7 @@ async function render(){
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,tab,DR.id,DR.day,q,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
+  const ck=[ME.role,tab,DR.id,DR.day,q,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
   const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -434,7 +440,7 @@ function editForm(l){
   <label>Owner name</label><input id="en" value="${v(l.name)}">
   <label>Mobile number</label><input id="ep" type="tel" value="${v(l.phone)}">
   <label>Society / Property name</label><input id="er" value="${v(l.property)}">
-  <label>Area / Address</label><input id="el" list="arl" value="${v(l.locality)}">${areaList}
+  ${zUI()?zonePicker('e',l.locality)+`<label>Address / landmark</label><input id="ead" value="${v(l.address)}">`:`<label>Area / Address</label><input id="el" value="${v(l.locality)}">`}
   <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
   <label>Price</label><input id="ec" value="${v(fp(l))}" placeholder="85 L or 1.2 Cr">
   <label>Notes</label><textarea id="em" rows="2">${v(l.remarks)}</textarea>
@@ -445,7 +451,8 @@ async function saveEdit(id){
   const phone=ph10($('#ep').value);
   if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
   const pr=$('#ec').value.trim();
-  const na=normArea($('#el').value);const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),locality:na.area,...(na.address?{address:na.address}:{}),bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
+  let loc={};if(zUI()){const z=await zpVal('e',false);if(z.err)return toast(z.err,1);if(!z.keep)loc={locality:z.locality,area_id:z.area_id||null};const ad=$('#ead');if(ad)loc.address=ad.value.trim()||null}else{const na=normArea($('#el').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
+  const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),...loc,bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
   const ap=$('#easg').value;if(ap&&P[ap]){if(P[ap].role=='fe')upd.fe_id=ap;else upd.tc_id=ap}
   const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
@@ -465,7 +472,7 @@ async function doDelete(id){
 }
 const empty=m=>`<div class="empty"><div class="ei">📭</div><b>${m}</b><span>Nothing to show yet</span></div>`;
 const skel=n=>Array.from({length:n||3},()=>'<div class="skc"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join('');
-const fCount=()=>(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0);
+const fCount=()=>(fZn.length?1:0)+(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0);
 const searchBar=(ph,withF)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" onkeydown="if(event.key=='Enter')doSearch()" style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div></div>`;
 function doSearch(){q=$('#sq').value;openId=null;openK=null;render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
@@ -481,7 +488,7 @@ function addLeadCard(){
   if(!showAdd)return `<button style="margin-bottom:10px" onclick="showAdd=true;render()">➕ Add Lead</button>`;
   return `<div class="card"><b>New property owner</b><div class="form" style="border:0;padding-top:4px">
   <input id="an" placeholder="Owner name"><input id="ap" type="tel" placeholder="Mobile number (10 digits)" oninput="dupCheck(this.value)"><div id="dupw"></div>
-  <input id="ar" placeholder="Society / Property name"><input id="al" list="arl" placeholder="Area (pick from list, e.g. Baner)">${areaList}
+  <input id="ar" placeholder="Society / Property name">${zUI()?zonePicker('a','')+'<input id="aad" placeholder="Address / landmark (optional)">':'<input id="al" placeholder="Area (e.g. Baner)">'}
   <div class="f2"><input id="ab" placeholder="BHK (e.g. 2 BHK)"><input id="as" type="number" placeholder="Area (sqft)"></div>
   <input id="ac" placeholder="Price (e.g. 85 L or 1.2 Cr)"><textarea id="am" rows="2" placeholder="Notes (optional)"></textarea>
   <div class="acts"><button class="p" id="svb" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div></div></div>`;
@@ -503,7 +510,8 @@ async function addLead(){
     if(d.length){DUPOK=phone;$('#dupw').innerHTML=`<div class="card" style="background:#fff6e0;border-color:#f0d9a0;margin:6px 0"><b>⚠️ This number is already in the CRM</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Tap "Add anyway" only if this is a different property.</div></div>`;$('#svb').textContent='Add anyway';return}
   }
   const pr=$('#ac').value.trim();
-  const na=normArea($('#al').value);const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),locality:na.area,...(na.address?{address:na.address}:{}),bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
+  let loc;if(zUI()){const z=await zpVal('a',true);if(z.err)return toast(z.err,1);const ad=(($('#aad')||{}).value||'').trim();loc={locality:z.locality,...(z.area_id?{area_id:z.area_id}:{}),...(ad?{address:ad}:{})}}else{const na=normArea($('#al').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
+  const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),...loc,bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
   if(ME.role=='fe')row.fe_id=ME.id;
   if(ME.role=='telecaller')row.tc_id=ME.id;
   const {error}=await sb.from('leads').insert(row);
@@ -516,14 +524,125 @@ async function loadFilt(){
   FILT.loc=[...new Set(d.map(x=>x.locality).filter(Boolean))].sort();
   FILT.bhk=[...new Set(d.map(x=>x.bhk).filter(Boolean))].sort();FILT.t=Date.now();
 }
-const MSX={loc:()=>fLoc,bhk:()=>fBhk,st:()=>fSt},MSN={loc:'areas',bhk:'BHK',st:'statuses'};
-const msLabel=k=>{const a=MSX[k]();return a.length==0?'All '+MSN[k]:a.length==1?(k=='st'?ST[a[0]]:a[0]):a.length+' selected'};
+const MSX={zn:()=>fZn,loc:()=>fLoc,bhk:()=>fBhk,st:()=>fSt},MSN={zn:'zones',loc:'areas',bhk:'BHK',st:'statuses'};
+const msLabel=k=>{const a=MSX[k]();return a.length==0?'All '+MSN[k]:a.length==1?(k=='st'?ST[a[0]]:k=='zn'?zName(a[0]):a[0]):a.length+' selected'};
 function msTog(k,v,on){const a=MSX[k](),i=a.indexOf(v);if(on&&i<0)a.push(v);if(!on&&i>=0)a.splice(i,1);const b=document.getElementById('msb_'+k);if(b)b.textContent=msLabel(k)+' ▾'}
 function msClr(k){MSX[k]().length=0;render()}
 function msBox(k,items){const sel=MSX[k]();return `<div class="ms"><button type="button" id="msb_${k}" class="msb" onclick="msOpen=msOpen=='${k}'?'':'${k}';render()">${esc(msLabel(k))} ▾</button>${msOpen==k?`<div class="msp">${items.map(([v,l])=>`<label><input type="checkbox" value="${esc(v)}" ${sel.includes(v)?'checked':''} onchange="msTog('${k}',this.value,this.checked)"> ${esc(l)}</label>`).join('')||'<div class="mu" style="padding:8px">Nothing to pick yet</div>'}<div class="msa"><button type="button" onclick="msClr('${k}')">Clear</button><button type="button" class="p" onclick="msOpen='';render()">Apply</button></div></div>`:''}</div>`}
-const filterBar=()=>!showF?'':`<div class="f2" style="margin-bottom:8px;position:relative;z-index:42">${msBox('loc',FILT.loc.map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div><div style="margin-bottom:10px;position:relative;z-index:41">${msBox('st',Object.entries(ST))}</div>`;
-const applyF=qy=>{if(fLoc.length)qy=qy.in('locality',fLoc);if(fBhk.length)qy=qy.in('bhk',fBhk);if(fSt.length)qy=qy.in('status',fSt);return qy};
+const fLocOpts=()=>fZn.length&&zUI()?FILT.loc.filter(x=>{const a=areaOf(x);return a&&fZn.includes(String(a.zone_id))}):FILT.loc;
+const filterBar=()=>!showF?'':`${zUI()?`<div style="margin-bottom:8px;position:relative;z-index:43">${msBox('zn',ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name]))}</div>`:''}<div class="f2" style="margin-bottom:8px;position:relative;z-index:42">${msBox('loc',fLocOpts().map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div><div style="margin-bottom:10px;position:relative;z-index:41">${msBox('st',Object.entries(ST))}</div>`;
+const applyF=qy=>{if(fZn.length&&zUI())qy=qy.in('zone_id',fZn);if(fLoc.length)qy=qy.in('locality',fLoc);if(fBhk.length)qy=qy.in('bhk',fBhk);if(fSt.length)qy=qy.in('status',fSt);return qy};
 const srch=qq=>`name.ilike.%${qq}%,phone.ilike.%${qq}%,property.ilike.%${qq}%,locality.ilike.%${qq}%`;
+
+/* ---------- zones & areas (master in Supabase, no hardcoded list) ---------- */
+let ZA={ok:false,zones:[],areas:[],team:false,t:0},fZn=[],ZP={},ZT='pending',ZX={};
+const edNorm=t=>String(t||'').toLowerCase().replace(/\b(phase|ph)\s*[-.]?\s*\d+\b/g,'').replace(/\b(budruk|bk)\b/g,'bk').replace(/\b(khurd|kh)\b/g,'kh').replace(/[^a-z0-9]/g,'').replace(/w/g,'v').replace(/(ee|ii)/g,'i').replace(/aa/g,'a').replace(/(oo|uu)/g,'u')||String(t||'').toLowerCase().replace(/\s+/g,'');
+async function loadZA(force){
+  if(!force&&ZA.ok&&Date.now()-ZA.t<600000)return;
+  try{const [z,a,s]=await Promise.all([sb.from('zones').select('*').order('sort'),sb.from('areas').select('*').order('name'),sb.from('app_settings').select('*').eq('k','zone_ui_team')]);
+    if(z.error||a.error)throw z.error||a.error;ZA={ok:true,zones:z.data||[],areas:a.data||[],team:!!((s.data||[])[0]||{}).v,t:Date.now()};
+    const m={};ZA.areas.filter(x=>x.status=='approved').forEach(x=>{if(x.norm)m[x.norm]=x;(x.aliases||[]).forEach(al=>{const k=edNorm(al);if(k)m[k]=m[k]||x})});ZA.map=m;
+  }catch(e){ZA.ok=false}
+}
+const zUI=()=>ZA.ok&&ZA.zones.length&&(ME.role=='admin'||ZA.team);
+const zName=id=>(ZA.zones.find(z=>z.id==id)||{}).name||'';
+const zAreas=zid=>ZA.areas.filter(a=>a.status=='approved'&&a.zone_id==zid).sort((a,b)=>a.name.localeCompare(b.name));
+const areaOf=loc=>{if(!ZA.map)return null;const s=String(loc||'');if(!edNorm(s))return null;return ZA.map[edNorm(s)]||ZA.map[edNorm(s.split('(')[0].split('/')[0].split(',')[0])]||null};
+/* Excel / free text -> area name from master (whole text, then each comma part from the end) */
+function normArea(raw){const s=String(raw||'').trim();if(!s)return{area:'',address:''};
+  const a=areaOf(s);if(a)return{area:a.name,address:edNorm(a.name)==edNorm(s)?'':s};
+  const toks=s.split(',');for(let i=toks.length-1;i>=0;i--){const x=areaOf(toks[i]);if(x)return{area:x.name,address:s}}
+  return{area:s,address:''}}
+/* bigram similarity for duplicate hints */
+function zSim(a,b){a=edNorm(a);b=edNorm(b);if(!a||!b)return 0;if(a==b)return 1;const bg=s=>{const m={};for(let i=0;i<s.length-1;i++){const k=s.substr(i,2);m[k]=(m[k]||0)+1}return m};const A=bg(a),B=bg(b);let n=0,t=0;for(const k in A){t+=A[k];if(B[k])n+=Math.min(A[k],B[k])}for(const k in B)t+=B[k];return t?2*n/t:0}
+const zBest=(t,ex)=>ZA.areas.filter(a=>a.status=='approved'&&a.id!=ex).map(a=>({a,s:Math.max(zSim(t,a.name),...(a.aliases||[]).map(x=>zSim(t,x)))})).sort((x,y)=>y.s-x.s)[0];
+
+/* ---- picker: Zone chips -> Area dropdown -> Other ---- */
+function zonePicker(px,loc){
+  const a=areaOf(loc);ZP[px]={z:a?a.zone_id:null,a:a?a.id:null,other:false,touched:false,orig:loc||'',pick:null};
+  if(!a&&loc){ZP[px].other=true}
+  return `<div id="zp_${px}">${zpInner(px)}</div>`;
+}
+function zpInner(px){
+  const s=ZP[px],areas=s.z?zAreas(s.z):[];
+  return `<label>Zone</label><div class="zch">${ZA.zones.filter(z=>z.active||z.id==s.z).map(z=>`<button type="button" class="${s.z==z.id?'on':''}" onclick="zpZone('${px}',${z.id})">${esc(z.name)}</button>`).join('')}</div>
+  ${s.z?`<label>Area <span class="mu">(sirf ${esc(zName(s.z))} ke)</span></label><select id="zpa_${px}" onchange="zpArea('${px}',this.value)"><option value="">— Area chuno —</option>${areas.map(a=>`<option value="${a.id}" ${s.a==a.id&&!s.other?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="other" ${s.other?'selected':''}>➕ Other (list mein nahi hai)</option></select>`:(s.orig?`<div class="mu" style="margin:4px 0 6px">Abhi likha hai: <b>${esc(s.orig)}</b> · zone chuno</div>`:'')}
+  ${s.z&&s.other?`<label>Area ka asli naam likho</label><input id="zpo_${px}" value="${esc(s.other===true&&s.orig&&!areaOf(s.orig)?s.orig:'')}" placeholder="Jaise: Pimple Gurav" oninput="zpSug('${px}')"><div id="zps_${px}"></div><div class="mu">Naya area admin ke approval ke liye jayega. Lead abhi save ho jayegi.</div>`:''}`;
+}
+function zpRe(px){const e=$('#zp_'+px);if(e)e.innerHTML=zpInner(px);if(ZP[px].other&&ZP[px].z)zpSug(px)}
+function zpZone(px,z){const s=ZP[px];s.touched=true;if(s.z!=z){s.z=z;s.a=null;s.other=s.orig&&!areaOf(s.orig)?true:false}zpRe(px)}
+function zpArea(px,v){const s=ZP[px];s.touched=true;if(v=='other'){s.other=true;s.a=null}else{s.other=false;s.a=v?+v:null}zpRe(px)}
+function zpSug(px){const s=ZP[px],i=$('#zpo_'+px),box=$('#zps_'+px);if(!i||!box)return;s.pick=null;const t=i.value.trim();if(t.length<3){box.innerHTML='';return}
+  const ex=areaOf(t);const b=ex?{a:ex,s:1}:zBest(t);
+  if(b&&b.s>=0.6)box.innerHTML=`<div class="zsug">🤔 Kya aapka matlab <b>${esc(b.a.name)}</b> (${esc(zName(b.a.zone_id))}) hai?<div class="acts" style="margin-top:6px"><button type="button" class="p" onclick="zpUse('${px}',${b.a.id})">Haan, ${esc(b.a.name)}</button><button type="button" onclick="this.closest('.zsug').remove()">Nahi, naya area</button></div></div>`;
+  else box.innerHTML=''}
+function zpUse(px,id){const a=ZA.areas.find(x=>x.id==id),s=ZP[px];s.z=a.zone_id;s.a=a.id;s.other=false;s.touched=true;zpRe(px)}
+/* -> {locality, area_id} | {keep:true} | {err} */
+async function zpVal(px,required){
+  const s=ZP[px];if(!s)return{keep:true};
+  if(!s.touched&&!required)return{keep:true};
+  if(!s.z)return required?{err:'Zone chuno'}:{keep:true};
+  if(!s.other){if(!s.a)return{err:'Area chuno (ya Other)'};const a=ZA.areas.find(x=>x.id==s.a);return{locality:a.name,area_id:a.id}}
+  const t=(($('#zpo_'+px)||{}).value||'').trim();if(t.length<3)return{err:'Other mein area ka naam likho'};
+  const ex=areaOf(t);if(ex)return{locality:ex.name,area_id:ex.id};
+  const {data,error}=await sb.rpc('area_request',{t,z:s.z});if(error)return{err:error.message};
+  ZA.t=0;return data.status=='approved'?{locality:data.name,area_id:data.id}:{locality:data.name,area_id:null,pending:true};
+}
+
+/* ---- admin: Manage Zones & Areas ---- */
+async function zAct(fn,args,msg){const {data,error}=await sb.rpc(fn,args);if(error)return toast(error.message,1);toast(msg+(data&&data.leads!=null?` · ${data.leads} leads${data.properties?', '+data.properties+' properties':''} jude`:''));await loadZA(true);for(const k in VC)if(k.includes('|zones|'))delete VC[k];render()}
+const zSel=(id,cur,ph)=>`<select id="${id}"><option value="">${ph||'— Zone —'}</option>${ZA.zones.filter(z=>z.active).map(z=>`<option value="${z.id}" ${cur==z.id?'selected':''}>${esc(z.name)}</option>`).join('')}</select>`;
+const aSel=(id,ex)=>`<select id="${id}"><option value="">— Area chuno —</option>${ZA.zones.map(z=>`<optgroup label="${esc(z.name)}">${zAreas(z.id).filter(a=>a.id!=ex).map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
+const zv=id=>{const e=$('#'+id);return e?e.value:''};
+function zGo(t){ZT=t;for(const k in VC)if(k.includes('|zones|'))delete VC[k];render()}
+const zonesView=async()=>{
+  await loadZA(true);
+  if(!ZA.ok)return `<div class="errc"><div class="ei">⚠️</div><div><b>Zones abhi set nahi hue</b><div class="mu">Supabase mein Step 6 ki SQL chalani hai.</div></div></div>`;
+  const pend=ZA.areas.filter(a=>a.status=='pending'),appr=ZA.areas.filter(a=>a.status=='approved');
+  const [lc,un]=await Promise.all([pageAll(()=>sb.from('leads').select('area_id,locality')),sb.rpc('area_unclassified')]);
+  const cnt={},cntT={};lc.forEach(l=>{if(l.area_id)cnt[l.area_id]=(cnt[l.area_id]||0)+1;else{const k=edNorm(l.locality);cntT[k]=(cntT[k]||0)+1}});
+  const U=(un.data||[]);
+  const tabs=[['pending',`⏳ Pending ${pend.length}`],['approved',`✅ Approved ${appr.length}`],['unc',`❓ Unclassified ${U.reduce((s,r)=>s+(+r.n),0)}`],['zones','🗺 Zones'],['hist','📜 History']];
+  let h=`<div class="card" style="padding:12px"><b style="font-size:17px">🗺 Manage Zones & Areas</b><div class="mu">Naya area yahan approve karte hi sabke dropdown aur filter mein aa jaata hai.</div>
+  <div class="zteam">Team ke liye Zone → Area form: <b>${ZA.team?'CHALU ✅':'BAND (sirf admin test kar raha hai)'}</b> <button onclick="zAct('zone_admin',{act:'team_ui',zid:null,txt:'${ZA.team?'off':'on'}'},'${ZA.team?'Team ke liye band':'Team ke liye chalu'}')">${ZA.team?'Band karo':'Team ke liye chalu karo'}</button></div></div>
+  <div class="chips" style="overflow-x:auto;flex-wrap:nowrap">${tabs.map(t=>`<button class="${ZT==t[0]?'on':''}" onclick="zGo('${t[0]}')" style="white-space:nowrap">${t[1]}</button>`).join('')}</div>`;
+  if(ZT=='pending'){
+    h+=pend.length?pend.sort((a,b)=>(cntT[b.norm]||0)-(cntT[a.norm]||0)).map(a=>{const b=zBest(a.name,a.id);const dup=b&&b.s>=0.6;
+      return `<div class="card"><div class="row"><b>${esc(a.name)}</b><span class="zt">${dup?'Duplicate?':'Pending'}</span></div>
+      <div class="mu">${a.requested_by&&P[a.requested_by]?esc(P[a.requested_by].name||'')+' ne joda':esc(a.note||'')} · ${cntT[a.norm]||0} leads · Sujhaya zone: <b>${esc(zName(a.suggested_zone)||'— (aap chuno)')}</b></div>
+      ${dup?`<div class="zsug" style="margin-top:6px">"${esc(b.a.name)}" (${esc(zName(b.a.zone_id))}) se ${Math.round(b.s*100)}% milta hai<div class="acts" style="margin-top:6px"><button class="p" onclick="zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:${b.a.id},txt:null},'Merge ho gaya')">🔗 ${esc(b.a.name)} mein merge</button></div></div>`:''}
+      <div class="f2" style="margin-top:8px">${zSel('zz_'+a.id,a.suggested_zone)}<button class="g" onclick="const z=zv('zz_${a.id}');if(!z)return toast('Zone chuno',1);zAct('area_admin',{act:'approve',aid:${a.id},z:+z,target:null,txt:null},'Approve ho gaya ✅')">✅ Approve</button></div>
+      <div class="f2" style="margin-top:6px">${aSel('zm_'+a.id,a.id)}<button onclick="const t=zv('zm_${a.id}');if(!t)return toast('Merge ke liye area chuno',1);zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:+t,txt:null},'Merge ho gaya')">🔗 Merge</button></div>
+      <button class="r" style="margin-top:6px" onclick="zAct('area_admin',{act:'reject',aid:${a.id},z:null,target:null,txt:null},'Reject kiya')">✗ Reject</button></div>`}).join(''):empty('Koi pending area nahi 🎉');
+  }else if(ZT=='approved'){
+    h+=ZA.zones.map(z=>{const L=zAreas(z.id);return `<div class="card"><b>${esc(z.name)}</b> <span class="mu">${L.length} area · ${L.reduce((s,a)=>s+(cnt[a.id]||0),0)} leads${z.active?'':' · BAND'}</span>
+      ${L.map(a=>`<div class="zrow" onclick="ZX.o=ZX.o==${a.id}?0:${a.id};zGo('approved')"><span>${esc(a.name)}${(a.aliases||[]).length?` <span class="mu">(${a.aliases.length} spelling)</span>`:''}</span><span class="mu">${cnt[a.id]||0}</span></div>
+      ${ZX.o==a.id?`<div class="form" style="margin:4px 0 8px"><div class="mu">Spellings: ${esc((a.aliases||[]).join(', ')||'—')}</div>
+       <div class="f2">${zSel('zr_'+a.id,a.zone_id)}<button onclick="zAct('area_admin',{act:'rezone',aid:${a.id},z:+zv('zr_${a.id}'),target:null,txt:null},'Zone badla')">Zone badlo</button></div>
+       <div class="f2"><input id="zn_${a.id}" placeholder="Naya naam"><button onclick="const t=zv('zn_${a.id}').trim();if(t.length<3)return toast('Naam likho',1);zAct('area_admin',{act:'rename',aid:${a.id},z:null,target:null,txt:t},'Naam badla')">Naam badlo</button></div>
+       <div class="f2"><input id="zl_${a.id}" placeholder="Doosri spelling (jaise Hinjwadi)"><button onclick="const t=zv('zl_${a.id}').trim();if(t.length<3)return toast('Spelling likho',1);zAct('area_admin',{act:'alias',aid:${a.id},z:null,target:null,txt:t},'Spelling judi')">+ Spelling</button></div>
+       <div class="f2">${aSel('zg_'+a.id,a.id)}<button onclick="const t=zv('zg_${a.id}');if(!t)return toast('Area chuno',1);zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:+t,txt:null},'Merge ho gaya')">🔗 Merge</button></div>
+       <button class="r" onclick="zAct('area_admin',{act:'deactivate',aid:${a.id},z:null,target:null,txt:null},'Area band kiya')">Area band karo</button></div>`:''}`).join('')}</div>`}).join('')
+      +`<div class="card"><b>➕ Naya area jodo</b><div class="f2" style="margin-top:6px"><input id="zna" placeholder="Area ka naam">${zSel('znz')}</div><button class="p" style="margin-top:6px" onclick="const t=zv('zna').trim(),z=zv('znz');if(t.length<3||!z)return toast('Naam aur zone dono chahiye',1);const b=zBest(t);if(b&&b.s>=0.85&&!ZX.f){ZX.f=1;return toast('Milta-julta area pehle se hai: '+b.a.name+' · phir bhi chahiye to dobara dabao',1)}ZX.f=0;zAct('area_admin',{act:'create',aid:null,z:+z,target:null,txt:t},'Area jud gaya ✅')">Jodo</button></div>`;
+  }else if(ZT=='unc'){
+    h+=`<div class="mu" style="margin:0 2px 8px">In leads/properties ka area kisi zone se juda nahi hai. Sahi area chuno, aage se yeh spelling apne aap judegi.</div>`+
+    (U.length?U.map((r,i)=>{const b=r.locality!='(khaali)'?zBest(r.locality):null,pa=pend.find(a=>a.norm==edNorm(r.locality)||a.norm==edNorm(String(r.locality).split('(')[0].split('/')[0]));return `<div class="card"><div class="row"><b>${esc(r.locality)}</b><span class="mu">${r.n} ${r.src=='leads'?'leads':'properties'}</span></div>
+      ${r.locality=='(khaali)'?'<div class="mu">Area likha hi nahi hai. Lead kholkar bharna hoga.</div>':pa?`<div class="zsug">⏳ "${esc(pa.name)}" Pending list mein hai${pa.suggested_zone?' (sujhaya zone: '+esc(zName(pa.suggested_zone))+')':''}. <button onclick="zGo('pending')">Pending mein approve karo</button></div>`:`${b&&b.s>=0.7?`<div class="mu">Shayad: <b>${esc(b.a.name)}</b> (${Math.round(b.s*100)}%)</div>`:''}
+      <div class="f2" style="margin-top:6px">${aSel('zu_'+i)}<button class="p" onclick="const t=zv('zu_${i}');if(!t)return toast('Area chuno',1);zAct('area_assign_text',{loc:${esc(JSON.stringify(r.locality))},aid:+t},'Jod diya')">Jodo</button></div>
+      <div class="f2" style="margin-top:6px">${zSel('zc_'+i,null,'— ya naya area, zone —')}<button onclick="const z=zv('zc_${i}');if(!z)return toast('Zone chuno',1);zAct('area_admin',{act:'create',aid:null,z:+z,target:null,txt:${esc(JSON.stringify(r.locality))}},'Naya area bana')">Naya area banao</button></div>`}</div>`}).join(''):empty('Sab classified hai 🎉'));
+  }else if(ZT=='zones'){
+    h+=ZA.zones.map(z=>`<div class="card"><div class="row"><b>${esc(z.name)}</b><span class="mu">${zAreas(z.id).length} area${z.active?'':' · BAND'}</span></div>
+      <div class="f2" style="margin-top:6px"><input id="zrn_${z.id}" placeholder="Naya naam"><button onclick="const t=zv('zrn_${z.id}').trim();if(!t)return toast('Naam likho',1);zAct('zone_admin',{act:'rename',zid:${z.id},txt:t},'Zone ka naam badla')">Naam badlo</button></div>
+      <button style="margin-top:6px" onclick="zAct('zone_admin',{act:'toggle',zid:${z.id},txt:null},'${z.active?'Zone band':'Zone chalu'}')">${z.active?'Band karo':'Chalu karo'}</button></div>`).join('')+
+      `<div class="card"><b>➕ Naya zone</b><div class="f2" style="margin-top:6px"><input id="znz2" placeholder="Zone ka naam"><button class="p" onclick="const t=zv('znz2').trim();if(!t)return toast('Naam likho',1);zAct('zone_admin',{act:'create',zid:null,txt:t},'Zone jud gaya')">Jodo</button></div></div>`;
+  }else{
+    const {data}=await sb.from('area_audit').select('*').order('at',{ascending:false}).limit(60);
+    const an=id=>(ZA.areas.find(a=>a.id==id)||{}).name||'';
+    const AL={setup:'Setup',request:'Team ne Other mein joda',approve:'Approve',reject:'Reject',rezone:'Zone badla',rename:'Naam badla',alias:'Spelling judi',deactivate:'Band kiya',merge:'Merge',create:'Naya area',assign:'Unclassified joda',zone_create:'Naya zone',zone_rename:'Zone naam',zone_toggle:'Zone on/off',zone_team_ui:'Team switch'};
+    h+=`<div class="card">${(data||[]).map(x=>{const d=x.detail||{};return `<div class="zrow" style="cursor:default"><span><b>${esc(AL[x.action]||x.action)}</b> · ${esc(an(x.area_id)||d.name||d.text||'')}${d.target?' → '+esc(an(d.target)):''}${d.zone&&x.action!='setup'&&!String(x.action).startsWith('zone')?' · '+esc(zName(d.zone)):''}${d.leads?' · '+d.leads+' leads':''}<br><span class="mu">${new Date(x.at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} · ${esc((P[x.by_id]||{}).name||'')}</span></span></div>`}).join('')||'<div class="mu">Abhi koi history nahi.</div>'}</div>`;
+  }
+  return h;
+};
 
 /* ---------- call timer + call form ---------- */
 function startT(){if(t0)return;t0=Date.now();tint=setInterval(()=>{const e=$('#tmr');if(e)e.textContent='Timer: '+fmt((Date.now()-t0)/1000)},1000)}
@@ -556,6 +675,7 @@ async function saveCall(id){
 
 /* ---------- views ---------- */
 const VIEW={};
+VIEW['admin:zones']=(...a)=>zonesView(...a);
 // Telecaller
 VIEW['telecaller:call']=async()=>{
   const flp=loadFilt();
@@ -688,12 +808,6 @@ function colKey(h){
   if(/owner|naam|name/.test(h))return 'name';
   return null;
 }
-const AREA_RULES=[["bavdhan|bhugaon|bhunde vasti", "Bavdhan", "411021"], ["\\bsus\\b", "Sus", "411021"], ["\\bbaner\\b", "Baner", "411045"], ["\\bpashan\\b", "Pashan", "411021"], ["balewadi|बालेवाडी", "Balewadi", "411045"], ["\\bmahalunge\\b", "Mahalunge", "411045"], ["\\baundh\\b", "Aundh", "411007"], ["\\bwakad\\b", "Wakad", "411057"], ["hinjawadi|hinjewadi", "Hinjawadi", "411057"], ["pimple saudagar", "Pimple Saudagar", "411027"], ["pimple nilakh", "Pimple Nilakh", "411027"], ["pimple gurav", "Pimple Gurav", "411061"], ["\\brahatani\\b", "Rahatani", "411017"], ["\\bravet\\b", "Ravet", "412101"], ["\\bkiwale\\b", "Kiwale", "412101"], ["\\bpunawale\\b", "Punawale", "411033"], ["\\btathawade\\b", "Tathawade", "411033"], ["\\bthergaon\\b", "Thergaon", "411033"], ["\\bkharadi\\b", "Kharadi", "411014"], ["viman nagar", "Viman Nagar", "411014"], ["hadapsar|magarpatta", "Hadapsar", "411028"], ["\\bmanjari\\b", "Manjari", "412307"], ["\\bwagholi\\b", "Wagholi", "412207"], ["\\bkesnand\\b", "Kesnand", "412207"], ["\\blohegaon\\b", "Lohegaon", "411047"], ["\\bdhanori\\b", "Dhanori", "411015"], ["\\bmundhwa\\b", "Mundhwa", "411036"], ["\\bkondhwa\\b", "Kondhwa", "411048"], ["\\bkatraj\\b", "Katraj", "411046"], ["\\bbibwewadi\\b", "Bibwewadi", "411037"], ["\\bambegaon\\b", "Ambegaon", "411046"], ["\\bdhayari\\b", "Dhayari", "411041"], ["\\bnarhe\\b", "Narhe", "411041"], ["vadgaon budruk", "Vadgaon Budruk", "411041"], ["\\bwarje\\b", "Warje", "411058"], ["\\bkarvenagar\\b", "Karvenagar", "411052"], ["\\bkothrud\\b", "Kothrud", "411038"], ["\\berandwane\\b", "Erandwane", "411004"], ["deccan", "Deccan Gymkhana", "411004"], ["pimpri colony", "Pimpri Colony", "411017"], ["\\bkalewadi\\b", "Kalewadi", "411017"], ["(?<!-)\\bchinchwad\\b", "Chinchwad", "411019"], ["\\bmoshi\\b", "Moshi", "412105"], ["\\bchikhali\\b", "Chikhali", "411062"], ["\\bnigdi\\b", "Nigdi", "411044"], ["\\bdapodi\\b", "Dapodi", "411012"], ["\\bsangvi\\b", "Sangvi", "411027"], ["\\bundri\\b", "Undri", "411060"], ["\\bphursungi\\b", "Phursungi", "412308"], ["\\bcharholi\\b", "Charholi", "412105"], ["\\bdighi\\b", "Dighi", "411015"], ["\\bswargate\\b", "Swargate", "411042"], ["sadashiv peth", "Sadashiv Peth", "411030"], ["\\bghorpadi\\b", "Ghorpadi", "411001"], ["\\bdhankawadi\\b", "Dhankawadi", "411043"], ["\\bdudulgaon\\b", "Dudulgaon", "412105"], ["\\bnanded\\b", "Nanded", "411041"], ["tingre nagar", "Tingre Nagar", "411032"], ["\\bkirkatwadi\\b", "Kirkatwadi", "411024"], ["\\bshivane\\b", "Shivane", "411023"], ["\\bbhukum\\b", "Bhukum", "412115"]].map(([r,a,pc])=>[new RegExp(r,'i'),a,pc]);
-const AREA_NAMES=[...new Set(AREA_RULES.map(x=>x[1]))].sort();
-function normArea(raw){const s=String(raw||'').trim();if(!s)return{area:'',address:''};
-  const toks=s.split(',');for(let i=toks.length-1;i>=0;i--){for(const [rx,a] of AREA_RULES){if(rx.test(toks[i])){return{area:a,address:a.toLowerCase()==s.toLowerCase()?'':s}}}}
-  return{area:s,address:''}}
-const areaList='<datalist id="arl">'+AREA_NAMES.map(a=>`<option value="${a}">`).join('')+'</datalist>';
 let SKIPPED=[];
 const MSGC={ok:['#e6f7ec','#9fd9b3','#14602f'],warn:['#fff4d6','#f0d9a0','#8a5a00'],err:['#fdeaea','#f2b3b3','#9b1c1c']};
 function impMsg(kind,text){const c=MSGC[kind];$('#impr').innerHTML=`<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:${c[0]};border:1px solid ${c[1]};color:${c[2]};font-size:14px;font-weight:600">${text}</div>`}

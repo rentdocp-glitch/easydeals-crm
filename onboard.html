@@ -259,8 +259,9 @@ const STEPS=[
   {row:[T('wing','Wing / Tower',{req:1}),T('flat_no','Flat no.',{req:1})]},
   {row:[T('floor_no','Floor',{req:1,type:'text'}),T('total_floors','Building ke kul floors',{req:1,type:'number'})]},
   T('address','Poora address',{req:1,area:1}),
-  {row:[T('locality','Area / Locality',{req:1}),T('pincode','Pin code',{req:1,type:'tel',v:'pin'})]},
-  {row:[T('city','City',{def:'Pune'}),T('landmark','Landmark')]}
+  T('locality','Area / Locality',{req:1,zone:1}),
+  {row:[T('pincode','Pin code',{req:1,type:'tel',v:'pin'}),T('city','City',{def:'Pune'})]},
+  T('landmark','Landmark')
  ]},
  {title:'Property details',f:[
   C('bhk','BHK',['1 RK','1 BHK','2 BHK','3 BHK','4 BHK','5+ BHK'],{req:1}),
@@ -307,6 +308,24 @@ const MAIN=['owner_name','owner_phone','owner_phone2','owner_email','intent','pt
 
 /* ---------- state ---------- */
 let ME=null,D={},step=0,PH=[],LEAD=null,DONE=null,saving=false;
+/* ---- zone -> area (Area Master from Supabase) ---- */
+let ZA={ok:false,zones:[],areas:[],team:false,map:{}};
+const edNorm=t=>String(t||'').toLowerCase().replace(/\b(phase|ph)\s*[-.]?\s*\d+\b/g,'').replace(/\b(budruk|bk)\b/g,'bk').replace(/\b(khurd|kh)\b/g,'kh').replace(/[^a-z0-9]/g,'').replace(/w/g,'v').replace(/(ee|ii)/g,'i').replace(/aa/g,'a').replace(/(oo|uu)/g,'u')||String(t||'').toLowerCase().replace(/\s+/g,'');
+async function loadZA(){try{const [z,a,s]=await Promise.all([sb.from('zones').select('*').order('sort'),sb.from('areas').select('*').order('name'),sb.from('app_settings').select('*').eq('k','zone_ui_team')]);if(z.error||a.error)throw 1;
+  ZA={ok:true,zones:(z.data||[]).filter(x=>x.active),areas:(a.data||[]).filter(x=>x.status=='approved'),team:!!((s.data||[])[0]||{}).v,map:{}};ZA.areas.forEach(x=>{if(x.norm)ZA.map[x.norm]=x;(x.aliases||[]).forEach(al=>{const k=edNorm(al);if(k)ZA.map[k]=ZA.map[k]||x})})}catch(e){ZA.ok=false}}
+const zOn=()=>ZA.ok&&ZA.zones.length&&ME&&(ME.role=='admin'||ZA.team);
+const areaOf=t=>{const s=String(t||'');if(!edNorm(s))return null;return ZA.map[edNorm(s)]||ZA.map[edNorm(s.split('(')[0].split('/')[0].split(',')[0])]||null};
+function zoneField(f){
+  if(D.zone_id==null&&D.locality){const a=areaOf(D.locality);if(a){D.zone_id=a.zone_id;D.locality=a.name}else D.loc_other=1}
+  const L=D.zone_id?ZA.areas.filter(a=>a.zone_id==D.zone_id).sort((a,b)=>a.name.localeCompare(b.name)):[];
+  return `<div class="q">Zone <em>*</em></div><div class="cs">${ZA.zones.map(z=>`<button type="button" class="${D.zone_id==z.id?'on':''}" onclick="zPick(${z.id})">${esc(z.name)}</button>`).join('')}</div>
+  ${D.zone_id?`<div class="q">Area / Locality <em>*</em></div><select onchange="zArea(this.value)"><option value="">— Area chuno —</option>${L.map(a=>`<option ${!D.loc_other&&D.locality==a.name?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="__other" ${D.loc_other?'selected':''}>➕ Other (list mein nahi hai)</option></select>
+  ${D.loc_other?`<input value="${esc(D.locality||'')}" placeholder="Area ka asli naam likho" oninput="D.locality=this.value;saveDraft();zHint(this.value)"><div id="zh">${zHintHtml(D.locality)}</div><div class="mu">Naya area admin ke approval ke liye jayega.</div>`:''}`:''}`;
+}
+function zPick(z){if(D.zone_id!=z){D.zone_id=z;if(!D.loc_other)D.locality=''}saveDraft();const y=scrollY;render();scrollTo(0,y)}
+function zArea(v){if(v=='__other'){D.loc_other=1;D.locality=''}else{D.loc_other=0;D.locality=v}saveDraft();const y=scrollY;render();scrollTo(0,y)}
+function zHintHtml(t){const a=t&&t.length>=3?areaOf(t):null;return a?`<div class="err" style="background:#fff6e0;border-color:#f0d9a0;color:#7a5200">"${esc(a.name)}" list mein hai. <button type="button" onclick="D.zone_id=${a.zone_id};D.loc_other=0;D.locality='${esc(a.name)}';saveDraft();render()">Wahi chuno</button></div>`:''}
+function zHint(t){const e=$('#zh');if(e)e.innerHTML=zHintHtml(t)}
 const DK='ed_onboard_draft';
 function saveDraft(){try{localStorage.setItem(DK,JSON.stringify({D,step,lead:LEAD&&LEAD.id}))}catch(e){}}
 function loadDraft(){try{return JSON.parse(localStorage.getItem(DK)||'null')}catch(e){return null}}
@@ -318,7 +337,7 @@ async function login(){const {data,error}=await sb.auth.signInWithPassword({emai
 async function boot(user){
   const {data:me}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(!me){showLogin('Profile not found.');return}
-  ME=me;$('#hdr').style.display='flex';$('#who').textContent=(me.name||'')+' · test version';
+  ME=me;await loadZA();$('#hdr').style.display='flex';$('#who').textContent=(me.name||'')+' · test version';
   const u=new URLSearchParams(location.search);
   if(u.get('copy')){return showCopy(u.get('copy'))}
   const dr=loadDraft();const lid=u.get('lead');
@@ -331,6 +350,7 @@ const normBhk=b=>{b=String(b).toUpperCase().replace(/\s+/g,' ');const m=b.match(
 
 /* ---------- render form ---------- */
 function fieldHtml(f){
+  if(f.zone&&zOn())return zoneField(f);
   const req=f.req||(f.reqIf&&f.reqIf(D));const lab=`<div class="q">${esc(f.lab)}${req?' <em>*</em>':''}</div>`;
   if(f.t=='chips'){const cur=D[f.k];return lab+`<div class="cs">${f.opts.map(o=>{const on=f.multi?(cur||[]).includes(o):cur==o;return `<button type="button" class="${on?'on':''}" onclick="pick('${f.k}',${JSON.stringify(o).replace(/"/g,'&quot;')})">${esc(o)}</button>`}).join('')}</div>`}
   const v=esc(D[f.k]==null?'':D[f.k]);
@@ -356,6 +376,7 @@ function render(){
 function pick(k,o){const f=FIELDS.find(x=>x.k==k);if(f.multi){const a=D[k]||[];D[k]=a.includes(o)?a.filter(x=>x!=o):a.concat(o)}else D[k]=D[k]==o&&!f.req?null:o;saveDraft();const y=scrollY;render();scrollTo(0,y)}
 function check(i){
   const miss=[];FIELDS.filter(f=>f.step==i).forEach(f=>{const req=f.req||(f.reqIf&&f.reqIf(D));const v=D[f.k];if(req&&(v==null||String(v).trim()==''||(Array.isArray(v)&&!v.length)))miss.push(f.lab)});
+  if(i==0&&zOn()&&!D.zone_id)miss.push('Zone');
   if(i==0){if(D.owner_phone&&ph10(D.owner_phone).length!=10)miss.push('Mobile 10 digit ka hona chahiye');if(D.pincode&&!/^\d{6}$/.test(String(D.pincode).trim()))miss.push('Pin code 6 digit ka hona chahiye')}
   if(i==3&&D.photo_mode=='Abhi camera se'&&!DRIVE_URL)miss.push('Photos ka Drive setup baaki hai: "Baad mein professional shoot" chuno');
   else if(i==3&&D.photo_mode=='Abhi camera se'&&PH.length<5)miss.push('Kam se kam 5 photos ('+PH.length+' chuni)');
@@ -378,6 +399,7 @@ async function submit(){
     const paths=[];
     /* photos Supabase mein nahi jaati: save ke baad seedha Google Drive mein (driveUpload) */
     btn.textContent='Save ho raha hai…';
+    if(zOn()&&D.loc_other&&D.locality&&!areaOf(D.locality)){const {data:ar,error:ae}=await sb.rpc('area_request',{t:D.locality,z:D.zone_id});if(ae)throw ae;D.locality=ar.name}
     const p={};MAIN.forEach(k=>{if(D[k]!=null&&D[k]!=='')p[k]=D[k]});
     p.owner_phone=ph10(D.owner_phone);if(D.owner_phone2)p.owner_phone2=ph10(D.owner_phone2);
     ['price','final_price'].forEach(k=>{if(D[k])p[k]=lakh(D[k])});
