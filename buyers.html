@@ -548,23 +548,23 @@ function orStats(){
 }
 function orText(){
   const p=OR.p,I=OR.in,S=orStats(),f=d=>d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
-  const L=[`*Easy Deals – Weekly Property Report*`,`${p.project||''} (${p.id})`,`${f(S.from)} – ${f(S.now)}`,'',`Dear ${p.owner_name||'Sir/Madam'},`,(I.days==7?`Here is this week's update on your property.`:`Here is the update on your property for the last ${I.days} days.`),''];
-  L.push(`📢 *Marketing by Easy Deals*`);
-  L.push(`Your property is actively promoted through Easy Deals' paid digital marketing – premium online listings, social media and our own buyer network.`);
-  if(I.work.length)L.push(`Work done: ${I.work.join(', ')}.`);
-  L.push('');L.push(I.days==7?`📊 *This week*`:`📊 *Last ${I.days} days*`);
-  L.push(`• New buyer enquiries generated: ${S.nl.length}`);
-  if(S.fol)L.push(`• Buyers followed up: ${S.fol}`);
-  if(S.wa)L.push(`• Property details shared on WhatsApp: ${S.wa}`);
-  if(S.vd)L.push(`• Site visits done: ${S.vd}`);
+  const L=[`*Easy Deals – Weekly Property Report*`,`${p.project||''} (${p.id})`,`${f(S.from)} – ${f(S.now)}`,'',`Dear ${p.owner_name||'Sir/Madam'},`,(I.days==7?`Here is what our team did for your property this week.`:`Here is what our team did for your property in the last ${I.days} days.`),''];
+  L.push(`✅ *Work done*`);
+  L.push(`• Property actively marketed on our online channels and social media`);
+  I.work.forEach(w=>L.push(`• ${w}`));
+  L.push('');L.push(`📊 *Results*`);
+  L.push(`• ${S.nl.length} new buyer enquir${S.nl.length==1?'y':'ies'}`);
+  if(S.fol)L.push(`• ${S.fol} buyer${S.fol==1?'':'s'} followed up by our team`);
+  if(S.wa)L.push(`• Property details shared with ${S.wa} buyer${S.wa==1?'':'s'}`);
+  if(S.vd)L.push(`• ${S.vd} site visit${S.vd==1?'':'s'} done`);
   if(I.list&&S.nl.length){L.push('');L.push(`*Recent enquiries*`);S.nl.slice().sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).filter((b,i,a)=>a.findIndex(x=>ph10(x.buyer_phone)==ph10(b.buyer_phone))==i).slice(0,5).forEach(b=>L.push(`• ${dshort(b.lead_date)} – ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)})`))}
   if(I.fb.trim()){L.push('');L.push(`💬 *Buyer feedback*`);L.push(I.fb.trim())}
   if(I.mkt.trim()){L.push('');L.push(`📈 *Market update*`);L.push(I.mkt.trim())}
   if(S.up.length||I.plan.trim()){L.push('');L.push(`🗓 *Next week*`);if(S.up.length)L.push(`${S.up.length} site visit${S.up.length>1?'s':''} scheduled: ${S.up.slice(0,4).map(b=>new Date(b.visit_at).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})).join('; ')}`);if(I.plan.trim())L.push(I.plan.trim())}
   if(I.ask.trim()){L.push('');L.push(`🙏 *We need from you*`);L.push(I.ask.trim())}
-  L.push('');L.push(`📌 *Total so far:* ${S.l.length} buyer enquiries generated · ${S.tv} site visit${S.tv==1?'':'s'}`);
+  L.push('');L.push(`📌 *Since we started:* ${S.l.length} buyer enquiries · ${S.tv} site visit${S.tv==1?'':'s'}`);
   if(p.service_till)L.push(`Your service is active till ${new Date(p.service_till).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}.`);
-  L.push('');L.push(`We will keep you updated every week.`);L.push('');L.push(`Regards,`);L.push(`Team Easy Deals`);
+  L.push('');L.push(`Our team is working to find the right buyer for your property. We will keep you updated every week.`);L.push('');L.push(`Regards,`);L.push(`Team Easy Deals`);
   return L.join('\n');
 }
 function orUpd(){orSave();$('#rtx').value=orText()}
