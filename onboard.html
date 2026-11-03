@@ -296,7 +296,8 @@ const STEPS=[
   C('photo_mode','Photos',['Abhi camera se','Baad mein professional shoot'],{req:1}),
   {photos:1},
   C('plan','Plan',['Platinum','Premium','All in One','Other'],{req:1}),
-  {row:[T('plan_amount','Amount mila (₹)',{req:1,type:'number'}),T('service_till','Service kab tak',{type:'date',defFn:()=>plusDays(90)})]},
+  {row:[T('package_amount','Package total (₹)',{req:1,type:'number',ph:'jaise 35400'}),T('plan_amount','Down payment mila (₹)',{req:1,type:'number',ph:'jaise 17700'})]},
+  {row:[T('success_fee','Success fee (₹)',{type:'number',ph:'jaise 11800'}),T('service_till','Service kab tak',{type:'date',defFn:()=>plusDays(90)})]},
   C('payment_mode','Payment kaise',['UPI','Cash','Cheque','Other'],{req:1}),
   T('payment_details','Transaction / cheque detail',{ph:'UPI ref, cheque no., bank'}),
   T('remarks','Koi aur baat',{area:1}),
@@ -441,7 +442,7 @@ Thank you for choosing Easy Deals. Please find your property details below:
 • Floor ${p.floor_no||''} of ${p.total_floors||''}, ${p.locality||''}
 • Carpet ${p.carpet||'-'} sqft · Built-up ${p.builtup||'-'} sqft
 • ${p.furnishing||''} · ${p.occupancy||''}
-${p.price?'• Expected price: '+rs(p.price)+'\n':''}${p.rent?'• Expected rent: ₹'+p.rent+' per month\n':''}• Plan: ${p.plan||''} · Amount: ₹${p.plan_amount||''} (${p.payment_mode||''})
+${p.price?'• Expected price: '+rs(p.price)+'\n':''}${p.rent?'• Expected rent: ₹'+p.rent+' per month\n':''}• Plan: ${p.plan||''}${(p.details||{}).package_amount?' · Package: ₹'+p.details.package_amount:''} · Paid: ₹${p.plan_amount||''}${(p.details||{}).package_amount&&p.plan_amount?' · Balance: ₹'+Math.max(0,p.details.package_amount-p.plan_amount):''} (${p.payment_mode||''})
 ${p.service_till?'• Service valid till: '+new Date(p.service_till).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'\n':''}
 Please review these details. Reply "OK" if everything is correct, or let us know any changes on this number.
 
