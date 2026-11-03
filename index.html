@@ -284,7 +284,7 @@ const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<
 async function render(){
   if(!ME)return;
   const list=TABS[ME.role]||TABS.telecaller;
-  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!(tab=='xfer'&&ME.role=='admin')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','done']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
@@ -900,13 +900,58 @@ VIEW['admin:team']=async()=>{
   const SC={new:'#e8eefc|#1f4e9c',callback:'#fff1d6|#8a5a00',ringing:'#eef0f3|#4a5361',followup:'#e3f3ff|#0b5a8a',meeting_assigned:'#e9e2fb|#5b3aa8',meeting_done:'#e0f5e6|#1b6b34',online_meet_done:'#e0f5e6|#1b6b34',not_interested:'#fde4e4|#9b1c1c',deal_closed:'#cdeed6|#0f5a28',not_available:'#f1e6dc|#7a4a1f'};
   const card=(title,sub,rows,uid)=>{const c={};rows.forEach(l=>c[l.status]=(c[l.status]||0)+1);
     const chips=Object.keys(ST).filter(k=>c[k]).map(k=>{const [bg,fg]=SC[k].split('|');return `<span style="background:${bg};color:${fg};padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600">${ST[k]} ${c[k]}</span>`}).join(' ');
-    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px"><button onclick="openDaily('${uid}')">📋 Daily work report</button></div>`:''}</div>`};
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px">${uid!='__pool'?`<button onclick="openDaily('${uid}')">📋 Daily work report</button>`:''}<button onclick="openXfer('${uid}')">🔁 ${uid=='__pool'?'Pool se leads do':'Leads transfer / nikalo'}</button></div>`:''}</div>`};
   const grp=(role,label,key)=>data.filter(p=>p.role==role).map(p=>card('👤 '+esc(p.name||'-'),label,all.filter(l=>l[key]==p.id),p.id)).join('');
   const un=all.filter(l=>!l.tc_id&&!l.fe_id);
-  const work=`<h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
+  const work=`<h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un,'__pool'):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
   return work+`<p class="mu">To add a new member: Supabase → Authentication → Add user. They will appear here automatically; then choose their role.</p>`+
   data.map(p=>`<div class="card"><div class="f2"><input value="${esc(p.name||'')}" onchange="setName('${p.id}',this.value)"><select ${p.id==ME.id?'disabled':''} onchange="setRole('${p.id}',this.value)">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${p.role==k?'selected':''}>${v}</option>`).join('')}</select></div></div>`).join('');
 };
+
+/* ---------- admin: bulk lead transfer / take back ---------- */
+const XDEF=['new','callback','ringing','followup','not_available'];
+let XF={from:'',st:[],zn:[],n:'',to:'',sure:false,last:null};
+function openXfer(id){XF={from:id,st:XDEF.slice(),zn:[],n:'',to:'',sure:false,last:XF.last};go('xfer')}
+const xKey=()=>XF.from=='__pool'?null:(P[XF.from]||{}).role=='fe'?'fe_id':'tc_id';
+function xBase(cols){let q=sb.from('leads').select(cols);if(XF.from=='__pool')q=q.is('tc_id',null).is('fe_id',null);else q=q.eq(xKey(),XF.from);return q}
+async function xPick(){let L=await pageAll(()=>{let q=xBase('id,status,zone_id,created_at').order('created_at',{ascending:true});if(XF.st.length)q=q.in('status',XF.st);if(XF.zn.length)q=q.in('zone_id',XF.zn);return q});const n=parseInt(XF.n);if(n>0)L=L.slice(0,n);return L}
+function xSet(k,v){XF[k]=v;XF.sure=false;render()}
+function xTog(k,v){const a=XF[k],i=a.indexOf(v);i<0?a.push(v):a.splice(i,1);XF.sure=false;render()}
+VIEW['admin:xfer']=async()=>{
+  const src=XF.from=='__pool'?{name:'Pool (kisi ke paas nahi)',role:'telecaller'}:P[XF.from]||{};const key=xKey(),role=src.role=='fe'?'fe':'telecaller';
+  const allL=await pageAll(()=>xBase('status,zone_id'));const c={};allL.forEach(l=>c[l.status]=(c[l.status]||0)+1);
+  const sel=await xPick();
+  const others=Object.values(P).filter(p=>p.role==role&&p.id!=XF.from);
+  const tgt=XF.to=='__pool'?'Pool (nikal lo, kisi ko nahi)':XF.to=='__split'?`Baaki ${role=='fe'?'Field Execs':'Telecallers'} mein barabar (${others.length})`:XF.to?(P[XF.to]||{}).name:'';
+  const zb=zUI()&&ZA.zones.length?`<div class="sec" style="margin-top:10px">Zone (optional)</div><div class="chips" style="flex-wrap:wrap">${ZA.zones.map(z=>{const n=allL.filter(l=>l.zone_id==z.id).length;return n?`<button class="${XF.zn.includes(String(z.id))?'on':''}" onclick="xTog('zn','${z.id}')">${esc(z.name)} ${n}</button>`:''}).join('')}</div>`:'';
+  return `<button onclick="go('team')" style="margin-bottom:10px">← Team</button>
+  ${XF.last?`<div class="card" style="background:#e6f7ec;border-color:#9fd9b3"><b>✅ ${XF.last.ids.length} leads ${esc(XF.last.label)}</b><div class="acts" style="margin-top:6px"><button onclick="xUndo()">↩ Undo (wapas pehle jaisa)</button></div></div>`:''}
+  <div class="card"><b style="font-size:17px">🔁 ${esc(src.name||'')} ki leads</b><div class="mu">${XF.from=='__pool'?'Jo leads kisi ke paas nahi hain':ROLE[src.role]+' · kul '+allL.length+' leads'}</div>
+  <div class="sec" style="margin-top:10px">1. Kaunsi leads? (status)</div>
+  <div class="chips" style="flex-wrap:wrap">${Object.keys(ST).filter(k=>c[k]).map(k=>`<button class="${XF.st.includes(k)?'on':''}" onclick="xTog('st','${k}')">${ST[k]} ${c[k]}</button>`).join('')||'<span class="mu">Koi lead nahi</span>'}</div>
+  <div class="mu">Deal Closed, Meeting aur Not Interested pehle se nahi chune hote. Chahiye to tap karo.</div>${zb}
+  <div class="sec" style="margin-top:10px">2. Kitni?</div>
+  <div class="f2"><input type="number" inputmode="numeric" placeholder="Sab (khaali chhodo)" value="${esc(XF.n)}" onchange="xSet('n',this.value)"><div class="mu" style="align-self:center">Purani leads pehle jaati hain</div></div>
+  <div class="sec" style="margin-top:10px">3. Kisko dena hai?</div>
+  <select onchange="xSet('to',this.value)"><option value="">— Chuno —</option>${others.map(p=>`<option value="${p.id}" ${XF.to==p.id?'selected':''}>👤 ${esc(p.name||'')}</option>`).join('')}${others.length>1?`<option value="__split" ${XF.to=='__split'?'selected':''}>⚖️ Baaki sab mein barabar baanto</option>`:''}${XF.from!='__pool'?`<option value="__pool" ${XF.to=='__pool'?'selected':''}>📭 Nikal lo (Pool mein daalo)</option>`:''}</select>
+  <div class="card" style="margin:12px 0 0;background:#f6f8fb"><b>${sel.length} leads</b> chuni gayi${tgt?` → <b>${esc(tgt)}</b>`:''}
+  ${role=='fe'&&XF.to=='__pool'&&sel.some(l=>l.status=='meeting_assigned')?'<div class="er" style="margin-top:6px">⚠️ Isme Meeting Assigned leads hain. Pool mein daalne se unki meeting kisi FE ke paas nahi rahegi.</div>':''}
+  <div class="acts" style="margin-top:8px"><button class="${XF.sure?'r':'p'}" ${!sel.length||!XF.to?'disabled':''} onclick="xGo()">${XF.sure?`Pakka? Haan, ${sel.length} leads transfer karo`:'Transfer karo'}</button></div></div></div>`;
+};
+async function xGo(){
+  if(!XF.sure){XF.sure=true;render();return}
+  const key=xKey()||'tc_id',src=XF.from;const L=await xPick();if(!L.length)return toast('Koi lead nahi chuni',1);
+  const role=XF.from!='__pool'&&(P[XF.from]||{}).role=='fe'?'fe':'telecaller';
+  const others=Object.values(P).filter(p=>p.role==role&&p.id!=XF.from);
+  const plan={};L.forEach((l,i)=>{const t=XF.to=='__split'?others[i%others.length].id:XF.to=='__pool'?null:XF.to;(plan[t]=plan[t]||[]).push(l.id)});
+  toast('Transfer ho raha hai…');
+  for(const [t,ids] of Object.entries(plan)){for(let i=0;i<ids.length;i+=150){const {error}=await sb.from('leads').update({[key]:t=='null'?null:t}).in('id',ids.slice(i,i+150));if(error){toast(error.message,1);XF.sure=false;return render()}}}
+  const label=XF.to=='__pool'?'Pool mein daali':XF.to=='__split'?'baaki team mein baanti':'→ '+((P[XF.to]||{}).name||'');
+  XF={from:src,st:XF.st,zn:XF.zn,n:'',to:'',sure:false,last:{ids:L.map(l=>l.id),key,prev:src=='__pool'?null:src,label}};
+  for(const k in VC)delete VC[k];FILT.t=0;toast(`✅ ${L.length} leads ${label}`);render();
+}
+async function xUndo(){const u=XF.last;if(!u)return;for(let i=0;i<u.ids.length;i+=150){const {error}=await sb.from('leads').update({[u.key]:u.prev}).in('id',u.ids.slice(i,i+150));if(error)return toast(error.message,1)}
+  XF.last=null;for(const k in VC)delete VC[k];toast('↩ Wapas pehle jaisa');render()}
 async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
 
