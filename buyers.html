@@ -294,6 +294,7 @@ async function reload(first){
   try{
     [PR,BL]=await Promise.all([all('properties','*','id'),all('buyer_leads','*','id')]);
     const {data:ow,error}=await sb.from('leads').select('*').eq('status','deal_closed');if(error)throw error;OW=ow||[];
+    try{const {data:ws}=await sb.from('buyer_history').select('buyer_id').like('note','💬 WhatsApp%').limit(5000);WS=new Set((ws||[]).map(x=>x.buyer_id))}catch(e){}
     try{const since=new Date(Date.now()-7*864e5).toISOString();const {data:ce}=await sb.from('call_events').select('*').eq('missed',true).eq('called_back',false).in('bucket',['paid_owner','buyer']).gte('at',since).order('at',{ascending:false});CE=ce||[]}catch(e){CE=[]}
   }catch(e){$('#app').innerHTML=`<div class="errc"><div class="ei">⚠️</div><div><b>Data load nahi hua</b><div class="mu">${esc(e.message||e)}</div><div class="mu">Kya Supabase mein Step 1 ki SQL chal gayi hai?</div><div class="acts"><button class="p" onclick="reload()">⟳ Try again</button></div></div></div>`;return}
   render();
@@ -453,7 +454,37 @@ function pitch(p,name){
 /* ---------- WhatsApp templates (buyer lead) ---------- */
 const WT=[['details','🏡 Property details'],['noans','📵 Call nahi utha'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 Visit ke baad'],['similar','🏘 Aur options']];
 const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
-let waB=null,waK=null;
+let waB=null,waK=null,WS=new Set(),wqDays=7,wqOn=false,wqDone=0,WQS=new Set();
+const wqKey=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
+function wqList(){
+  const sentK=new Set(BL.filter(b=>WS.has(b.id)).map(wqKey)),seen=new Set(),from=wqDays?new Date(Date.now()-wqDays*864e5).toISOString().slice(0,10):'';
+  return BL.filter(b=>b.status=='New'&&ph10(b.buyer_phone).length==10&&!WS.has(b.id)&&!WQS.has(b.id)&&!sentK.has(wqKey(b))&&(!from||String(b.lead_date||'')>=from))
+    .sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id)
+    .filter(b=>{const k=wqKey(b);if(seen.has(k))return false;seen.add(k);return true});
+}
+function wqShow(){
+  const L=wqList(),b=L[0];
+  const days=`<div class="chips">${[[1,'Aaj+kal'],[7,'7 din'],[30,'30 din'],[0,'Sab']].map(d=>`<button class="${wqDays==d[0]?'on':''}" onclick="wqDays=${d[0]};wqShow()">${d[1]}</button>`).join('')}</div>`;
+  let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Wapas</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 Nayi leads ko WhatsApp</div>
+  <div class="mu">Sirf "New" leads jinhe abhi tak koi WhatsApp nahi gaya. Har buyer ko uski property ki details jaati hain.</div>${days}
+  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> baaki${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} bheje ✅</span>`:''}</div></div>`;
+  if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>Sab ho gaya!</b><div class="mu">In dino ki saari nayi leads ko message chala gaya. Upar se din badal kar purani leads dekh sakte ho.</div></div>`;return}
+  const p=P(b.property_id);
+  h+=`<div class="card"><div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
+  <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Property judi nahi</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
+  ${b.requirement?`<div class="mu">${esc(b.requirement)}</div>`:''}
+  ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel / Virtual tour link nahi juda. Message phir bhi jayega, par link jodne se achha banega.</div>':''}
+  <textarea id="wtx" rows="13" style="margin-top:10px;font-size:13.5px">${esc(waText('details',b))}</textarea>
+  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 WhatsApp par bhejo → agla</a></div>
+  <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Abhi chhodo</button><button onclick="wqNo(${b.id})">🚫 Message nahi bhejna</button></div></div>`;
+  $('#app').innerHTML=h;scrollTo(0,0)}
+function wqSend(a,id){const b=BL.find(x=>x.id==id);a.href='https://wa.me/91'+ph10(b.buyer_phone)+'?text='+encodeURIComponent($('#wtx').value);
+  WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp bheja: Property details (nayi lead)'}).then(()=>{delete hist[id]});
+  setTimeout(wqShow,400);return true}
+function wqSkip(id){WQS.add(id);wqShow()}
+function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: message nahi bhejna'}).then(()=>{delete hist[id]});wqShow()}
+function wqOpen(){wqOn=true;wqDone=0;wqShow()}
 const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/mahina':''}`};
 const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 '+p.landmark+' ke paas');return L};
 const pMedia=p=>[[p.reel_url,'📱 Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>x[0]&&String(x[0]).trim()).map(x=>x[1]+': '+x[0]);
@@ -487,7 +518,7 @@ function waShow(){const b=waB,p=P(b.property_id),ph=ph10(b.buyer_phone),t=waText
   <textarea id="wtx" rows="15" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
   <div class="mu">Bhejne se pehle yahan kuch bhi badal sakte ho.</div>
   <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ph?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="waSent();this.href='https://wa.me/91${ph}?text='+encodeURIComponent($('#wtx').value)">WhatsApp par bhejo</a>`:'<span class="er">Buyer ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
-function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp bheja: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
+function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;WS.add(b.id);sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp bheja: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
 function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Wapas</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Buyer ko bhejne ka message · ${esc(id)}</div><div class="mu">Yahi message lead ke WhatsApp button se apne aap jaata hai. Yahan se copy karke kisi ko bhi bhej sakte ho.</div>
   <textarea id="ptx" rows="16" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
@@ -562,7 +593,8 @@ function filtB(list){
 VIEW.buyers=()=>{
   if(addB)return addBForm();
   const rp=repeats(),list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id),show=list.slice(0,60);
-  return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ Naya buyer lead</button></div>
+  const wqn=wqList().length;
+  return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ Naya buyer lead</button><button onclick="wqOpen()" style="${wqn?'background:#e7f8ee;border-color:#25a35a;color:#11683a;font-weight:700':''}">📨 Nayi leads ko WhatsApp${wqn?' ('+wqn+' baaki)':''}</button></div>
   <input placeholder="Search: naam, number, L-ID" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},400)">
   <div class="f2" style="margin:8px 0"><select onchange="fSt=this.value;render()"><option value="">Sab status</option>${BST.map(s=>`<option ${fSt==s?'selected':''}>${s}</option>`).join('')}</select><select onchange="fSrc=this.value;render()"><option value="">Sab portal</option>${SRC.map(s=>`<option ${fSrc==s?'selected':''}>${s}</option>`).join('')}</select></div>
   <select onchange="fP=this.value;render()" style="margin-bottom:10px"><option value="">Sab properties</option>${PR.map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select>
