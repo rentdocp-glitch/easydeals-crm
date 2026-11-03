@@ -525,37 +525,69 @@ function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<d
   <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#ptx').value).then(()=>toast('Copied ✅'))">📋 Copy</button><a class="btn g" style="color:#fff" target="_blank" href="#" onclick="this.href='https://wa.me/?text='+encodeURIComponent($('#ptx').value)">WhatsApp par bhejo</a></div>
   ${!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel ya Virtual tour link abhi nahi juda. Property Edit mein jodo, message aur achha banega.</div>':''}</div>`;scrollTo(0,0)}
 
-/* ---------- owner report (WhatsApp, buyer numbers masked) ---------- */
-function ownerReport(id){
-  const p=P(id),l=leadsOf(id),sc=countBy(l,'status'),src=countBy(l,'source');
-  const wk=new Date(Date.now()-7*864e5).toISOString().slice(0,10),w=l.filter(b=>String(b.lead_date)>=wk).length;
-  const recent=l.slice().sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).slice(0,8);
-  const txt=`*Easy Deals - Property Report*
-${p.project} (${p.id})
-Date: ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
-
-Dear ${p.owner_name||'Sir/Madam'},
-Your property has received *${l.length} buyer enquiries* so far${w?` (${w} in the last 7 days)`:''}.
-
-*Enquiries by portal:*
-${Object.entries(src).map(([k,v])=>`• ${k}: ${v}`).join('\n')||'• -'}
-
-*Current status:*
-${BST.filter(s=>sc[s]).map(s=>`• ${s}: ${sc[s]}`).join('\n')||'• -'}
-
-*Recent enquiries:*
-${recent.map(b=>`• ${dshort(b.lead_date)} - ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)}) - ${b.source||''}`).join('\n')||'• -'}
-${[p.tour_url&&'Virtual tour: '+p.tour_url,p.video_url&&'Video: '+p.video_url].filter(Boolean).join('\n')}
-We will keep you updated on every development.
-
-Regards,
-Team Easy Deals`;
-  const ow=ph10(p.owner_phone);
-  $('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Wapas</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Owner report · ${esc(p.id)}</div><div class="mu">Buyer ke poore number aur email report mein nahi jaate.</div>
-  <textarea id="rtx" rows="18" style="margin-top:10px;font-size:13.5px">${esc(txt)}</textarea>
-  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#rtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" target="_blank" href="#" onclick="this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#rtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;
+/* ---------- owner weekly report (WhatsApp, buyer numbers masked) ---------- */
+const ORW=['Listing refreshed on portals','New Reel posted','New photos added','Virtual tour added','Featured / premium boost'];
+let OR=null;
+function orLoad(id){let x={};try{x=JSON.parse(localStorage.getItem('orp_'+id)||'{}')}catch(e){}return Object.assign({days:7,work:[],fb:'',mkt:'',plan:'',ask:'',list:true},x)}
+function orSave(){try{localStorage.setItem('orp_'+OR.p.id,JSON.stringify(OR.in))}catch(e){}}
+async function ownerReport(id){
+  const p=P(id);OR={p,in:orLoad(id),h:[]};
+  const ids=leadsOf(id).map(b=>b.id);
+  if(ids.length){try{const {data}=await sb.from('buyer_history').select('*').in('buyer_id',ids).gte('at',new Date(Date.now()-31*864e5).toISOString());OR.h=data||[]}catch(e){}}
+  orShow();
 }
+function orStats(){
+  const p=OR.p,l=leadsOf(p.id),now=new Date(),from=new Date(Date.now()-OR.in.days*864e5),fromD=from.toISOString().slice(0,10);
+  const nl=l.filter(b=>String(b.lead_date||'')>=fromD),src=countBy(nl,'source');
+  const hp=OR.h.filter(h=>new Date(h.at)>=from);
+  const fol=new Set(hp.map(h=>h.buyer_id)).size,wa=hp.filter(h=>/^💬 WhatsApp bheja/.test(h.note||'')).length;
+  const vd=new Set([...l.filter(b=>b.visit_at&&new Date(b.visit_at)>=from&&new Date(b.visit_at)<=now&&b.status!='Site Visit Scheduled').map(b=>b.id),...hp.filter(h=>h.status=='Site Visit Done').map(h=>h.buyer_id)]).size;
+  const up=l.filter(b=>b.visit_at&&new Date(b.visit_at)>now&&b.status=='Site Visit Scheduled').sort((a,b)=>String(a.visit_at).localeCompare(String(b.visit_at)));
+  const tv=new Set([...l.filter(b=>['Site Visit Done','Deal Closed'].includes(b.status)||(b.visit_at&&new Date(b.visit_at)<=now&&b.status!='Site Visit Scheduled')).map(b=>b.id),...OR.h.filter(h=>h.status=='Site Visit Done').map(h=>h.buyer_id)]).size;
+  return {l,nl,src,fol,wa,vd,up,tv,from,now};
+}
+function orText(){
+  const p=OR.p,I=OR.in,S=orStats(),f=d=>d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const portals=[['99acres','id_99acres','99acres'],['Housing','id_housing','Housing.com'],['Magicbricks','id_magicbricks','Magicbricks']].map(([k,idk,nm])=>{const s=pStat(p,k,idk);return s[0]=='live'?`• ${nm} – Live${p[idk]?' (ID '+String(p[idk]).split(',')[0].trim()+')':''}`:''}).filter(Boolean);
+  const L=[`*Easy Deals – Weekly Property Report*`,`${p.project||''} (${p.id})`,`${f(S.from)} – ${f(S.now)}`,'',`Dear ${p.owner_name||'Sir/Madam'},`,(I.days==7?`Here is this week's update on your property.`:`Here is the update on your property for the last ${I.days} days.`),''];
+  L.push(`📢 *Paid promotion by Easy Deals*`);
+  if(portals.length){L.push(`Your property is being promoted through our paid premium packages on:`);portals.forEach(x=>L.push(x))}else L.push(`Your property listings are being refreshed on the portals.`);
+  if(I.work.length)L.push(`Work done: ${I.work.join(', ')}.`);
+  L.push('');L.push(I.days==7?`📊 *This week*`:`📊 *Last ${I.days} days*`);
+  L.push(`• New enquiries: ${S.nl.length}${S.nl.length?' ('+Object.entries(S.src).map(([k,v])=>k+' '+v).join(', ')+')':''}`);
+  if(S.fol)L.push(`• Buyers followed up: ${S.fol}`);
+  if(S.wa)L.push(`• Property details shared on WhatsApp: ${S.wa}`);
+  if(S.vd)L.push(`• Site visits done: ${S.vd}`);
+  if(I.list&&S.nl.length){L.push('');L.push(`*Recent enquiries*`);S.nl.slice().sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).filter((b,i,a)=>a.findIndex(x=>ph10(x.buyer_phone)==ph10(b.buyer_phone))==i).slice(0,5).forEach(b=>L.push(`• ${dshort(b.lead_date)} – ${(b.buyer_name||'Buyer').split(' ')[0]} (${mask(b.buyer_phone)}) – ${b.source||''}`))}
+  if(I.fb.trim()){L.push('');L.push(`💬 *Buyer feedback*`);L.push(I.fb.trim())}
+  if(I.mkt.trim()){L.push('');L.push(`📈 *Market update*`);L.push(I.mkt.trim())}
+  if(S.up.length||I.plan.trim()){L.push('');L.push(`🗓 *Next week*`);if(S.up.length)L.push(`${S.up.length} site visit${S.up.length>1?'s':''} scheduled: ${S.up.slice(0,4).map(b=>new Date(b.visit_at).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})).join('; ')}`);if(I.plan.trim())L.push(I.plan.trim())}
+  if(I.ask.trim()){L.push('');L.push(`🙏 *We need from you*`);L.push(I.ask.trim())}
+  L.push('');L.push(`📌 *Total so far:* ${S.l.length} enquiries · ${S.tv} site visit${S.tv==1?'':'s'}`);
+  if(p.service_till)L.push(`Your service is active till ${new Date(p.service_till).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}.`);
+  L.push('');L.push(`We will keep you updated every week.`);L.push('');L.push(`Regards,`);L.push(`Team Easy Deals`);
+  return L.join('\n');
+}
+function orUpd(){orSave();$('#rtx').value=orText()}
+function orShow(){
+  const p=OR.p,I=OR.in,ow=ph10(p.owner_phone),last=(p.details||{}).last_report_at;
+  const ta=(k,lab,ph)=>`<div><label>${lab}</label><textarea rows="2" placeholder="${esc(ph)}" oninput="OR.in.${k}=this.value;orUpd()">${esc(I[k])}</textarea></div>`;
+  $('#app').innerHTML=`<button onclick="OR=null;render()" style="margin-bottom:10px">← Wapas</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Owner weekly report · ${esc(p.id)}</div>
+  <div class="mu">${esc(p.owner_name||'')} · ${last?'Pichhli report: '+dshort(last):'Abhi tak koi report nahi bheji'}</div>
+  <div class="sec">Kitne din ki report?</div><div class="chips">${[[7,'7 din'],[15,'15 din'],[30,'30 din']].map(d=>`<button class="${I.days==d[0]?'on':''}" onclick="OR.in.days=${d[0]};orSave();orShow()">${d[1]}</button>`).join('')}</div>
+  <div class="sec">Is hafte kya kaam kiya? (tick karo)</div><div class="chips" style="flex-wrap:wrap">${ORW.map((w,i)=>`<button class="${I.work.includes(w)?'on':''}" onclick="const a=OR.in.work,i=a.indexOf(ORW[${i}]);i<0?a.push(ORW[${i}]):a.splice(i,1);orSave();orShow()">${esc(w)}</button>`).join('')}</div>
+  <div class="form">
+  ${ta('fb','💬 Buyers ne kya kaha (English mein)','Buyers liked the location; 2 felt the price is slightly high.')}
+  ${ta('mkt','📈 Market update (optional)','Similar 2 BHK flats in this society are listed at ₹68 L – ₹74 L.')}
+  ${ta('plan','🗓 Agle hafte ka plan (optional)','Listing refresh and a new Reel. More visits on the weekend.')}
+  ${ta('ask','🙏 Owner se kya chahiye (optional)','Please keep the flat accessible on Sat-Sun, 11 AM – 5 PM.')}
+  <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" style="width:auto;min-height:0" ${I.list?'checked':''} onchange="OR.in.list=this.checked;orUpd()"> Recent enquiries list (number chhupe hue)</label></div>
+  <div class="sec">Report (bhejne se pehle yahan badal sakte ho)</div>
+  <textarea id="rtx" rows="22" style="font-size:13.5px">${esc(orText())}</textarea>
+  <div class="mu">Calls, WhatsApp aur visit ki ginti CRM ki History se apne aap aati hai. Buyer ke poore number report mein nahi jaate.</div>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#rtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="orSent();this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#rtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
+function orSent(){const p=OR.p,d=Object.assign({},p.details||{},{last_report_at:new Date().toISOString().slice(0,10)});p.details=d;sb.from('properties').update({details:d}).eq('id',p.id).then(()=>{})}
 
 /* ---------- buyers ---------- */
 function bCard(b,rp){
