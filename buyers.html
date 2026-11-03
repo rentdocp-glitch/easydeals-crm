@@ -355,7 +355,8 @@ VIEW.props=()=>{
   if(editP)return propForm(editP);
   if(openP)return propDetail(P(openP));
   const t=today(),fu=fuList().length,un=BL.filter(b=>!b.property_id).length;
-  let list=PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
+  const renewL=PR.filter(isRenew),feeL=PR.filter(feeDue);
+  let list=pShow=='renew'?renewL:pShow=='fee'?feeL:PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
   const zbar=zUI()?`<div class="chips" style="overflow-x:auto;flex-wrap:nowrap">${[['','Sab zone']].concat(ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name])).concat([['none','❓ Bina zone']]).map(([k,l])=>{const n=k==''?list.length:k=='none'?list.filter(p=>!p.zone_id).length:list.filter(p=>p.zone_id==k).length;return `<button class="${pZ==k?'on':''}" style="white-space:nowrap" onclick="pZ='${k}';pA='';render()">${esc(l)} ${n}</button>`}).join('')}</div>${pZ&&pZ!='none'?`<select style="margin-bottom:10px" onchange="pA=this.value;render()"><option value="">Sab area (${esc(zName(pZ))})</option>${zAreas(pZ).map(a=>`<option value="${a.id}" ${pA==a.id?'selected':''}>${esc(a.name)} (${list.filter(p=>p.area_id==a.id).length})</option>`).join('')}</select>`:''}`:'';
   if(pZ=='none')list=list.filter(p=>!p.zone_id);else if(pZ)list=list.filter(p=>p.zone_id==pZ);if(pA)list=list.filter(p=>p.area_id==pA);
   let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
@@ -367,7 +368,7 @@ VIEW.props=()=>{
    <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Aaj follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
    <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
    <div class="card stat" onclick="go('un')" style="cursor:pointer"><div class="mu">Unassigned</div><b class="${un?'wr':''}">${un}</b></div></div>
-  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>${zbar}
+  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].concat(renewL.length||pShow=='renew'?[['renew','⏳ Renewal '+renewL.length]]:[]).concat(feeL.length||pShow=='fee'?[['fee','💰 Fee baaki '+feeL.length]]:[]).map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>${zbar}
   <input placeholder="📞 Number ya naam: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input');i.focus();i.setSelectionRange(99,99)},350)" style="margin-bottom:10px">
   ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
     <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
@@ -386,7 +387,8 @@ function propDetail(p){
    <div class="mu" style="margin-top:4px">${esc(p.address||p.locality||'')}</div>
    ${portalRow(p)}<div class="mu" style="margin-top:4px">${esc([p.id_99acres&&'99: '+p.id_99acres,p.id_magicbricks&&'MB: '+p.id_magicbricks,p.id_housing&&'HS: '+p.id_housing].filter(Boolean).join(' · '))}</div>
    <div class="acts">${links||'<span class="mu">Tour / video link abhi nahi jode · Edit se jodo</span>'}</div>
-   <div class="acts"><button class="g" onclick="ownerReport('${esc(p.id)}')">📤 Owner ko report bhejo</button><button class="p" onclick="sendPitch('${esc(p.id)}')">🏡 Buyer wala message</button></div></div>
+   ${svcHtml(p)}
+   <div class="acts"><button class="p" onclick="welcomeMsg('${esc(p.id)}')">🎉 Welcome message${(p.details||{}).welcome_at?' ✓':''}</button><button class="g" onclick="ownerReport('${esc(p.id)}')">📤 Owner ko report bhejo</button><button class="p" onclick="sendPitch('${esc(p.id)}')">🏡 Buyer wala message</button></div></div>
   <div class="grid"><div class="card stat"><div class="mu">Total leads</div><b>${l.length}</b></div><div class="card stat"><div class="mu">Pending</div><b>${l.filter(b=>PEND.includes(b.status)).length}</b></div><div class="card stat"><div class="mu">Site visits</div><b>${(sc['Site Visit Scheduled']||0)+(sc['Site Visit Done']||0)}</b></div><div class="card stat"><div class="mu">Portal</div><div style="font-size:13px;margin-top:4px">${Object.entries(src).map(([k,v])=>esc(k)+' '+v).join(' · ')||'-'}</div></div></div>
   <div class="sec">Buyer leads (${l.length})</div>
   ${l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>Abhi koi buyer lead nahi</b></div>'}`;
@@ -411,16 +413,24 @@ function propForm(p){
   <div class="f2">${f('reel_url','📱 Instagram Reel link')}${f('tour_url','🎥 Virtual tour link')}</div>
   <div class="f2">${f('video_url','▶️ YouTube link (optional)')}${f('photos_url','🖼 Photos folder (sirf aapke liye)')}</div>
   <div><label>📍 Google Maps location link (site visit message ke liye)</label><input id="pf_maps" value="${esc((p.details||{}).maps||'')}" placeholder="Maps mein property → Share → Copy link"></div>
+  <div class="sec">📅 Service & Fees</div>
+  <div class="f2"><div><label>Service start</label><input id="pf_svc_start" type="date" value="${esc(dd(p).service_start||'')}"></div>${f('service_till','Service end','date')}</div>
+  <div class="f2">${f('plan_amount','Activation fee mila (₹)','number')}<div><label>Success fee (₹)</label><input id="pf_sfee" type="number" value="${esc(dd(p).success_fee||SF_DEF)}"></div></div>
+  <div class="sec">🔗 Portal listing links (welcome message ke liye)</div>
+  <div><label>99acres link</label><input id="pf_u99" value="${esc(dd(p).url_99acres||'')}" placeholder="https://www.99acres.com/..."></div>
+  <div><label>MagicBricks link</label><input id="pf_umb" value="${esc(dd(p).url_magicbricks||'')}" placeholder="https://mbtrk.co/..."></div>
+  <div><label>Housing link</label><input id="pf_uhs" value="${esc(dd(p).url_housing||'')}" placeholder="https://hsng.co/..."></div>
   <div><label>Remarks</label><textarea id="pf_remarks" rows="3">${v('remarks')}</textarea></div>
   <div id="pf_err"></div>
   <button class="p" onclick="saveProp(${isNew})">💾 Save</button></div></div>`;
 }
 async function saveProp(isNew){
-  const K=['portal_status','owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
+  const K=['service_till','plan_amount','portal_status','owner_name','owner_phone','project','bhk','ptype','address','locality','city','sqft','price','id_99acres','id_magicbricks','id_housing','date_added','tour_url','video_url','photos_url','reel_url','remarks','status'];
   const row={};K.forEach(k=>{const e=$('#pf_'+k);if(e){const x=e.value.trim();row[k]=x===''?null:x}});
-  ['sqft','price'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
+  ['sqft','price','plan_amount'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
   if(zUI()){const z=await zpVal('p',isNew);if(z.err){$('#pf_err').innerHTML=`<div class="warn">${esc(z.err)}</div>`;return}if(!z.keep){row.locality=z.locality;row.area_id=z.area_id||null}}
-  {const m=($('#pf_maps')||{}).value;if(m!=null){const old=(!isNew&&editP&&editP.details)||{};row.details=Object.assign({},old,{maps:m.trim()||null})}}
+  {const m=($('#pf_maps')||{}).value;if(m!=null){const old=(!isNew&&editP&&editP.details)||{},g=id=>(($('#'+id)||{}).value||'').trim()||null;
+    row.details=Object.assign({},old,{maps:m.trim()||null,service_start:g('pf_svc_start'),success_fee:+g('pf_sfee')||SF_DEF,url_99acres:g('pf_u99'),url_magicbricks:g('pf_umb'),url_housing:g('pf_uhs')})}}
   const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
   if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID aur project name zaroori hai.</div>';return}
   if(isNew){
@@ -484,6 +494,71 @@ async function zpVal(px,required){
   ZA.t=0;return data.status=='approved'?{locality:data.name,area_id:data.id}:{locality:data.name,area_id:null,pending:true};
 }
 
+
+
+/* ---------- service, welcome message, success fee, renewal ---------- */
+const SF_DEF=11800;
+const dd=p=>p.details||{};
+const dmy=x=>{if(!x)return '';const d=new Date(String(x).slice(0,10)+'T00:00:00');return isNaN(d)?'':d.toLocaleDateString('en-GB')};
+const daysTo=x=>x?Math.round((new Date(String(x).slice(0,10)+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5):null;
+const isRenew=p=>{const n=daysTo(p.service_till);return !isSold(p)&&n!=null&&n<=15&&n>=-30};
+const feeDue=p=>isSold(p)&&dd(p).sf_status!='paid';
+const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+async function pDet(p,extra){const d=Object.assign({},dd(p),extra);p.details=d;const {error}=await sb.from('properties').update({details:d}).eq('id',p.id);if(error)toast(error.message,1);return !error}
+function svcHtml(p){const d=dd(p),n=daysTo(p.service_till);
+  const svc=p.service_till?`<div class="mu" style="margin-top:6px">📅 Service: ${dmy(d.service_start)||'?'} → ${dmy(p.service_till)} ${n==null?'':n<0?`<b class="er">· ${-n} din pehle khatam</b>`:n<=15?`<b class="wr">· ${n} din baaki (renewal)</b>`:`· ${n} din baaki`}</div>`:'<div class="mu" style="margin-top:6px">📅 Service ki tareekh nahi bhari · Edit se bharo</div>';
+  const wel=d.welcome_at?`<div class="mu">🎉 Welcome message bheja: ${dmy(d.welcome_at)}</div>`:'';
+  const fee=isSold(p)||d.sf_status?`<div class="card" style="margin:8px 0 0;padding:10px;background:${d.sf_status=='paid'?'#e6f7ec':'#fff6e0'}"><b>💰 Success Fee ${inr(d.success_fee||SF_DEF)}</b> · ${d.sf_status=='paid'?`✅ Mila ${dmy(d.sf_paid_at)}`:'⏳ Baaki'}
+    <div class="acts" style="margin-top:6px">${d.sf_status=='paid'?`<button onclick="feeSet('${esc(p.id)}',0)">Galti se? Baaki karo</button>`:`<button class="g" onclick="feeSet('${esc(p.id)}',1)">✅ Success fee mil gayi</button>`}</div></div>`:'';
+  return svc+wel+fee}
+async function feeSet(id,paid){const p=P(id);if(await pDet(p,paid?{sf_status:'paid',sf_paid_at:today()}:{sf_status:'pending',sf_paid_at:null}))toast(paid?'Success fee mili ✅':'Baaki kiya');render()}
+function welcomeText(p){const d=dd(p);
+  const addr=p.address&&String(p.address).trim()?p.address:[p.flat_no?'Flat No - '+p.flat_no:'',p.wing,p.project,p.locality].filter(x=>x&&String(x).trim()).join(', ');
+  const L=[[p.tour_url,'360 Digi Tour'],[d.url_99acres,'99acres'],[d.url_magicbricks,'MagicBricks'],[d.url_housing,'Housing'],[p.reel_url,'Instagram'],[p.video_url,'YouTube']].filter(x=>x[0]&&String(x[0]).trim());
+  return `*Dear ${p.owner_name||'Sir/Madam'}*
+
+🎉 *Welcome to the Easydeals Family!*
+
+We are excited to assist you in finding the right buyer for your property.
+
+🏠 *Address:* ${addr}
+
+📅 *Service Period:*
+Start Date: ${dmy(d.service_start)||'__/__/____'}
+End Date: ${dmy(p.service_till)||'__/__/____'}
+
+*🔗 Your Property is Live On:*
+${L.map((x,i)=>`${i+1}) *${x[1]}:* ${x[0]}`).join('\n\n')}
+
+📌 *Service Information*
+
+The amount paid is a Service Activation Fee, covering property onboarding, documentation, account setup and marketing activities across various platforms.
+
+⚠️ The Service Activation Fee is non-refundable as the service and marketing activities are initiated immediately after payment.
+
+📢 *Performance Disclaimer:*
+Easydeals provides professional property marketing and lead-generation services. However, the final sale depends on market conditions, pricing and buyer interest.
+
+💰 *Success Fee:*
+A Success Fee of ${inr(d.success_fee||SF_DEF)} (inclusive of applicable taxes) will be payable only after the successful sale of the property facilitated during the service period.
+
+✅ No Success Fee will be payable if the property is not sold.
+
+📩 For any discrepancy in property details or listing links, please inform us within 48 hours of receiving this message.
+
+*Thank you for choosing Easydeals.*
+
+*Warm Regards,*
+*Easydeals*
+The Newest Way to Sell/Rent Properties!`}
+function welcomeMsg(id){const p=P(id),d=dd(p),ow=ph10(p.owner_phone);
+  const miss=[[p.tour_url,'360 Digi Tour'],[d.url_99acres,'99acres link'],[d.url_magicbricks,'MagicBricks link'],[d.url_housing,'Housing link'],[p.reel_url,'Instagram Reel'],[p.video_url,'YouTube'],[d.service_start,'Service start date'],[p.service_till,'Service end date']].filter(x=>!x[0]||!String(x[0]).trim()).map(x=>x[1]);
+  $('#app').innerHTML=`<button onclick="render()" style="margin-bottom:10px">← Wapas</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">🎉 Welcome message · ${esc(p.id)}</div><div class="mu">${esc(p.owner_name||'')} · ${d.welcome_at?'Pehle bheja: '+dmy(d.welcome_at):'Abhi tak nahi bheja'}</div>
+  ${miss.length?`<div class="warn">Yeh abhi khaali hai (message mein nahi aayega): <b>${miss.map(esc).join(', ')}</b>. <button onclick="editP=P('${esc(p.id)}');openP=null;render()">✏️ Edit karke bharo</button></div>`:''}
+  <textarea id="wtx" rows="22" style="margin-top:10px;font-size:13.5px">${esc(welcomeText(p))}</textarea>
+  <div class="mu">Owner ne 48 ghante mein kuch nahi kaha to sab sahi maana jayega. Bhejne ki tareekh CRM mein save hoti hai.</div>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="pDet(P('${esc(p.id)}'),{welcome_at:new Date().toISOString()});this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#wtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
 
 /* ---------- buyer ko property message ---------- */
 function pitch(p,name){
