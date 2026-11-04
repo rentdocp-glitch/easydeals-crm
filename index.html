@@ -454,10 +454,13 @@ async function saveEdit(id){
   const pr=$('#ec').value.trim();
   let loc={};if(zUI()){const z=await zpVal('e',false);if(z.err)return toast(z.err,1);if(!z.keep)loc={locality:z.locality,area_id:z.area_id||null};const ad=$('#ead');if(ad)loc.address=ad.value.trim()||null}else{const na=normArea($('#el').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
   const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),...loc,bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
-  const ap=$('#easg').value;if(ap&&P[ap]){if(P[ap].role=='fe')upd.fe_id=ap;else upd.tc_id=ap}
+  const ap=$('#easg').value;const hand=ME.role=='fe'&&ap&&P[ap]&&ap!=ME.id;
+  if(ap&&P[ap]&&!hand){if(P[ap].role=='fe')upd.fe_id=ap;else upd.tc_id=ap}
   const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
   if(!data||!data.length)return toast('Could not save (no permission)',1);
+  if(hand){const r=await sb.rpc('lead_handover',{lid:id,to_id:ap});if(r.error){toast('Details save ho gayi, par lead '+(P[ap].name||'')+' ko nahi gayi. Admin se transfer karwao.',1);openId=null;openK=null;return render()}
+    for(const k in VC)delete VC[k];openId=null;openK=null;toast('✅ Lead '+(P[ap].name||'')+' ko de di');return render()}
   openId=null;openK=null;toast('Lead updated ✅');render();
 }
 function delForm(l){
