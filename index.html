@@ -283,7 +283,7 @@ const TABS={
 function go(t){if(t=='today')mDate=null;tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
-  if(!ME)return;
+  if(!ME)return; if(Date.now()-DCT>300000)await dcLoad();
   const list=TABS[ME.role]||TABS.telecaller;
   if(tab!='st'&&tab!='rep'&&tab!='daily'&&!(tab=='xfer'&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
@@ -364,7 +364,7 @@ function leadCard(l,cs){
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
   const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',''].filter(Boolean).join(' · ');
-  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>
+  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>${dcBanner(l)}
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${followLine(l)}${meetLine(l)}
@@ -727,13 +727,22 @@ VIEW['telecaller:deal']=async()=>{
   return data.map(l=>leadCard(l)).join('')||empty('No deals closed yet.');
 };
 // Field Exec
+let DCM={},DCT=0,AF={f:null,t:null,od:false,html:''};
+const dph=s=>String(s||'').replace(/\D/g,'').slice(-10);
+const nrm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+async function dcLoad(){DCT=Date.now();try{const rows=await pageAll(()=>sb.from('leads').select('id,phone,name,property,locality,bhk,tc_id,fe_id').eq('status','deal_closed'));const ed={};try{const r=await sb.from('properties').select('lead_id,ed_id');(r.data||[]).forEach(x=>{if(x.lead_id)ed[x.lead_id]=x.ed_id})}catch(e){}const m={};(rows||[]).forEach(x=>{const k=dph(x.phone);if(k.length<10)return;x.ed=ed[x.id]||'';(m[k]=m[k]||[]).push(x)});DCM=m}catch(e){}}
+function dcBanner(l){if(l.status==='deal_closed')return '';const a=(DCM[dph(l.phone)]||[]).filter(x=>x.id!==l.id);if(!a.length)return '';const sp=nrm(l.property);const same=sp?a.find(x=>nrm(x.property)===sp):null;const x=same||a[0];const who=[x.fe_id&&P[x.fe_id]?P[x.fe_id].name:'',x.tc_id&&P[x.tc_id]?P[x.tc_id].name:''].filter(Boolean)[0]||'';const nm=(x.ed?esc(x.ed)+' · ':'')+esc([x.property,x.locality].filter(Boolean).join(', ')||'-')+(x.bhk?' · '+esc(x.bhk):'');
+if(same)return '<div style="background:#e6f7ec;border:2px solid #1f9d55;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#0f5a28">✅ <b>PEHLE SE DEAL CLOSED</b><br>'+nm+(who?'<br><span style="opacity:.8">Closed by '+esc(who)+'</span>':'')+'<br><b>⚠️ Same property hai, dobara call mat karo</b></div>';
+return '<div style="background:#fff8e6;border:2px solid #e0a100;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#7a5200">ℹ️ <b>Is number pe Deal Closed hai</b> (alag property)<br>'+nm+'<br>Pehle check karo, phir call karo</div>'}
+function mSet(k,v){if(k==='f'){AF.f=v;if(AF.t&&AF.t<v)AF.t=v;AF.od=false}else if(k==='t'){AF.t=v;if(AF.f&&AF.f>v)AF.f=v;AF.od=false}else if(k==='od'){AF.od=!!v}else{AF.f=AF.t=isoToday();AF.od=false}render()}
+async function mSearch(v){v=(v||'').trim();const box=$('#mlist');if(!box)return;if(v.length<3){box.innerHTML=AF.html;return}const dg=v.replace(/\D/g,'');let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=(dg.length>=4&&dg.length===v.replace(/[\s+-]/g,'').length)?q.ilike('phone','%'+dg+'%'):q.ilike('name','%'+v.replace(/[%,]/g,'')+'%');const r=await q.order('meeting_date',{ascending:true}).limit(50);const data=r.data||[];const hs=await histMap(data.map(l=>l.id));box.innerHTML='<div class="mu" style="margin:6px 0">🔍 '+data.length+' mile (sabhi meetings me)</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Kuch nahi mila'))}
 const feList=async sts=>{
   const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(200);
   if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
   return addLeadCard()+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing here.'));
 };
-VIEW['fe:asg']=()=>feList(['meeting_assigned']);
+VIEW['fe:asg']=async()=>{const td=isoToday();if(!AF.f)AF.f=td;if(!AF.t)AF.t=AF.f;let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=AF.od?q.lt('meeting_date',td):q.gte('meeting_date',AF.f).lte('meeting_date',AF.t);const {data,error}=await q.order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(300);if(error)throw error;const oc=await sb.from('leads').select('id',{count:'exact',head:true}).eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',td);const odN=oc.count||0;const hs=await histMap(data.map(l=>l.id));const lab=AF.od?'⚠️ Overdue meetings':(AF.f===AF.t?dshort(AF.f):dshort(AF.f)+' – '+dshort(AF.t));AF.html='<div class="mu" style="margin:6px 0">'+lab+' · '+data.length+' meetings</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Is date me koi meeting nahi.'));return '<div class="card" style="padding:10px"><input id="msq" placeholder="🔍 Naam ya mobile number se search" oninput="clearTimeout(window._mt);window._mt=setTimeout(()=>mSearch(this.value),350)" style="width:100%;margin-bottom:8px"><div style="display:flex;gap:8px"><div style="flex:1"><div class="mu">Kis date se</div><input type="date" value="'+AF.f+'" onchange="mSet(\'f\',this.value)"></div><div style="flex:1"><div class="mu">Kis date tak</div><input type="date" value="'+AF.t+'" onchange="mSet(\'t\',this.value)"></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="'+(AF.od?'':'p')+'" onclick="mSet(\'od\',0)">📅 Date range</button><button class="'+(AF.od?'p':'')+'" onclick="mSet(\'od\',1)">⚠️ Overdue '+odN+'</button><button onclick="mSet(\'today\')">Aaj</button></div></div><div id="mlist">'+AF.html+'</div>'};
 VIEW['fe:fu']=()=>feList(['followup','callback','ringing','new']);
 VIEW['fe:done']=()=>feList(['meeting_done','online_meet_done']);
 VIEW['fe:deal']=()=>feList(['deal_closed']);
