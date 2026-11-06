@@ -760,9 +760,9 @@ VIEW['admin:dash']=async()=>{
   const C=Object.fromEntries(cnt),total=cnt.reduce((a,c)=>a+c[1],0);
   const talk=calls.reduce((a,c)=>a+(c.duration_sec||0),0);
   const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(isMeet(c))b.m++});
-  const stat=(a,b)=>`<div class="card stat"><span class="mu">${a}</span><b>${b}</b></div>`;
+  const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
   return rangeChips()+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
-  <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k])).join('')}</div>
+  <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k],k)).join('')}</div>
   <div class="card"><b>📲 Incoming call? Enter the number</b><div class="f2" style="grid-template-columns:1fr auto;margin-top:8px"><input id="ln" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookup()"><button class="p" onclick="lookup()">Look up</button></div><div id="lk"></div></div>
   <div class="card"><b>Telecaller performance</b>${Object.entries(by).map(([id,b])=>lr(`<b>${esc(P[id]?.name||'?')}</b><br><span class="mu">${b.n} calls · ${b.m} meetings</span>`,`${fmt(b.t)}<br><span class="mu">talk time</span>`)).join('')||'<p class="mu">No calls in this period</p>'}</div>`;
 };
