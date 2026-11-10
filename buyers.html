@@ -347,7 +347,7 @@ function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(
   if(/not listed/i.test(t)||!p[idk])return ['no','✗ Listed nahi',t||'Is portal par listing nahi'];
   return ['off','✗ '+t.split(' ')[0],t]}
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
-const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Leads bhejo</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
+const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Leads bhejo</a><a class="w" href="javascript:void(0)" onclick="invOpen('${esc(p.id)}')">🧾 Invoice</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
 function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · wapas call karo (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
 async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Ho gaya ✅');render()}
@@ -357,6 +357,86 @@ function pzTog(k){const s=new Set(pZ?pZ.split(','):[]);if(s.has(k))s.delete(k);e
 function pzAll(){pZ='';pA='';pOpen='z';render()}
 function paTog(k){const s=new Set(pA?pA.split(','):[]);if(s.has(k))s.delete(k);else s.add(k);pA=[...s].join(',');pOpen='a';render()}
 function paAll(){pA='';pOpen='a';render()}
+/* ---------- GST tax invoice (admin) ---------- */
+let INV=null;
+const IGSTR=0.18,f2=n=>Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+function numWords(n){n=Math.round(n);if(!n)return 'Zero';
+  const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'],b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  const two=x=>x<20?a[x]:b[Math.floor(x/10)]+(x%10?' '+a[x%10]:''),three=x=>(x>99?a[Math.floor(x/100)]+' Hundred'+(x%100?' ':''):'')+(x%100?two(x%100):'');
+  const o=[],cr=Math.floor(n/1e7),la=Math.floor(n%1e7/1e5),th=Math.floor(n%1e5/1e3),re=n%1e3;
+  if(cr)o.push(three(cr)+' Crore');if(la)o.push(two(la)+' Lakh');if(th)o.push(two(th)+' Thousand');if(re)o.push(three(re));return o.join(' ')}
+function invCalc(t,type){const r=x=>Math.round(x*100)/100;t=r(+t||0);let c=0,s=0,i=0;if(type==='IGST')i=r(t*IGSTR);else{c=r(t*IGSTR/2);s=c}const raw=t+c+s+i,total=Math.round(raw);return {taxable:t,cgst:c,sgst:s,igst:i,total,rounding:r(total-raw)}}
+function invDate(d){const x=new Date(String(d).slice(0,10)+'T00:00:00');return isNaN(x)?'':x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+function invHtml(r){
+  const T='#0b7f8c',bd='1px solid #dcdcdc',cell='padding:9px 10px;border:'+'1px solid #dcdcdc',tr=(l,v)=>`<tr><td style="padding:8px 14px">${l}</td><td style="padding:8px 14px;text-align:right">${v}</td></tr>`;
+  const tax=r.tax_type==='IGST'?tr('IGST @ 18%',f2(r.igst)):tr('CGST @ 9%',f2(r.cgst))+tr('SGST @ 9%',f2(r.sgst));
+  return `<div style="width:794px;min-height:1123px;box-sizing:border-box;padding:58px 60px 40px;background:#fff;color:#222;font:13px/1.45 Arial,Helvetica,sans-serif">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:26px;font-weight:700">Proptech EasyDeals</div><div style="font-size:12px;margin-top:6px">GSTIN: 27EGRPD7618J1ZU</div></div><div style="font-size:30px;font-weight:700;letter-spacing:.3px">TAX INVOICE</div></div>
+<div style="height:2px;background:${T};margin:18px 8px 26px"></div>
+<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:34px"><tr><td style="width:50%;border:${bd};background:#f5f5f5;padding:11px 14px;font-weight:700">BILL TO:</td><td style="width:50%;border:${bd};background:#f5f5f5;padding:11px 14px;font-weight:700">INVOICE DETAILS:</td></tr>
+<tr><td style="border:${bd};padding:12px 14px;vertical-align:top;line-height:1.65"><b>${esc(r.bill_name)}</b>${r.bill_address?'<br>'+esc(r.bill_address).replace(/\n/g,'<br>'):''}${r.bill_gstin?'<br>GSTIN: '+esc(r.bill_gstin):''}</td>
+<td style="border:${bd};padding:12px 14px;vertical-align:top;line-height:1.65"><b>Invoice No:</b> ${esc(r.inv_no)}<br><b>Date:</b> ${invDate(r.inv_date)}<br><b>Place of Supply:</b> ${esc(r.pos||'')}${r.bill_gstin?'<br><b>Customer GSTIN:</b> '+esc(r.bill_gstin):''}</td></tr></table>
+<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:26px"><tr style="background:${T};color:#fff;font-weight:700"><td style="${cell};border-color:${T}">S.No.</td><td style="${cell};border-color:${T}">Description</td><td style="${cell};border-color:${T}">HSN/SAC</td><td style="${cell};border-color:${T}">Qty</td><td style="${cell};border-color:${T}">Rate (Rs.)</td><td style="${cell};border-color:${T}">Amount (Rs.)</td></tr>
+<tr><td style="${cell};text-align:center">1</td><td style="${cell}">${esc(r.description||'Real Estate Marketing Services')}</td><td style="${cell};text-align:right">${esc(r.hsn||'997222')}</td><td style="${cell};text-align:right">${r.qty||1}</td><td style="${cell};text-align:right">${f2(r.rate||r.taxable)}</td><td style="${cell};text-align:right">${f2(r.taxable)}</td></tr></table>
+<table style="width:100%;border-collapse:collapse;font-size:13px">${tr('Taxable Value',f2(r.taxable))}${tax}${tr('Rounding',f2(r.rounding))}<tr style="background:${T};color:#fff;font-weight:700"><td style="padding:10px 14px">TOTAL AMOUNT</td><td style="padding:10px 14px;text-align:right">${f2(r.total)}</td></tr></table>
+<div style="border:1px solid #b9d9e6;background:#e3f1f6;padding:12px 14px;margin-top:24px"><b>Amount Chargeable (in words)</b><br>Rupees ${numWords(r.total)} Only</div>
+<div style="border:${bd};padding:12px 14px;margin-top:110px;font-size:12px;line-height:1.7"><b>Declarations:</b><br>1. For Proptech EasyDeals<br>2. Certified that the particulars given above are true and correct.<br>3. This is a computer-generated invoice and does not require a signature.</div></div>`}
+async function invPdf(r){
+  toast('Creating PDF…');
+  try{
+    if(!window.html2pdf)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+    const h=document.createElement('div');h.style.cssText='position:absolute;left:-10000px;top:0;width:794px';h.innerHTML=invHtml(r);document.body.appendChild(h);
+    const blob=await html2pdf().set({margin:0,filename:'x.pdf',image:{type:'jpeg',quality:.96},html2canvas:{scale:2,useCORS:true,windowWidth:794},jsPDF:{unit:'px',format:[794,1123],hotfixes:['px_scaling']}}).from(h.firstElementChild).outputPdf('blob');
+    h.remove();
+    const name='Invoice-'+String(r.inv_no).replace(/\//g,'-')+'.pdf',file=new File([blob],name,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});return}catch(e){if(e&&e.name==='AbortError')return}}
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast('PDF downloaded ✅');
+  }catch(e){toast('PDF failed: '+(e.message||e),1)}
+}
+function invOpen(id){const p=P(id),d=dd(p);INV={pid:id,kind:'success',name:p.owner_name||'',addr:p.address||'',gstin:'',inter:false,state:'',desc:'Real Estate Marketing Services',amt:+d.success_fee||'',date:today(),saved:[]};invShow();
+  sb.from('invoices').select('*').eq('property_id',id).order('id',{ascending:false}).then(r=>{if(INV&&INV.pid===id){INV.saved=r.data||[];const b=document.getElementById('invsv');if(b)b.innerHTML=invSaved()}})}
+function invSaved(){return INV.saved.length?`<div class="sec">Saved invoices</div>`+INV.saved.map(r=>`<div class="lr"><span><b>${esc(r.inv_no)}</b><br><span class="mu">${invDate(r.inv_date)} · ₹${f2(r.total)}</span></span><button onclick="invAgain(${r.id})">⬇ PDF</button></div>`).join(''):''}
+function invAgain(id){const r=INV.saved.find(x=>x.id===id);if(r)invPdf(r)}
+function invSet(k,v){INV[k]=v;if(k==='gstin'){const m=String(v).trim().match(/^(\d{2})/);if(m){INV.inter=m[1]!=='27';const s=document.getElementById('invtax');if(s)s.value=INV.inter?'I':'S';const w=document.getElementById('invst');if(w)w.style.display=INV.inter?'block':'none'}}invPrev()}
+function invKind(k){INV.kind=k;const p=P(INV.pid),d=dd(p);INV.amt=k==='success'?(+d.success_fee||''):k==='package'?(+d.package_amount||+p.plan_amount||''):'';invShow()}
+function invTax(v){INV.inter=v==='I';const w=document.getElementById('invst');if(w)w.style.display=INV.inter?'block':'none';invPrev()}
+function invPos(){return INV.inter?(String(INV.state||'').trim()||'Other state'):'Maharashtra (27)'}
+function invPrev(){const c=invCalc(INV.amt,INV.inter?'IGST':'CGST_SGST'),b=document.getElementById('invcalc');if(!b)return;
+  b.innerHTML=`<div class="lr"><span>Taxable value</span><b>₹${f2(c.taxable)}</b></div>${INV.inter?`<div class="lr"><span>IGST @ 18%</span><b>₹${f2(c.igst)}</b></div>`:`<div class="lr"><span>CGST @ 9%</span><b>₹${f2(c.cgst)}</b></div><div class="lr"><span>SGST @ 9%</span><b>₹${f2(c.sgst)}</b></div>`}<div class="lr"><span>Rounding</span><b>${f2(c.rounding)}</b></div><div class="lr"><span><b>Total</b></span><b>₹${f2(c.total)}</b></div><div class="mu" style="margin-top:4px">Rupees ${numWords(c.total)} Only</div>`}
+function invShow(){
+  let o=document.getElementById('invm');if(!o){o=document.createElement('div');o.id='invm';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
+  if(!INV){o.remove();return}
+  const p=P(INV.pid),I=INV,sel=(k,l)=>`<option value="${k}" ${I.kind===k?'selected':''}>${l}</option>`;
+  o.innerHTML=`<div style="background:var(--card,#fff);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b>🧾 Invoice · ${esc(p.id)} · ${esc(p.project||'')}</b><button onclick="INV=null;invShow()">✕</button></div>
+  <label class="mu">Invoice for</label><select onchange="invKind(this.value)">${sel('success','Success fee')}${sel('package','Package')}${sel('custom','Custom amount')}</select>
+  <label class="mu">Bill to (name)</label><input value="${esc(I.name)}" oninput="invSet('name',this.value)">
+  <label class="mu">Address</label><textarea rows="3" oninput="invSet('addr',this.value)">${esc(I.addr)}</textarea>
+  <label class="mu">Customer GSTIN (optional)</label><input value="${esc(I.gstin)}" oninput="invSet('gstin',this.value.toUpperCase())" placeholder="Leave empty for individuals">
+  <label class="mu">Place of supply</label><select id="invtax" onchange="invTax(this.value)"><option value="S" ${I.inter?'':'selected'}>Maharashtra (27) → CGST 9% + SGST 9%</option><option value="I" ${I.inter?'selected':''}>Other state → IGST 18%</option></select>
+  <div id="invst" style="display:${I.inter?'block':'none'}"><input value="${esc(I.state)}" oninput="invSet('state',this.value)" placeholder="State and code, e.g. Gujarat (24)"></div>
+  <label class="mu">Description</label><input value="${esc(I.desc)}" oninput="invSet('desc',this.value)">
+  <label class="mu">Amount before GST (₹)</label><input type="number" inputmode="decimal" value="${esc(I.amt)}" oninput="invSet('amt',this.value)">
+  <label class="mu">Invoice date</label><input type="date" value="${esc(I.date)}" onchange="invSet('date',this.value)">
+  <div class="card" id="invcalc" style="margin-top:10px"></div>
+  <div class="mu" style="margin-bottom:8px">Invoice number is given when you save (next in the series). Saved invoices cannot be edited.</div>
+  <button class="p" style="width:100%" onclick="invSave(this)">💾 Save and get PDF</button>
+  <div id="invsv">${invSaved()}</div></div>`;
+  invPrev();
+}
+async function invSave(btn){
+  const I=INV,amt=+I.amt;
+  if(!String(I.name).trim())return toast('Enter the name to bill',1);
+  if(!(amt>0))return toast('Enter the amount',1);
+  if(!I.date)return toast('Select the invoice date',1);
+  if(I.inter&&!String(I.state).trim())return toast('Enter the state for IGST',1);
+  btn.disabled=true;btn.textContent='Saving…';
+  const {data,error}=await sb.rpc('ed_save_invoice',{p:{inv_date:I.date,property_id:I.pid,bill_name:String(I.name).trim(),bill_address:String(I.addr).trim(),bill_gstin:String(I.gstin).trim(),pos:invPos(),description:String(I.desc).trim(),hsn:'997222',taxable:amt,tax_type:I.inter?'IGST':'CGST_SGST'}});
+  btn.disabled=false;btn.textContent='💾 Save and get PDF';
+  if(error)return toast(error.message,1);
+  I.saved.unshift(data);const b=document.getElementById('invsv');if(b)b.innerHTML=invSaved();
+  toast('Saved '+data.inv_no+' ✅');invPdf(data);
+}
 VIEW.props=()=>{
   if(editP)return propForm(editP);
   if(openP)return propDetail(P(openP));
@@ -369,8 +449,8 @@ VIEW.props=()=>{
   const aopts=zsel.filter(k=>k!=='none').flatMap(k=>{const z=ZA.zones.find(z=>String(z.id)===k);return z?zAreas(z.id):[]});
   const alab=!asel.length?'Sab area':aopts.filter(a=>asel.includes(String(a.id))).map(a=>a.name).join(', ');
   const ck=(on,fn,l,n)=>`<label style="display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--bd);cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="${fn}" style="width:22px;height:22px;flex:none"><span style="flex:1">${esc(l)}</span><span class="mu">${n}</span></label>`;
-  const dd=(key,title,lab,body)=>`<details style="margin-bottom:10px" ${pOpen===key?'open':''} ontoggle="pdT('${key}',this.open)"><summary style="list-style:none;cursor:pointer;padding:11px 13px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;min-height:44px;display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span class="mu">${title}</span> <b>${esc(lab)}</b></span><span>▾</span></summary><div style="border:1.5px solid var(--bd);border-radius:12px;background:#fff;margin-top:6px;padding:4px 12px;max-height:50vh;overflow:auto">${body}<button class="p" style="width:100%;margin:10px 0" onclick="pOpen='';render()">Done</button></div></details>`;
-  const zbar=zUI()?dd('z','Zone',zlab,ck(!zsel.length,'pzAll()','Sab select',list.length)+zrows.map(r=>ck(zsel.includes(r[0]),`pzTog('${r[0]}')`,r[1],r[2])).join(''))+(aopts.length?dd('a','Area',alab,ck(!asel.length,'paAll()','Sab select',list.filter(p=>aopts.some(a=>String(a.id)===String(p.area_id))).length)+aopts.map(a=>ck(asel.includes(String(a.id)),`paTog('${a.id}')`,a.name,list.filter(p=>String(p.area_id)===String(a.id)).length)).join('')):''):'';
+  const ddm=(key,title,lab,body)=>`<details style="margin-bottom:10px" ${pOpen===key?'open':''} ontoggle="pdT('${key}',this.open)"><summary style="list-style:none;cursor:pointer;padding:11px 13px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;min-height:44px;display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span class="mu">${title}</span> <b>${esc(lab)}</b></span><span>▾</span></summary><div style="border:1.5px solid var(--bd);border-radius:12px;background:#fff;margin-top:6px;padding:4px 12px;max-height:50vh;overflow:auto">${body}<button class="p" style="width:100%;margin:10px 0" onclick="pOpen='';render()">Done</button></div></details>`;
+  const zbar=zUI()?ddm('z','Zone',zlab,ck(!zsel.length,'pzAll()','Sab select',list.length)+zrows.map(r=>ck(zsel.includes(r[0]),`pzTog('${r[0]}')`,r[1],r[2])).join(''))+(aopts.length?ddm('a','Area',alab,ck(!asel.length,'paAll()','Sab select',list.filter(p=>aopts.some(a=>String(a.id)===String(p.area_id))).length)+aopts.map(a=>ck(asel.includes(String(a.id)),`paTog('${a.id}')`,a.name,list.filter(p=>String(p.area_id)===String(a.id)).length)).join('')):''):'';
   if(zsel.length)list=list.filter(p=>zsel.includes(p.zone_id?String(p.zone_id):'none'));
   if(asel.length)list=list.filter(p=>asel.includes(String(p.area_id)));
   let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
