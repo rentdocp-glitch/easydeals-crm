@@ -677,6 +677,33 @@ async function saveCall(id){
   clearInterval(tint);t0=null;openId=null;openK=null;toast('Saved ✅');render();
 }
 
+/* ---------- Deal Closed owner calls + team phones (admin) ---------- */
+let DCF='today';
+async function dcCard(){
+  if(ME.role!=='admin')return '';
+  const d=new Date();d.setHours(0,0,0,0);
+  const since=DCF==='7'?new Date(d.getTime()-6*864e5):d;
+  const [a,b]=await Promise.all([
+    sb.from('call_events').select('id,at,phone,title,detail,missed,called_back,user_id').eq('bucket','paid_owner').gte('at',since.toISOString()).order('at',{ascending:false}).limit(80),
+    sb.from('call_events').select('user_id,at').order('at',{ascending:false}).limit(500)]);
+  if(a.error)return '';
+  const nm=id=>(P[id]&&P[id].name)||'Team';
+  let rows=a.data||[];const all=rows;
+  rows=rows.filter(r=>r.missed||!all.some(m=>m.missed&&m.phone===r.phone&&Math.abs(new Date(m.at)-new Date(r.at))<6e5));
+  const tm=x=>new Date(x).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true});
+  const miss=rows.filter(r=>r.missed&&!r.called_back).length;
+  const chip=(k,l)=>`<button class="${DCF===k?'on':''}" onclick="DCF='${k}';render()">${l}</button>`;
+  const item=r=>{const own=(String(r.title||'').split('·')[1]||'').trim()||'Owner',prop=String(r.detail||'').split(',')[0].split('\n')[0];
+    const bad=r.missed&&!r.called_back,st=r.missed?(r.called_back?['Called back','#15803d']:['Missed','#b91c1c']):['Call received','#15803d'];
+    return `<div style="padding:9px 0;border-top:1px solid #e5e7eb"><div style="display:flex;justify-content:space-between"><b>${esc(own)}</b><span style="font-size:13px;color:${st[1]}">${st[0]}</span></div><div class="mu" style="margin:2px 0 ${bad?'6px':'0'}">${esc(prop)} · ${esc(nm(r.user_id))} · ${tm(r.at)}</div>${bad?`<a class="btn" href="tel:+91${esc(ph10(r.phone))}" style="margin-right:8px">📞 Call back</a><button onclick="dcDone(${r.id})">✔ Done</button>`:''}</div>`};
+  const last={};(b.data||[]).forEach(r=>{if(!last[r.user_id])last[r.user_id]=r.at});
+  const team=Object.values(P).filter(p=>p.role&&p.role!=='admin'&&p.active!==false);
+  const ago=ms=>{const h=ms/36e5;return h<1?Math.max(1,Math.round(ms/6e4))+' min ago':h<48?Math.round(h)+' hrs ago':Math.round(h/24)+' days ago'};
+  const ph=p=>{const t=last[p.id],ms=t?Date.now()-new Date(t):null,col=ms==null||ms>864e5?'#b91c1c':ms>288e5?'#b45309':'#15803d';
+    return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #e5e7eb"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col};margin-right:8px"></span>${esc(p.name||'Team')}</span><span class="mu" style="color:${col}">${t?'last call event '+ago(ms):'no call event yet'}</span></div>`};
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>⭐ Deal Closed owner calls</b>${miss?`<span style="font-size:12px;background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:8px">${miss} missed</span>`:''}</div><div class="chips" style="margin:8px 0">${chip('today','Today')}${chip('7','7 days')}</div>${rows.length?rows.map(item).join(''):'<div class="mu">No calls from Deal Closed owners in this period.</div>'}</div><div class="card"><b>📱 Team phones</b><div class="mu" style="margin:2px 0 4px">Based on the last call event each phone sent to the CRM.</div>${team.map(ph).join('')}</div>`;
+}
+async function dcDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);toast('Marked as called back');render()}
 /* ---------- views ---------- */
 const VIEW={};
 VIEW['admin:zones']=(...a)=>zonesView(...a);
@@ -796,7 +823,8 @@ VIEW['admin:dash']=async()=>{
   const talk=calls.reduce((a,c)=>a+(c.duration_sec||0),0);
   const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(isMeet(c))b.m++});
   const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
-  return rangeChips()+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
+  const dco=await dcCard();
+  return rangeChips()+dco+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
   <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k],k)).join('')}</div>
   <div class="card"><b>📲 Incoming call? Enter the number</b><div class="f2" style="grid-template-columns:1fr auto;margin-top:8px"><input id="ln" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookup()"><button class="p" onclick="lookup()">Look up</button></div><div id="lk"></div></div>
   <div class="card"><b>Telecaller performance</b>${Object.entries(by).map(([id,b])=>lr(`<b>${esc(P[id]?.name||'?')}</b><br><span class="mu">${b.n} calls · ${b.m} meetings</span>`,`${fmt(b.t)}<br><span class="mu">talk time</span>`)).join('')||'<p class="mu">No calls in this period</p>'}</div>`;
