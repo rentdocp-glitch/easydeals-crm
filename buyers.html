@@ -351,14 +351,28 @@ const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" o
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
 function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · wapas call karo (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
 async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Ho gaya ✅');render()}
+let pOpen='';
+function pdT(k,o){if(o)pOpen=k;else if(pOpen===k)pOpen=''}
+function pzTog(k){const s=new Set(pZ?pZ.split(','):[]);if(s.has(k))s.delete(k);else s.add(k);pZ=[...s].join(',');pA='';pOpen='z';render()}
+function pzAll(){pZ='';pA='';pOpen='z';render()}
+function paTog(k){const s=new Set(pA?pA.split(','):[]);if(s.has(k))s.delete(k);else s.add(k);pA=[...s].join(',');pOpen='a';render()}
+function paAll(){pA='';pOpen='a';render()}
 VIEW.props=()=>{
   if(editP)return propForm(editP);
   if(openP)return propDetail(P(openP));
   const t=today(),fu=fuList().length,un=BL.filter(b=>!b.property_id).length;
   const renewL=PR.filter(isRenew),feeL=PR.filter(feeDue),dueL=PR.filter(p=>dueOf(p)>0);
   let list=pShow=='renew'?renewL:pShow=='fee'?feeL:pShow=='due'?dueL:PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
-  const zbar=zUI()?`<div class="chips" style="overflow-x:auto;flex-wrap:nowrap">${[['','Sab zone']].concat(ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name])).concat([['none','❓ Bina zone']]).map(([k,l])=>{const n=k==''?list.length:k=='none'?list.filter(p=>!p.zone_id).length:list.filter(p=>p.zone_id==k).length;return `<button class="${pZ==k?'on':''}" style="white-space:nowrap" onclick="pZ='${k}';pA='';render()">${esc(l)} ${n}</button>`}).join('')}</div>${pZ&&pZ!='none'?`<select style="margin-bottom:10px" onchange="pA=this.value;render()"><option value="">Sab area (${esc(zName(pZ))})</option>${zAreas(pZ).map(a=>`<option value="${a.id}" ${pA==a.id?'selected':''}>${esc(a.name)} (${list.filter(p=>p.area_id==a.id).length})</option>`).join('')}</select>`:''}`:'';
-  if(pZ=='none')list=list.filter(p=>!p.zone_id);else if(pZ)list=list.filter(p=>p.zone_id==pZ);if(pA)list=list.filter(p=>p.area_id==pA);
+  const zsel=pZ?pZ.split(',').filter(Boolean):[],asel=pA?pA.split(',').filter(Boolean):[];
+  const zrows=[...ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name]),['none','❓ Bina zone']].map(([k,l])=>[k,l,k==='none'?list.filter(p=>!p.zone_id).length:list.filter(p=>String(p.zone_id)===k).length]);
+  const zlab=!zsel.length?'Sab zone ('+list.length+')':zrows.filter(r=>zsel.includes(r[0])).map(r=>r[1]).join(', ');
+  const aopts=zsel.filter(k=>k!=='none').flatMap(k=>{const z=ZA.zones.find(z=>String(z.id)===k);return z?zAreas(z.id):[]});
+  const alab=!asel.length?'Sab area':aopts.filter(a=>asel.includes(String(a.id))).map(a=>a.name).join(', ');
+  const ck=(on,fn,l,n)=>`<label style="display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--bd);cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="${fn}" style="width:22px;height:22px;flex:none"><span style="flex:1">${esc(l)}</span><span class="mu">${n}</span></label>`;
+  const dd=(key,title,lab,body)=>`<details style="margin-bottom:10px" ${pOpen===key?'open':''} ontoggle="pdT('${key}',this.open)"><summary style="list-style:none;cursor:pointer;padding:11px 13px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;min-height:44px;display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span class="mu">${title}</span> <b>${esc(lab)}</b></span><span>▾</span></summary><div style="border:1.5px solid var(--bd);border-radius:12px;background:#fff;margin-top:6px;padding:4px 12px;max-height:50vh;overflow:auto">${body}<button class="p" style="width:100%;margin:10px 0" onclick="pOpen='';render()">Done</button></div></details>`;
+  const zbar=zUI()?dd('z','Zone',zlab,ck(!zsel.length,'pzAll()','Sab select',list.length)+zrows.map(r=>ck(zsel.includes(r[0]),`pzTog('${r[0]}')`,r[1],r[2])).join(''))+(aopts.length?dd('a','Area',alab,ck(!asel.length,'paAll()','Sab select',list.filter(p=>aopts.some(a=>String(a.id)===String(p.area_id))).length)+aopts.map(a=>ck(asel.includes(String(a.id)),`paTog('${a.id}')`,a.name,list.filter(p=>String(p.area_id)===String(a.id)).length)).join('')):''):'';
+  if(zsel.length)list=list.filter(p=>zsel.includes(p.zone_id?String(p.zone_id):'none'));
+  if(asel.length)list=list.filter(p=>asel.includes(String(p.area_id)));
   let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
   list=list.map(p=>({p,l:leadsOf(p.id)})).sort((a,b)=>b.l.length-a.l.length);
   const cap=[];if(BL.length>=3000)cap.push(`Buyer leads ${BL.length.toLocaleString('en-IN')} ho gayi hain`);if(OWN_N>=15000)cap.push(`Owner data ${OWN_N.toLocaleString('en-IN')} ho gaya hai`);
