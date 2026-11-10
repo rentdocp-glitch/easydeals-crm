@@ -331,7 +331,7 @@ function openDrawer(){
   <div class="ds">Naya</div>
   <div class="di" onclick="go('props');editP={};render()"><span>➕ Nayi Property</span></div>
   <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ Naya Buyer Lead</span></div>
-  <div class="di" onclick="go('mb')"><span>⬆️ Magicbricks Excel upload</span></div>
+  <div class="di" onclick="go('mb')"><span>⬆️ Bulk upload (99acres · Magicbricks · Housing)</span></div>
   <div class="ds">Backup</div>
   <div class="di" onclick="closeDrawer();backup()"><span>⬇️ Download backup <span class="mu">· CSV</span></span></div>`;
   $('#dr').classList.add('open');$('#ov').style.display='block';
@@ -347,7 +347,7 @@ function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(
   if(/not listed/i.test(t)||!p[idk])return ['no','✗ Listed nahi',t||'Is portal par listing nahi'];
   return ['off','✗ '+t.split(' ')[0],t]}
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
-const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
+const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Leads bhejo</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
 function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · wapas call karo (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
 async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Ho gaya ✅');render()}
@@ -811,59 +811,189 @@ VIEW.fu=()=>{
 
 /* ---------- unassigned ---------- */
 
-/* ---------- Magicbricks Excel upload ---------- */
+/* ---------- Bulk upload: 99acres + Magicbricks + Housing (Excel / CSV) ---------- */
 let MBP=null;
-const mbFind=id=>{id=String(id||'').replace(/\D/g,'');return id?PR.find(p=>String(p.id_magicbricks||'').split(/[,\s]+/).map(x=>x.replace(/\D/g,'')).includes(id)):null};
-function mbDate(v){if(v instanceof Date)return v.toISOString().slice(0,10);const d=new Date(String(v||'').replace(/(\d)(AM|PM)/,'$1 $2'));return isNaN(d)?today():new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+const BSRC={'Magicbricks':{col:'id_magicbricks',label:'Magicbricks',tag:'MB'},'99acres':{col:'id_99acres',label:'99acres',tag:'99acres'},'Housing.com':{col:'id_housing',label:'Housing',tag:'Housing'}};
+const bidN=(src,v)=>{v=String(v==null?'':v).trim();return src==='99acres'?v.toUpperCase().replace(/[^A-Z0-9]/g,''):v.replace(/\D/g,'')};
+const mbFind=(id,src)=>{src=src||'Magicbricks';id=bidN(src,id);const c=BSRC[src].col;return id?PR.find(p=>String(p[c]||'').split(/[,\s]+/).map(x=>bidN(src,x)).includes(id)):null};
+function mbDate(v){if(v instanceof Date)return new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10);const d=new Date(String(v||'').replace(/(\d)(AM|PM)/,'$1 $2'));return isNaN(d)?today():new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+function bDate(v,order){
+  if(v instanceof Date)return mbDate(v);
+  const m=String(v||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(!m)return mbDate(v);
+  let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;
+  const d=order==='dmy'?a:b,mo=order==='dmy'?b:a;
+  if(mo<1||mo>12||d<1||d>31)return today();
+  return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+function bParseText(t){
+  t=String(t).replace(/^﻿/,'');
+  const nl=t.indexOf('\n'),first=nl<0?t:t.slice(0,nl),sep=first.split('\t').length>first.split(',').length?'\t':',';
+  const out=[];let row=[],cur='',q=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"')q=true;
+    else if(c===sep){row.push(cur);cur=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(cur);cur='';out.push(row);row=[]}
+    else cur+=c}
+  if(cur!==''||row.length){row.push(cur);out.push(row)}
+  return out.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+async function bReadRows(f){
+  const buf=await f.arrayBuffer(),h=new Uint8Array(buf.slice(0,4));
+  const bin=(h[0]===0xD0&&h[1]===0xCF)||(h[0]===0x50&&h[1]===0x4B);
+  if(!bin)return bParseText(new TextDecoder('utf-8').decode(buf));
+  if(!window.XLSX)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
+}
+function bDetect(a){
+  for(let i=0;i<Math.min(a.length,15);i++){
+    const H=a[i].map(c=>String(c).trim().toLowerCase()),has=k=>H.some(c=>c.startsWith(k));
+    if(has('property id')&&has('mobile'))return {src:'Magicbricks',hi:i,H};
+    if(has('listing id')&&has('phone'))return {src:'99acres',hi:i,H};
+    if(has('property/project id')&&has('lead phone'))return {src:'Housing.com',hi:i,H};
+  }
+  return null;
+}
+const bBhk=t=>{const m=String(t||'').match(/(\d+(?:\.\d+)?)\s*bhk/i);return m?m[1]+' BHK':''};
+function bSuggest(r){
+  const nr=edNorm(r.proj||'');if(nr.length<4)return null;
+  const c=PR.filter(p=>{const np=edNorm(p.project||'');return np.length>=4&&(np.includes(nr)||nr.includes(np))});
+  return c.find(p=>r.bhk&&bBhk(p.bhk)===r.bhk)||c[0]||null;
+}
+function bRows(a,d){
+  const H=d.H,col=k=>H.findIndex(c=>c.startsWith(k)),g=(r,i)=>i<0?'':String(r[i]==null?'':r[i]).trim();
+  const clean=v=>/^[-–]*$/.test(v)?'':v;
+  const out=[];
+  a.slice(d.hi+1).forEach(r=>{
+    let o;
+    if(d.src==='Magicbricks'){const ci={id:col('property id'),desc:col('brief'),name:col('name'),email:col('email'),mob:col('mobile'),loc:col('locality'),date:col('message date'),who:col('contacted by'),proj:col('project name')};
+      o={proj:g(r,ci.proj),loc:g(r,ci.loc),bhk:bBhk(g(r,ci.desc)),phone:ph10(r[ci.mob]),id:bidN(d.src,r[ci.id]),name:g(r,ci.name),email:clean(g(r,ci.email)),desc:g(r,ci.desc),date:mbDate(r[ci.date]),who:g(r,ci.who)};}
+    else if(d.src==='99acres'){const ci={id:col('listing id'),name:col('name'),email:col('email'),mob:col('phone'),loc:col('locality'),bhk:col('bhk'),pt:col('property type'),date:col('date'),who:col('response from'),proj:col('project')};
+      o={proj:g(r,ci.proj),loc:g(r,ci.loc),bhk:bBhk(g(r,ci.bhk)),phone:ph10(r[ci.mob]),id:bidN(d.src,r[ci.id]),name:g(r,ci.name),email:clean(g(r,ci.email)),desc:[[g(r,ci.bhk),g(r,ci.pt)].filter(Boolean).join(' '),'Buy',g(r,ci.loc)].filter(Boolean).join(', '),date:bDate(r[ci.date],'mdy'),who:g(r,ci.who)};}
+    else{const ci={id:col('property/project id'),name:col('lead name'),email:col('lead email'),mob:col('lead phone'),loc:col('locality'),bhk:col('configuration'),pt:col('property type'),date:col('lead date'),proj:col('building/project name')};
+      o={proj:g(r,ci.proj),loc:g(r,ci.loc),bhk:bBhk(g(r,ci.bhk)),phone:ph10(r[ci.mob]),id:bidN(d.src,r[ci.id]),name:g(r,ci.name),email:clean(g(r,ci.email)),desc:[[g(r,ci.bhk),g(r,ci.pt)].filter(Boolean).join(' '),'Buy',g(r,ci.loc)].filter(Boolean).join(', '),date:bDate(r[ci.date],'dmy'),who:''};}
+    if(!o.phone||o.phone.length<10)return;
+    o.src=d.src;o.mbid=o.id;out.push(o);
+  });
+  return out;
+}
 VIEW.mb=()=>{
-  let h=`<div class="card"><b>⬆️ Magicbricks leads Excel upload</b>
-  <div class="mu" style="margin:6px 0 10px">Magicbricks → My Responses → Download (Excel). Wahi file yahan chuno. Har lead ka <b>Property Id</b> dekh kar CRM use sahi property se jodega. Jo leads pehle se CRM mein hain, woh dobara nahi judengi.</div>
-  <input type="file" accept=".xls,.xlsx,.csv" onchange="mbRead(this.files[0])"></div>`;
+  let h=`<div class="card"><b>⬆️ Bulk upload · 99acres · Magicbricks · Housing</b>
+  <div class="mu" style="margin:6px 0 10px">Teeno portals ki leads ki Excel / CSV file yahan chuno, ek saath kitni bhi. Portal CRM khud pehchanega. Har lead ki <b>Listing / Property ID</b> dekh kar use sahi property se jodega. Jo leads pehle se CRM mein hain, woh dobara nahi judengi.</div>
+  <input type="file" multiple accept=".xls,.xlsx,.csv" onchange="mbRead(this.files)"></div>`;
   if(!MBP)return h;
-  const n=MBP.rows.filter(r=>!r.dup),m=n.filter(r=>r.pid),u=n.filter(r=>!r.pid),ids=[...new Set(u.map(r=>r.mbid))];
-  h+=`<div class="grid"><div class="card stat"><div class="mu">File mein leads</div><b>${MBP.rows.length}</b></div><div class="card stat"><div class="mu">Pehle se CRM mein</div><b>${MBP.rows.length-n.length}</b></div><div class="card stat"><div class="mu">Nayi · property mili</div><b class="ok">${m.length}</b></div><div class="card stat"><div class="mu">Nayi · property nahi mili</div><b class="${u.length?'wr':''}">${u.length}</b></div></div>`;
-  if(ids.length)h+=`<div class="card"><b>Yeh Magicbricks ID kis property ka hai?</b><div class="mu">Ek baar chun lo, CRM yaad rakhega aur aage se apne aap jodega.</div>${ids.map(id=>{const ex=u.find(r=>r.mbid==id);return `<div class="lr"><span><b>${esc(id)}</b><br><span class="mu">${esc(ex.desc||'')}</span></span><select style="max-width:55%" onchange="mbMap('${esc(id)}',this.value)"><option value="">Chuno…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>`}).join('')}</div>`;
+  if(MBP.files&&MBP.files.length)h+=`<div class="card"><b>Chuni hui files</b>${MBP.files.map(f=>`<div class="lr"><span>${esc(f.name)}</span><span class="${f.src?'ok':'wr'}">${f.src?esc(BSRC[f.src].label)+' · '+f.n:'Pehchani nahi'}</span></div>`).join('')}</div>`;
+  const n=MBP.rows.filter(r=>!r.dup),m=n.filter(r=>r.pid),u=n.filter(r=>!r.pid),ids=[...new Map(u.map(r=>[r.src+'|'+r.mbid,r])).values()];
+  h+=`<div class="grid"><div class="card stat"><div class="mu">Files mein leads</div><b>${MBP.rows.length}</b></div><div class="card stat"><div class="mu">Pehle se CRM mein</div><b>${MBP.rows.length-n.length}</b></div><div class="card stat"><div class="mu">Nayi · property mili</div><b class="ok">${m.length}</b></div><div class="card stat"><div class="mu">Nayi · property nahi mili</div><b class="${u.length?'wr':''}">${u.length}</b></div></div>`;
+  if(ids.length)h+=`<div class="card"><b>Yeh ID kis property ka hai?</b><div class="mu">Property purani hai (listing refresh hui) to uske saath jodo, nayi hai to nayi property bana do. CRM yaad rakhega.</div>${ids.map(ex=>{const sg=bSuggest(ex);return `<div class="lr" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%"><b>${esc(ex.mbid)}</b> <span class="mu">· ${esc(BSRC[ex.src].label)}</span><br><span class="mu">${esc([ex.proj,ex.bhk,ex.loc].filter(Boolean).join(' · ')||ex.desc||'')}</span></span>${sg?`<button class="p" style="flex:1 1 100%" onclick="mbMap('${esc(ex.src)}','${esc(ex.mbid)}','${esc(sg.id)}')">🔁 ${esc(sg.id)} · ${esc(sg.project||'')} ki refresh listing hai, jodo</button>`:''}<select style="flex:1 1 55%" onchange="mbMap('${esc(ex.src)}','${esc(ex.mbid)}',this.value)"><option value="">Purani property me jodo…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select><button style="flex:1 1 35%" onclick="mbNew('${esc(ex.src)}','${esc(ex.mbid)}')">➕ Nayi property</button></div>`}).join('')}</div>`;
   h+=n.length?`<button class="p" style="width:100%" onclick="mbImport(this)">✅ ${n.length} nayi leads CRM mein daalo</button>`:'<div class="empty"><div class="ei">✅</div><b>Sab leads pehle se CRM mein hain</b></div>';
-  h+=`<div class="sec">Nayi leads (${n.length})</div>`+n.slice(0,40).map(r=>`<div class="lr"><span><b>${esc(r.name||'Buyer')}</b> · ${esc(mask(r.phone))}<br><span class="mu">${r.pid?esc(r.pid+' · '+(P(r.pid)||{}).project):'<b class="wr">Property nahi mili</b> · MB '+esc(r.mbid)} · ${dshort(r.date)}</span></span></div>`).join('');
+  h+=`<div class="sec">Nayi leads (${n.length})</div>`+n.slice(0,40).map(r=>`<div class="lr"><span><b>${esc(r.name||'Buyer')}</b> · ${esc(mask(r.phone))}<br><span class="mu">${r.pid?esc(r.pid+' · '+(P(r.pid)||{}).project):'<b class="wr">Property nahi mili</b> · '+esc(BSRC[r.src].tag)+' '+esc(r.mbid)} · ${esc(BSRC[r.src].tag)} · ${dshort(r.date)}</span></span></div>`).join('');
   return h;
 };
-async function mbRead(f){
-  if(!f)return;toast('File padh raha hoon…');
+async function mbRead(files){
+  files=[...(files||[])];if(!files.length)return;toast('Files padh raha hoon…');
   try{
-    if(!window.XLSX)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
-    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});const a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
-    const hi=a.findIndex(r=>r.some(c=>/property\s*id/i.test(c))&&r.some(c=>/mobile/i.test(c)));
-    if(hi<0)return toast('Is file mein "Property Id" aur "Mobile" column nahi mile',1);
-    const H=a[hi].map(c=>String(c).trim().toLowerCase()),col=k=>H.findIndex(c=>c.startsWith(k));
-    const ci={id:col('property id'),desc:col('brief'),name:col('name'),email:col('email'),mob:col('mobile'),loc:col('locality'),date:col('message date'),msg:col('message details'),who:col('contacted by')};
     const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||'')));
-    const rows=[],seen=new Set();
-    a.slice(hi+1).forEach(r=>{const phone=ph10(r[ci.mob]);if(phone.length<10)return;const mbid=String(r[ci.id]||'').replace(/\D/g,'');const pr=mbFind(mbid);const key=phone+'|'+(pr?pr.id:mbid);
-      const dup=have.has(key)||seen.has(key);seen.add(key);
-      rows.push({phone,mbid,pid:pr?pr.id:null,name:String(r[ci.name]||'').trim(),email:String(r[ci.email]||'').trim(),desc:String(r[ci.desc]||'').trim(),loc:r[ci.loc],date:mbDate(r[ci.date]),who:String(r[ci.who]||''),dup})});
-    MBP={rows};render();toast(rows.length+' leads mili');
+    const rows=[],seen=new Set(),info=[];
+    for(const f of files){
+      const a=await bReadRows(f),d=bDetect(a);
+      if(!d){info.push({name:f.name,src:null,n:0});continue}
+      const rs=bRows(a,d);let k=0;
+      rs.forEach(o=>{const pr=mbFind(o.mbid,o.src),key=o.phone+'|'+(pr?pr.id:o.mbid);
+        o.pid=pr?pr.id:null;o.dup=have.has(key)||seen.has(key);seen.add(key);rows.push(o);k++});
+      info.push({name:f.name,src:d.src,n:k});
+    }
+    MBP={rows,files:info};render();
+    const bad=info.filter(x=>!x.src).length;
+    toast(rows.length+' leads mili'+(bad?' · '+bad+' file pehchani nahi':''),bad&&!rows.length?1:0);
   }catch(e){toast('File nahi padh paya: '+(e.message||e),1)}
 }
-async function mbMap(mbid,pid){
-  if(!pid)return;const p=P(pid);const cur=String(p.id_magicbricks||'').trim();const v=cur?cur+', '+mbid:mbid;
-  const ps=String(p.portal_status||'');const nps=/magicbricks\s*:/i.test(ps)?ps.replace(/magicbricks\s*:\s*[^|]*/i,'Magicbricks: Live'):(ps?ps+' | ':'')+'Magicbricks: Live';
-  const {error}=await sb.from('properties').update({id_magicbricks:v,portal_status:nps}).eq('id',pid);if(error)return toast(error.message,1);
-  p.id_magicbricks=v;p.portal_status=nps;
-  const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||'')));
-  MBP.rows.forEach(r=>{if(r.mbid==mbid){r.pid=pid;if(have.has(r.phone+'|'+pid))r.dup=true}});
-  toast('MB '+mbid+' → '+pid+' ✅');render();
+async function mbMap(src,mbid,pid){
+  if(!pid)return;const p=P(pid),info=BSRC[src],c=info.col;const cur=String(p[c]||'').trim();const v=cur?cur+', '+mbid:mbid;
+  const ps=String(p.portal_status||''),re=new RegExp(info.label+'\\s*:','i');const nps=re.test(ps)?ps.replace(new RegExp(info.label+'\\s*:\\s*[^|]*','i'),info.label+': Live'):(ps?ps+' | ':'')+info.label+': Live';
+  const upd={portal_status:nps};upd[c]=v;
+  const {error}=await sb.from('properties').update(upd).eq('id',pid);if(error)return toast(error.message,1);
+  p[c]=v;p.portal_status=nps;
+  mbRecalc();
+  toast(info.label+' '+mbid+' → '+pid+' ✅');render();
+}
+function mbRecalc(){
+  const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''))),seen=new Set();
+  MBP.rows.forEach(r=>{const pr=mbFind(r.mbid,r.src);r.pid=pr?pr.id:null;const key=r.phone+'|'+(pr?pr.id:r.mbid);r.dup=have.has(key)||seen.has(key);seen.add(key)});
+}
+async function mbNew(src,mbid){
+  const r=MBP.rows.find(x=>x.src===src&&x.mbid===mbid);if(!r)return;
+  const info=BSRC[src],pid=nextId();
+  const row={id:pid,project:r.proj||[r.bhk,r.loc].filter(Boolean).join(' · ')||('Listing '+mbid),bhk:r.bhk||null,locality:r.loc||null,city:'Pune',status:'Available - Sale',date_added:today(),portal_status:info.label+': Live'};
+  row[info.col]=mbid;
+  const {error}=await sb.from('properties').insert(row);if(error)return toast(error.message,1);
+  await reload(true);mbRecalc();
+  toast(pid+' ban gayi ✅ · owner ki details baad me Property → Edit se bharna');render();
 }
 async function mbImport(btn){
   btn.disabled=true;btn.textContent='Daal raha hoon…';
   const n=MBP.rows.filter(r=>!r.dup);let c=+String(nextCode()).replace(/\D/g,'');
-  const rows=n.map(r=>({code:'L-'+String(c++).padStart(4,'0'),lead_date:r.date,property_id:r.pid,source:'Magicbricks',listing_id:r.mbid,buyer_name:r.name||null,buyer_phone:r.phone,requirement:r.desc||null,remarks:[r.email,r.who&&r.who!='Individual'?r.who:''].filter(Boolean).join('; ')||null,status:'New'}));
+  const rows=n.map(r=>({code:'L-'+String(c++).padStart(4,'0'),lead_date:r.date,property_id:r.pid,source:r.src,listing_id:r.mbid,buyer_name:r.name||null,buyer_phone:r.phone,requirement:r.desc||null,remarks:[r.email,r.who&&r.who!=='Individual'?r.who:''].filter(Boolean).join('; ')||null,status:'New'}));
   for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('buyer_leads').insert(rows.slice(i,i+200));if(error){btn.disabled=false;btn.textContent='Dobara try karo';return toast(error.message,1)}}
-  const recent={};n.forEach(r=>{if(r.pid&&(!recent[r.pid]||r.date>recent[r.pid]))recent[r.pid]=r.date});
-  for(const [pid,d] of Object.entries(recent)){const p=P(pid);if(!p)continue;const ps=String(p.portal_status||'');const tag='Magicbricks: Live (lead '+dshort(d)+')';const nps=/magicbricks\s*:/i.test(ps)?ps.replace(/magicbricks\s*:\s*[^|]*/i,tag):(ps?ps+' | ':'')+tag;await sb.from('properties').update({portal_status:nps}).eq('id',pid)}
+  const recent={};n.forEach(r=>{if(r.pid){const k=r.pid+'|'+r.src;if(!recent[k]||r.date>recent[k])recent[k]=r.date}});
+  for(const [k,d] of Object.entries(recent)){const [pid,src]=k.split('|'),p=P(pid);if(!p)continue;const lb=BSRC[src].label,ps=String(p.portal_status||''),tag=lb+': Live (lead '+dshort(d)+')';const nps=new RegExp(lb+'\\s*:','i').test(ps)?ps.replace(new RegExp(lb+'\\s*:\\s*[^|]*','i'),tag):(ps?ps+' | ':'')+tag;await sb.from('properties').update({portal_status:nps}).eq('id',pid);p.portal_status=nps}
   toast(rows.length+' leads CRM mein aa gayi ✅');MBP=null;await reload(true);go('mb');
 }
 
-VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
+/* ---------- Unassigned leads: listing ID ko property se jodo / nayi property ---------- */
+function unGroups(){
+  const g=new Map();
+  BL.filter(b=>!b.property_id&&b.listing_id&&BSRC[b.source]).forEach(b=>{const k=b.source+'|'+b.listing_id;if(!g.has(k))g.set(k,{src:b.source,id:b.listing_id,n:0,req:b.requirement||''});g.get(k).n++});
+  if(!g.size)return '';
+  return `<div class="card"><b>🆕 Naye Listing IDs (${g.size})</b><div class="mu">In ID ki leads kisi property se nahi judi. Refresh hui purani property hai to uske saath jodo, nayi hai to nayi property bana do.</div>${[...g.values()].map(x=>`<div class="lr" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%"><b>${esc(x.id)}</b> <span class="mu">· ${esc(BSRC[x.src].label)} · ${x.n} lead${x.n>1?'s':''}</span><br><span class="mu">${esc(x.req)}</span></span><select style="flex:1 1 55%" onchange="unMap('${esc(x.src)}','${esc(x.id)}',this.value)"><option value="">Purani property me jodo…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select><button style="flex:1 1 35%" onclick="unNew('${esc(x.src)}','${esc(x.id)}')">➕ Nayi property</button></div>`).join('')}</div>`;
+}
+async function unLink(src,id,pid){
+  const info=BSRC[src],p=P(pid);
+  if(p){const cur=String(p[info.col]||'').trim(),has=cur.split(/[,\s]+/).map(x=>bidN(src,x)).includes(bidN(src,id));
+    if(!has){const ps=String(p.portal_status||''),re=new RegExp(info.label+'\\s*:','i'),nps=re.test(ps)?ps:(ps?ps+' | ':'')+info.label+': Live',upd={portal_status:nps};upd[info.col]=cur?cur+', '+id:id;
+      const {error}=await sb.from('properties').update(upd).eq('id',pid);if(error)return toast(error.message,1)}}
+  const {error:e2}=await sb.from('buyer_leads').update({property_id:pid}).is('property_id',null).eq('source',src).eq('listing_id',id);if(e2)return toast(e2.message,1);
+  await reload(true);toast(info.label+' '+id+' → '+pid+' ✅');render();
+}
+function unMap(src,id,pid){if(pid)unLink(src,id,pid)}
+async function unNew(src,id){
+  const b=BL.find(x=>!x.property_id&&x.source===src&&x.listing_id===id);if(!b)return;
+  const info=BSRC[src],pid=nextId(),req=String(b.requirement||''),parts=req.split(',').map(x=>x.trim()).filter(Boolean),loc=parts.length>2?parts[parts.length-1]:'';
+  const row={id:pid,project:[bBhk(req),loc].filter(Boolean).join(' · ')||('Listing '+id),bhk:bBhk(req)||null,locality:loc||null,city:'Pune',status:'Available - Sale',date_added:today(),portal_status:info.label+': Live'};
+  row[info.col]=id;
+  const {error}=await sb.from('properties').insert(row);if(error)return toast(error.message,1);
+  await reload(true);await unLink(src,id,pid);
+}
+
+/* ---------- Owner ko property ki sari leads ek click me ---------- */
+let OLM=null;
+function olParts(){
+  const p=P(OLM.id),ls=leadsOf(OLM.id).slice().sort((a,b)=>String(b.lead_date||'').localeCompare(String(a.lead_date||'')));
+  const nm=String(p.owner_name||'').trim().split(/\s+/)[0]||'Sir/Madam';
+  const head=`Hello ${nm},\n\nHere are the buyer enquiries received so far for your property *${p.project||p.id}*${[p.bhk,p.locality].filter(Boolean).length?' ('+[p.bhk,p.locality].filter(Boolean).join(', ')+')':''} through Easy Deals marketing:\n\n`;
+  const foot=`\nTotal enquiries: ${ls.length}. Our team is following up with every buyer and will update you on site visits and feedback.\n\n- Team Easy Deals`;
+  const lines=ls.map((b,i)=>`${i+1}. ${b.buyer_name||'Buyer'}${OLM.full?' - '+ph10(b.buyer_phone):''} - ${dshort(b.lead_date)}${b.status&&b.status!=='New'?' ('+b.status+')':''}`);
+  const parts=[];let cur='';
+  lines.forEach(l=>{if((cur+l+'\n').length>1300){parts.push(cur);cur=''}cur+=l+'\n'});
+  if(cur||!parts.length)parts.push(cur);
+  return {p,n:ls.length,msgs:parts.map((t,i)=>(i===0?head:`(Part ${i+1}/${parts.length})\n\n`)+t+(i===parts.length-1?foot:'')),};
+}
+function ownerLeads(id){OLM={id,full:true};olShow()}
+function olShow(){
+  let o=document.getElementById('olm');if(!o){o=document.createElement('div');o.id='olm';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
+  if(!OLM){o.remove();return}
+  const r=olParts(),ow=ph10(r.p.owner_phone);
+  o.innerHTML=`<div style="background:var(--card,#fff);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b>📤 ${esc(r.p.id)} · ${esc(r.p.project||'')}</b><button onclick="OLM=null;olShow()">✕</button></div>
+  <div class="mu" style="margin:4px 0 8px">${r.n} lead${r.n===1?'':'s'} · owner: ${esc(r.p.owner_name||'-')} ${ow?'(+91 '+ow+')':'<b class="wr">(mobile nahi hai)</b>'}</div>
+  <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" ${OLM.full?'checked':''} onchange="OLM.full=this.checked;olShow()" style="width:auto"> Buyer ka poora mobile number bhejo</label>
+  ${r.msgs.map((t,i)=>`<div class="card" style="white-space:pre-wrap;font-size:13px">${esc(t)}</div>${ow?`<a class="btn w" style="display:block;text-align:center;margin-bottom:10px" target="_blank" rel="noopener" href="https://wa.me/91${ow}?text=${encodeURIComponent(t)}">📤 WhatsApp pe bhejo${r.msgs.length>1?' (Part '+(i+1)+'/'+r.msgs.length+')':''}</a>`:''}`).join('')}
+  </div>`;
+}
+
+VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+unGroups()+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
 
 /* ---------- deal closed owners ---------- */
 VIEW.deal=()=>{
