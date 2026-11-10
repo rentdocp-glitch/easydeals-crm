@@ -292,7 +292,7 @@ async function render(){
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP].join('|');
+  const ck=[ME.role,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP,JSON.stringify(GX)].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
   const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -476,7 +476,7 @@ async function doDelete(id){
 }
 const empty=m=>`<div class="empty"><div class="ei">📭</div><b>${m}</b><span>Nothing to show yet</span></div>`;
 const skel=n=>Array.from({length:n||3},()=>'<div class="skc"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join('');
-const fCount=()=>(fZn.length?1:0)+(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0);
+const fCount=()=>(fZn.length?1:0)+(fLoc.length?1:0)+(fBhk.length?1:0)+(fSt.length?1:0)+gxCount();
 const searchBar=(ph,withF,sg)=>`<div class="card" style="padding:10px"><div class="f2" style="grid-template-columns:1fr auto${withF?' auto':''}"><input id="sq" placeholder="${ph}" value="${esc(q)}" autocomplete="off" onkeydown="if(event.key=='Enter')doSearch()" ${withF||sg?'oninput="sugQ(this.value)"':''} style="min-height:46px"><button class="p" style="min-height:46px" onclick="doSearch()">Search</button>${withF?`<button style="min-height:46px" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button>`:''}</div>${withF||sg?'<div id="sqs"></div>':''}</div>`;
 function doSearch(){q=$('#sq').value;openId=null;openK=null;if(ME.role=='fe'&&tab!='fs'){if(!q.trim())return;tab='fs'}render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
@@ -529,13 +529,13 @@ async function loadFilt(){
   FILT.bhk=[...new Set(d.map(x=>x.bhk).filter(Boolean))].sort();FILT.t=Date.now();
 }
 const MSX={zn:()=>fZn,loc:()=>fLoc,bhk:()=>fBhk,st:()=>fSt},MSN={zn:'zones',loc:'areas',bhk:'BHK',st:'statuses'};
-const msLabel=k=>{const a=MSX[k]();return a.length==0?'All '+MSN[k]:a.length==1?(k=='st'?ST[a[0]]:k=='zn'?zName(a[0]):a[0]):a.length+' selected'};
+const msLabel=k=>{const a=MSX[k]();return a.length==0?'All '+MSN[k]:a.length==1?(k=='st'?ST[a[0]]:k=='zn'?zName(a[0]):(k=='tc'||k=='fe')?((P[a[0]]||{}).name||a[0]):a[0]):a.length+' selected'};
 function msTog(k,v,on){const a=MSX[k](),i=a.indexOf(v);if(on&&i<0)a.push(v);if(!on&&i>=0)a.splice(i,1);const b=document.getElementById('msb_'+k);if(b)b.textContent=msLabel(k)+' ▾'}
 function msClr(k){MSX[k]().length=0;render()}
 function msBox(k,items){const sel=MSX[k]();return `<div class="ms"><button type="button" id="msb_${k}" class="msb" onclick="msOpen=msOpen=='${k}'?'':'${k}';render()">${esc(msLabel(k))} ▾</button>${msOpen==k?`<div class="msp">${items.map(([v,l])=>`<label><input type="checkbox" value="${esc(v)}" ${sel.includes(v)?'checked':''} onchange="msTog('${k}',this.value,this.checked)"> ${esc(l)}</label>`).join('')||'<div class="mu" style="padding:8px">Nothing to pick yet</div>'}<div class="msa"><button type="button" onclick="msClr('${k}')">Clear</button><button type="button" class="p" onclick="msOpen='';render()">Apply</button></div></div>`:''}</div>`}
 const fLocOpts=()=>fZn.length&&zUI()?FILT.loc.filter(x=>{const a=areaOf(x);return a&&fZn.includes(String(a.zone_id))}):FILT.loc;
-const filterBar=()=>!showF?'':`${zUI()?`<div style="margin-bottom:8px;position:relative;z-index:43">${msBox('zn',ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name]))}</div>`:''}<div class="f2" style="margin-bottom:8px;position:relative;z-index:42">${msBox('loc',fLocOpts().map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div><div style="margin-bottom:10px;position:relative;z-index:41">${msBox('st',Object.entries(ST))}</div>`;
-const applyF=qy=>{if(fZn.length&&zUI())qy=qy.in('zone_id',fZn);if(fLoc.length)qy=qy.in('locality',fLoc);if(fBhk.length)qy=qy.in('bhk',fBhk);if(fSt.length)qy=qy.in('status',fSt);return qy};
+const filterBar=(ns)=>gxChips(ns)+(!showF?'':`${zUI()?`<div style="margin-bottom:8px;position:relative;z-index:43">${msBox('zn',ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name]))}</div>`:''}<div class="f2" style="margin-bottom:8px;position:relative;z-index:42">${msBox('loc',fLocOpts().map(x=>[x,x]))}${msBox('bhk',FILT.bhk.map(x=>[x,x]))}</div>${ns?'':`<div style="margin-bottom:10px;position:relative;z-index:41">${msBox('st',Object.entries(ST))}</div>`}${gxPanel(ns)}`);
+const applyF=(qy,ns)=>{if(fZn.length&&zUI())qy=qy.in('zone_id',fZn);if(fLoc.length)qy=qy.in('locality',fLoc);if(fBhk.length)qy=qy.in('bhk',fBhk);if(fSt.length&&!ns)qy=qy.in('status',fSt);return gxApply(qy)};
 const srch=qq=>`name.ilike.%${qq}%,phone.ilike.%${qq}%,property.ilike.%${qq}%,locality.ilike.%${qq}%`;
 
 /* ---------- zones & areas (master in Supabase, no hardcoded list) ---------- */
@@ -710,22 +710,57 @@ async function lookupAny(){
 }
 VIEW['telecaller:lk']=VIEW['fe:lk']=()=>`<div class="card"><b>🔎 Number Lookup</b><div class="mu" style="margin-bottom:8px">Customer called? Enter the number to see whether it is in our data and who has it.</div><div class="f2" style="grid-template-columns:1fr auto"><input id="lkn" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookupAny()"><button class="p" onclick="lookupAny()">Look up</button></div></div><div id="lkr"></div>`;
 VIEW['telecaller:fu']=async()=>{
-  const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['followup','callback']).order('follow_date',{ascending:true,nullsFirst:false}).order('follow_time',{ascending:true,nullsFirst:false}).limit(100);
+  await loadFilt();let qy=sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['followup','callback']).order('follow_date',{ascending:true,nullsFirst:false}).order('follow_time',{ascending:true,nullsFirst:false}).limit(100);qy=gxQ(qy);const {data,error}=await qy;
   if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
-  return data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No follow-ups or call-backs pending.');
+  return gxHead(1,1)+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No follow-ups or call-backs pending.'));
 };
 VIEW['telecaller:meet']=async()=>{
-  const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['meeting_assigned','meeting_done','online_meet_done']).order('meeting_date',{ascending:false});
+  await loadFilt();let qy=sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['meeting_assigned','meeting_done','online_meet_done']).order('meeting_date',{ascending:false});qy=gxQ(qy);const {data,error}=await qy;
   if(error)throw error;
-  return data.map(l=>leadCard(l)).join('')||empty('No meetings yet.');
+  return gxHead(1,1)+(data.map(l=>leadCard(l)).join('')||empty('No meetings yet.'));
 };
 VIEW['telecaller:deal']=async()=>{
-  const {data,error}=await sb.from('leads').select('*').eq('tc_id',ME.id).eq('status','deal_closed').order('meeting_date',{ascending:false});
+  await loadFilt();let qy=sb.from('leads').select('*').eq('tc_id',ME.id).eq('status','deal_closed').order('meeting_date',{ascending:false});qy=gxQ(qy);const {data,error}=await qy;
   if(error)throw error;
   setSeen(data.map(l=>l.id));
-  return data.map(l=>leadCard(l)).join('')||empty('No deals closed yet.');
+  return gxHead(1,1)+(data.map(l=>leadCard(l)).join('')||empty('No deals closed yet.'));
 };
+/* ---------- extra filters: price, date added, telecaller/FE, chips (all lists) ---------- */
+let GX={pmin:'',pmax:'',np:false,d1:'',d2:'',tc:[],fe:[]};
+MSX.tc=()=>GX.tc;MSX.fe=()=>GX.fe;MSN.tc='telecallers';MSN.fe='field execs';
+const gxCount=()=>(GX.np||GX.pmin!==''||GX.pmax!==''?1:0)+(GX.d1||GX.d2?1:0)+(GX.tc.length?1:0)+(GX.fe.length?1:0);
+const gxNext=d=>new Date(Date.parse(d+'T00:00:00Z')+864e5).toISOString().slice(0,10);
+function gxApply(qy){
+  if(GX.np)qy=qy.is('price_l',null);
+  else{if(GX.pmin!=='')qy=qy.gte('price_l',+GX.pmin);if(GX.pmax!=='')qy=qy.lte('price_l',+GX.pmax)}
+  if(GX.d1)qy=qy.gte('created_at',GX.d1+'T00:00:00+05:30');
+  if(GX.d2)qy=qy.lt('created_at',gxNext(GX.d2)+'T00:00:00+05:30');
+  if(ME.role==='admin'){if(GX.tc.length)qy=qy.in('tc_id',GX.tc);if(GX.fe.length)qy=qy.in('fe_id',GX.fe)}
+  return qy}
+function gxQ(qy){const qq=clean(q);if(qq)qy=qy.or(srch(qq));return applyF(qy,1)}
+function gxSet(k,v){GX[k]=v;if(k==='np'&&v){GX.pmin='';GX.pmax=''}render()}
+function gxDrop(k,i){
+  if(k==='loc')fLoc.splice(i,1);else if(k==='bhk')fBhk.splice(i,1);else if(k==='st')fSt.splice(i,1);else if(k==='zn')fZn.splice(i,1);
+  else if(k==='tc')GX.tc.splice(i,1);else if(k==='fe')GX.fe.splice(i,1);
+  else if(k==='np')GX.np=false;else if(k==='price'){GX.pmin='';GX.pmax=''}else if(k==='date'){GX.d1='';GX.d2=''}
+  render()}
+function gxAll(){fZn.length=0;fLoc.length=0;fBhk.length=0;fSt.length=0;GX={pmin:'',pmax:'',np:false,d1:'',d2:'',tc:[],fe:[]};msOpen='';render()}
+function gxChips(ns){
+  const c=[];const add=(t,k,i)=>c.push(`<span class="tag" style="cursor:pointer;display:inline-block;margin:0 6px 6px 0" onclick="gxDrop('${k}',${i||0})">${esc(t)} ✕</span>`);
+  if(fZn.length&&zUI())fZn.forEach((v,i)=>add('Zone: '+zName(v),'zn',i));
+  fLoc.forEach((v,i)=>add(v,'loc',i));fBhk.forEach((v,i)=>add(v,'bhk',i));
+  if(!ns)fSt.forEach((v,i)=>add(ST[v]||v,'st',i));
+  if(GX.np)add('Price nahi hai','np');
+  else if(GX.pmin!==''||GX.pmax!=='')add('Price '+(GX.pmin!==''?GX.pmin:'0')+'–'+(GX.pmax!==''?GX.pmax:'∞')+' L','price');
+  if(GX.d1||GX.d2)add('Added: '+(GX.d1||'…')+' → '+(GX.d2||'…'),'date');
+  if(ME.role==='admin'){GX.tc.forEach((v,i)=>add('TC: '+((P[v]||{}).name||v),'tc',i));GX.fe.forEach((v,i)=>add('FE: '+((P[v]||{}).name||v),'fe',i))}
+  return c.length?`<div style="margin:0 2px 8px">${c.join('')}<span class="tag" style="cursor:pointer;display:inline-block;margin:0 6px 6px 0" onclick="gxAll()">Sab hatao</span></div>`:''}
+function gxPanel(ns){
+  if(!showF)return '';
+  const ppl=r=>Object.entries(P).filter(([id,p])=>p&&p.role===r).map(([id,p])=>[id,p.name||id]);
+  return `<div class="card" style="padding:10px;margin-bottom:8px"><b>💰 Price (Lakh me, 1 Cr = 100)</b><div class="f2" style="margin:6px 0"><input type="number" inputmode="decimal" placeholder="Min" value="${esc(GX.pmin)}" onchange="gxSet('pmin',this.value)"><input type="number" inputmode="decimal" placeholder="Max" value="${esc(GX.pmax)}" onchange="gxSet('pmax',this.value)"></div><label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" ${GX.np?'checked':''} onchange="gxSet('np',this.checked)" style="width:auto"> Price nahi hai wale</label><b>📅 Data kab add hua</b><div class="f2" style="margin:6px 0"><input type="date" value="${esc(GX.d1)}" onchange="gxSet('d1',this.value)"><input type="date" value="${esc(GX.d2)}" onchange="gxSet('d2',this.value)"></div>${ME.role==='admin'?`<div class="f2" style="margin-top:8px;position:relative;z-index:40">${msBox('tc',ppl('telecaller'))}${msBox('fe',ppl('fe'))}</div>`:''}<div class="msa" style="margin-top:10px"><button type="button" onclick="gxAll()">Sab hatao</button><button type="button" class="p" onclick="showF=false;render()">Done</button></div></div>`}
+function gxHead(ns,withSearch){return (withSearch?searchBar('Name, number, society or area',1):`<div class="card" style="padding:10px"><button style="min-height:46px;width:100%" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button></div>`)+filterBar(ns)}
 // Field Exec
 let DCM={},DCT=0,AF={f:null,t:null,od:false,html:''};
 const dph=s=>String(s||'').replace(/\D/g,'').slice(-10);
@@ -737,10 +772,10 @@ return '<div style="background:#fff8e6;border:2px solid #e0a100;border-radius:10
 function mSet(k,v){if(k==='f'){AF.f=v;if(AF.t&&AF.t<v)AF.t=v;AF.od=false}else if(k==='t'){AF.t=v;if(AF.f&&AF.f>v)AF.f=v;AF.od=false}else if(k==='od'){AF.od=!!v}else{AF.f=AF.t=isoToday();AF.od=false}render()}
 async function mSearch(v){v=(v||'').trim();const box=$('#mlist');if(!box)return;if(v.length<3){box.innerHTML=AF.html;return}const dg=v.replace(/\D/g,'');let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=(dg.length>=4&&dg.length===v.replace(/[\s+-]/g,'').length)?q.ilike('phone','%'+dg+'%'):q.ilike('name','%'+v.replace(/[%,]/g,'')+'%');const r=await q.order('meeting_date',{ascending:true}).limit(50);const data=r.data||[];const hs=await histMap(data.map(l=>l.id));box.innerHTML='<div class="mu" style="margin:6px 0">🔍 '+data.length+' mile (sabhi meetings me)</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Kuch nahi mila'))}
 const feList=async sts=>{
-  const {data,error}=await sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(200);
+  await loadFilt();let qy=sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(200);qy=applyF(qy,1);const {data,error}=await qy;
   if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
-  return addLeadCard()+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing here.'));
+  return gxHead(1,0)+addLeadCard()+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing here.'));
 };
 VIEW['fe:asg']=async()=>{const td=isoToday();if(!AF.f)AF.f=td;if(!AF.t)AF.t=AF.f;let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=AF.od?q.lt('meeting_date',td):q.gte('meeting_date',AF.f).lte('meeting_date',AF.t);const {data,error}=await q.order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(300);if(error)throw error;const oc=await sb.from('leads').select('id',{count:'exact',head:true}).eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',td);const odN=oc.count||0;const hs=await histMap(data.map(l=>l.id));const lab=AF.od?'⚠️ Overdue meetings':(AF.f===AF.t?dshort(AF.f):dshort(AF.f)+' – '+dshort(AF.t));AF.html='<div class="mu" style="margin:6px 0">'+lab+' · '+data.length+' meetings</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Is date me koi meeting nahi.'));return '<div class="card" style="padding:10px"><input id="msq" placeholder="🔍 Naam ya mobile number se search" oninput="clearTimeout(window._mt);window._mt=setTimeout(()=>mSearch(this.value),350)" style="width:100%;margin-bottom:8px"><div style="display:flex;gap:8px"><div style="flex:1"><div class="mu">Kis date se</div><input type="date" value="'+AF.f+'" onchange="mSet(\'f\',this.value)"></div><div style="flex:1"><div class="mu">Kis date tak</div><input type="date" value="'+AF.t+'" onchange="mSet(\'t\',this.value)"></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="'+(AF.od?'':'p')+'" onclick="mSet(\'od\',0)">📅 Date range</button><button class="'+(AF.od?'p':'')+'" onclick="mSet(\'od\',1)">⚠️ Overdue '+odN+'</button><button onclick="mSet(\'today\')">Aaj</button></div></div><div id="mlist">'+AF.html+'</div>'};
 VIEW['fe:fu']=()=>feList(['followup','callback','ringing','new']);
@@ -1007,10 +1042,10 @@ async function setName(id,n){const {error}=await sb.from('profiles').update({nam
 
 /* ---------- status view, menu drawer, bell ---------- */
 VIEW['admin:st']=VIEW['telecaller:st']=VIEW['fe:st']=async()=>{
-  const {data,error}=await sb.from('leads').select('*').eq('status',viewSt).order('created_at',{ascending:false}).limit(100);
+  await loadFilt();let qy=sb.from('leads').select('*').eq('status',viewSt).order('created_at',{ascending:false}).limit(100);qy=gxQ(qy);const {data,error}=await qy;
   if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
-  return `<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${data.length}${data.length>=100?'+':''} lead${data.length==1?'':'s'}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+
+  return gxHead(1,ME.role!=='fe')+`<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${data.length}${data.length>=100?'+':''} lead${data.length==1?'':'s'}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+
     (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'));
 };
 function viewStatus(k){viewSt=k;go('st')}
