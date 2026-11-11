@@ -1196,10 +1196,11 @@ VIEW['fe:today']=async()=>{
   const hs=await histMap([...data,...late].map(l=>l.id));
   const dn=['meeting_done','online_meet_done','deal_closed'],done=data.filter(l=>dn.includes(l.status)).length;
   const lab=d==t?'Today':d==shiftDate(t,1)?'Tomorrow':d==shiftDate(t,-1)?'Yesterday':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  const show=d===t?data.filter(l=>['meeting_assigned','followup','callback'].includes(l.status)):data,pen=d===t?show.length:data.length-done;
   return searchBar('Owner ka naam ya number',0,1)+`<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div></div>
-  <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab=='Today'?'Meetings':lab,data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',data.length-done,'',data.length-done?'wr':'')}</div>`+
+  <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab=='Today'?'Meetings':lab,data.length)}${tile('Done',done,'',done?'ok':'')}${tile('Pending',pen,'',pen?'wr':'')}</div>`+
   (late.length?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l,hs[l.id]||[])).join(''):'')+
-  (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No meetings on this date.'));
+  (show.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(d===t?'No pending tasks for today.':'No meetings on this date.'));
 };
 const QV=[['followup','🔁'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['not_available','🚫'],['new','🆕']];
 let CMP=false;try{CMP=localStorage.getItem('cmp')=='1'}catch(e){}
