@@ -651,17 +651,21 @@ const zonesView=async()=>{
 };
 
 /* ---------- call timer + call form ---------- */
+let SYNC=null;async function chkSync(){try{const r=await sb.from('device_calls').select('id',{count:'exact',head:true}).eq('by_id',ME.id).gte('started_at',new Date(Date.now()-7*864e5).toISOString());if((r.count||0)>0){SYNC=true;render()}}catch(e){}}
+function autoTT(l){const o={m:0,s:0};if(SYNC!==true)return o;const a=(PHC[l.id]||[]).find(c=>(c.duration_sec||0)>0&&c.by_id===ME.id&&Date.now()-new Date(c.started_at)<6*36e5);if(!a)return o;o.m=Math.floor(a.duration_sec/60);o.s=a.duration_sec%60;o.src=a;return o}
+async function rfTT(id){await histMap([id]);render()}
+function syncBlk(l){const o=autoTT(l);return `<div class="f2"><a class="btn p" href="tel:${esc(l.phone)}">📞 Call</a><button onclick="rfTT(${l.id})">↻ Update talk time</button></div><div id="tmr" class="mu">${o.src?'Last call talked '+fmt(o.src.duration_sec)+' (auto). Edit below if needed.':'After the call, tap Update talk time to fill it automatically.'}</div>`}
 function startT(){if(t0)return;t0=Date.now();tint=setInterval(()=>{const e=$('#tmr');if(e)e.textContent='Timer: '+fmt((Date.now()-t0)/1000)},1000)}
 function stopT(){
   if(!t0)return toast('Tap "Start call" first',1);
   const s=Math.round((Date.now()-t0)/1000);clearInterval(tint);t0=null;
   $('#mi').value=Math.floor(s/60);$('#se').value=s%60;$('#tmr').textContent='Talk time: '+fmt(s);
 }
-function callForm(l){
+function callForm(l){if(SYNC===null){SYNC=false;chkSync()}
   return `<div class="form">
-  <div class="f2"><a class="btn p" href="tel:${esc(l.phone)}" onclick="startT()">📞 Start call</a><button onclick="stopT()">⏹ End call</button></div>
-  <div id="tmr" class="mu">Tap "Start call" to run a timer, then "End call" to fill the talk time below. You can also type it by hand.</div>
-  <div class="f2"><div><label>Talk time: minutes</label><input id="mi" type="number" min="0" value="0"></div><div><label>Talk time: seconds</label><input id="se" type="number" min="0" max="59" value="0"></div></div>
+  ${SYNC===true?syncBlk(l):`<div class="f2"><a class="btn p" href="tel:${esc(l.phone)}" onclick="startT()">📞 Start call</a><button onclick="stopT()">⏹ End call</button></div>
+  <div id="tmr" class="mu">Tap "Start call" to run a timer, then "End call" to fill the talk time below. You can also type it by hand.</div>`}
+  <div class="f2"><div><label>Talk time: minutes</label><input id="mi" type="number" min="0" value="${autoTT(l).m}"></div><div><label>Talk time: seconds</label><input id="se" type="number" min="0" max="59" value="${autoTT(l).s}"></div></div>
   <label>Call result / status</label><select id="sst" ${onSt}>${stOpts()}</select>${meetBox(l)}${fuBox(l)}
   <textarea id="cn" rows="2" placeholder="Notes (optional)">${esc(l.remarks||'')}</textarea>
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveCall(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
