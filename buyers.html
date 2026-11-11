@@ -495,7 +495,7 @@ function propForm(p){
   ${newFromLead?`<div class="mu">Owner lead se: ${esc(newFromLead.name||'')} · ${esc(newFromLead.phone||'')}</div>`:''}
   <div class="form">
   <div class="f2"><div><label>Property ID</label><input id="pf_id" value="${isNew?nextId():v('id')}" ${isNew?'':'disabled'}></div><div><label>Status</label><select id="pf_status">${['Available - Sale','Available - Rent','On Hold','Sold','Rented'].map(s=>`<option ${p.status==s?'selected':''}>${s}</option>`).join('')}</select></div></div>
-  <div class="f2">${f('owner_name','Owner name')}${f('owner_phone','Owner mobile')}</div><div class="f2">${f('owner_phone2','Owner mobile 2 (optional)')}</div>
+  <div class="f2">${f('owner_name','Owner name')}${f('owner_phone','Owner mobile (primary)')}</div><div class="f2">${f('owner_phone2','Owner mobile 2 (secondary, optional)')}</div><a href="javascript:void(0)" onclick="swapOw()" style="font-size:12px;display:inline-block;margin:2px 0 6px">⇄ Swap primary and secondary</a>
   ${f('project','Property / Project name')}
   <div class="f2">${f('bhk','BHK')}${f('ptype','Type (Flat / Villa / Shop)')}</div>
   ${f('address','Address')}
@@ -1094,6 +1094,7 @@ function ownerUpd(id,k){
 }
 function ouWa(ow){var m=document.getElementById('oumsg').value;if(!ow)return;window.open('https://wa.me/91'+ow+'?text='+encodeURIComponent(m),'_blank')}
 function ouCp(){var e=document.getElementById('oumsg');e.select();try{document.execCommand('copy')}catch(x){}}
+function swapOw(){const a=$('#pf_owner_phone'),b=$('#pf_owner_phone2');if(!a||!b)return;const x=a.value;a.value=b.value;b.value=x}
 function ownerLeads(id){OLM={id,full:true};olShow()}
 function olShow(){
   let o=document.getElementById('olm');if(!o){o=document.createElement('div');o.id='olm';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
