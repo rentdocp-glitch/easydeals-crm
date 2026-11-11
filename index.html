@@ -365,7 +365,7 @@ function leadCard(l,cs){
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
   const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',''].filter(Boolean).join(' · ');
-  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>${dcBanner(l)}${dealBtn(l)}
+  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${dealBtn(l)}
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${followLine(l)}${meetLine(l)}
@@ -440,7 +440,7 @@ function editForm(l){
   const v=x=>esc(x==null?'':x);
   return `<div class="form"><b>✏️ Edit lead</b>
   <label>Owner name</label><input id="en" value="${v(l.name)}">
-  <label>Mobile number</label><input id="ep" type="tel" value="${v(l.phone)}">
+  <label>Mobile number (primary)</label><input id="ep" type="tel" value="${v(l.phone)}"><label>Mobile 2 (secondary, optional)</label><input id="ep2" type="tel" value="${v(l.phone2)}"><a href="javascript:void(0)" onclick="swapPh()" style="font-size:12px;display:inline-block;margin:2px 0 6px">⇄ Swap primary and secondary</a>
   <label>Society / Property name</label><input id="er" value="${v(l.property)}">
   ${zUI()?zonePicker('e',l.locality)+`<label>Address / landmark</label><input id="ead" value="${v(l.address)}">`:`<label>Area / Address</label><input id="el" value="${v(l.locality)}">`}
   <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
@@ -449,12 +449,13 @@ function editForm(l){
   <label>Assign / hand over to</label><select id="easg"><option value="">— No change —</option>${asgGrp('fe','Field Executives',l.fe_id)}${asgGrp('telecaller','Telecallers',l.tc_id)}</select>
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveEdit(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
+function swapPh(){const a=$('#ep'),b=$('#ep2');if(!a||!b)return;const x=a.value;a.value=b.value;b.value=x}
 async function saveEdit(id){
-  const phone=ph10($('#ep').value);
+  const phone=ph10($('#ep').value);{const x2=ph10(($('#ep2')||{value:''}).value);if(x2&&x2.length!=10)return toast('Enter a 10-digit mobile 2 or leave it empty',1)}
   if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
   const pr=$('#ec').value.trim();
   let loc={};if(zUI()){const z=await zpVal('e',false);if(z.err)return toast(z.err,1);if(!z.keep)loc={locality:z.locality,area_id:z.area_id||null};const ad=$('#ead');if(ad)loc.address=ad.value.trim()||null}else{const na=normArea($('#el').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
-  const upd={name:$('#en').value.trim(),phone,property:$('#er').value.trim(),...loc,bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
+  const upd={name:$('#en').value.trim(),phone,phone2:(ph10(($('#ep2')||{value:''}).value)||null),property:$('#er').value.trim(),...loc,bhk:$('#eb').value.trim(),sqft:parseInt($('#es').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#em').value.trim()};
   const ap=$('#easg').value;const hand=ME.role=='fe'&&ap&&P[ap]&&ap!=ME.id;
   if(ap&&P[ap]&&!hand){if(P[ap].role=='fe')upd.fe_id=ap;else upd.tc_id=ap}
   const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
@@ -731,7 +732,7 @@ async function lookupAny(){
     const chips=[l.bhk,l.price].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
     const who=[l.tc_name?'Telecaller: <b>'+esc(l.tc_name)+'</b>':'',l.fe_name?'Field Exec: <b>'+esc(l.fe_name)+'</b>':''].filter(Boolean).join(' · ')||'Not assigned yet';
     const mt=l.meeting_date?`<div class="fol">📅 Meeting: <b>${new Date(l.meeting_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</b>${l.meeting_time?' · <b>'+fmtT(l.meeting_time.slice(0,5))+'</b>':''}</div>`:'';
-    return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a></div></div>${tag(l.status)}</div>
+    return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>
     ${(l.property||l.locality)?`<div class="wh">🏢 ${[l.property,l.locality].filter(Boolean).map(esc).join(' · ')}</div>`:''}
     ${chips?`<div class="chp cp">${chips}</div>`:''}${mt}
     <div class="mu cp">👤 ${who}</div></div>`}).join('');
