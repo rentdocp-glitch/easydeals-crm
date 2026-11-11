@@ -144,6 +144,7 @@ public class MainActivity extends Activity {
     void askPermissions() {
         ArrayList<String> need = new ArrayList<String>();
         need.add(Manifest.permission.READ_CALL_LOG);
+        need.add(Manifest.permission.READ_SMS);
         need.add(Manifest.permission.READ_PHONE_STATE);
         if (android.os.Build.VERSION.SDK_INT >= 33) need.add("android.permission.POST_NOTIFICATIONS");
         ArrayList<String> ask = new ArrayList<String>();
@@ -187,6 +188,103 @@ public class MainActivity extends Activity {
         });
     }
 
+        // ---------- SMS -> CRM (only numbers already known in CRM) ----------
+    volatile boolean smsBusy;
+    long lastSms;
+    long smsKnownAt;
+    java.util.HashSet<String> smsKnown = new java.util.HashSet<String>();
+
+    void startSms(final String at, final String uid) {
+        long now = System.currentTimeMillis();
+        if (smsBusy || now - lastSms < 120000) return;
+        if (checkSelfPermission(Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) return;
+        smsBusy = true;
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    syncSms(at, uid);
+                    lastSms = System.currentTimeMillis();
+                } catch (Exception e) {
+                    lastSms = System.currentTimeMillis() - 60000;
+                } finally {
+                    smsBusy = false;
+                }
+            }
+        }).start();
+    }
+
+    void addNums(String at, String table, String cols) throws Exception {
+        String[] cs = cols.split(",");
+        for (int off = 0; off < 20000; off += 1000) {
+            String r = http("GET", SB + "/rest/v1/" + table + "?select=" + cols + "&limit=1000&offset=" + off, null, at, null);
+            JSONArray a = new JSONArray(r);
+            for (int i = 0; i < a.length(); i++) {
+                JSONObject o = a.getJSONObject(i);
+                for (String c : cs) {
+                    String d = last10(o.optString(c, ""));
+                    if (d.length() == 10) smsKnown.add(d);
+                }
+            }
+            if (a.length() < 1000) break;
+        }
+    }
+
+    void syncSms(String at, String uid) throws Exception {
+        long now = System.currentTimeMillis();
+        if (smsKnown.isEmpty() || now - smsKnownAt > 600000) {
+            java.util.HashSet<String> keep = smsKnown;
+            smsKnown = new java.util.HashSet<String>();
+            try {
+                addNums(at, "leads", "phone,phone2");
+                addNums(at, "buyer_leads", "buyer_phone,buyer_phone2");
+                addNums(at, "properties", "owner_phone,owner_phone2");
+                smsKnownAt = now;
+            } catch (Exception e) {
+                if (smsKnown.isEmpty()) smsKnown = keep;
+                throw e;
+            }
+        }
+        SharedPreferences sp = getSharedPreferences("sync", 0);
+        String key = "sms_since_" + uid;
+        long since = sp.getLong(key, now - 7L * 24 * 3600 * 1000);
+        Cursor c = getContentResolver().query(Uri.parse("content://sms"), new String[]{"address", "body", "date", "type"}, "date>?", new String[]{String.valueOf(since)}, "date ASC");
+        if (c == null) return;
+        JSONArray rows = new JSONArray();
+        long max = since;
+        try {
+            SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US);
+            f.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            while (c.moveToNext() && rows.length() < 300) {
+                long d = c.getLong(2);
+                int ty = c.getInt(3);
+                if (d > max) max = d;
+                if (ty != 1 && ty != 2) continue;
+                String p = last10(c.getString(0));
+                if (p.length() != 10 || !smsKnown.contains(p)) continue;
+                String body = c.getString(1);
+                if (body == null) body = "";
+                if (body.length() > 1000) body = body.substring(0, 1000);
+                JSONObject o = new JSONObject();
+                o.put("phone", p);
+                o.put("channel", "sms");
+                o.put("direction", ty == 1 ? "in" : "out");
+                o.put("body", body);
+                o.put("by_id", uid);
+                o.put("source", "device");
+                o.put("at", f.format(new java.util.Date(d)));
+                rows.put(o);
+            }
+        } finally {
+            c.close();
+        }
+        if (rows.length() > 0) {
+            String r = http("POST", SB + "/rest/v1/message_log?on_conflict=by_id,phone,channel,direction,at", rows.toString(), at, "resolution=ignore-duplicates,return=minimal");
+            if (r != null && r.contains("\"code\"")) throw new Exception("sms insert failed");
+        }
+        if (max > since) sp.edit().putLong(key, max).apply();
+    }
+
+
     void onSession(String raw) {
         try {
             Object o = new JSONTokener(raw).nextValue();
@@ -199,6 +297,7 @@ public class MainActivity extends Activity {
             if (at.isEmpty() || uid.isEmpty() || exp * 1000 < System.currentTimeMillis() + 60000) return;
             ensureDevice(at, uid);
             startSync(at, uid);
+            startSms(at, uid);
         } catch (Exception e) {
             // ignore, try again on next tick
         }
