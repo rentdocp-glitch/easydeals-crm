@@ -372,7 +372,7 @@ function leadCard(l,cs){
   ${noteBlock(l)}
   ${meta?`<div class="mu cp">${meta}</div>`:''}
   ${cs!==undefined?'<div class="hs cp">'+hist(cs)+'</div>':''}
-  ${cs!==undefined?phoneLine(l):''}
+  ${cs!==undefined?phoneLine(l)+`<div class="mu cp"><a href="javascript:void(0)" onclick="numHist('${esc(l.phone)}')">📜 Full history (calls and messages)</a></div>`:''}
   ${actions(l)}</div>`;
 }
 function openForm(id,k){openId=id;openK=k;noteId=null;render()}
@@ -381,7 +381,7 @@ function actions(l){
   if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
   const b=[];
   b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
-  b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" target="_blank" rel="noopener"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
+  b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" onclick="waLog('${esc(ph10(l.phone))}')" target="_blank" rel="noopener"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
   b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
   b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
   if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
@@ -651,6 +651,41 @@ const zonesView=async()=>{
 };
 
 /* ---------- call timer + call form ---------- */
+async function waLog(ph,body,dir,src){try{await sb.from('message_log').insert({phone:ph10(ph),channel:'wa',direction:dir||'out',body:body||null,by_id:ME.id,source:src||'crm'})}catch(e){}}
+async function nhSave(ph,dir){const el=document.getElementById('nhtx');const b=el?el.value.trim():'';if(!b)return toast('Paste the message first',1);const {error}=await sb.from('message_log').insert({phone:ph,channel:'wa',direction:dir,body:b,by_id:ME.id,source:'manual'});if(error)return toast(error.message,1);toast('Saved to history');numHist(ph)}
+async function numHist(ph){
+  ph=ph10(ph);if(!ph||ph.length<10)return;
+  const old=document.getElementById('nhv');if(old)old.remove();
+  const ov=document.createElement('div');ov.id='nhv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  ov.onclick=function(e){if(e.target===ov)ov.remove()};
+  ov.innerHTML='<div style="background:#fff;color:#111;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px"><div class="mu">Loading history…</div></div>';
+  document.body.appendChild(ov);const box=ov.firstChild;
+  const like='%'+ph,lk2='*'+ph;
+  const q=p=>Promise.resolve(p).then(r=>r&&r.data?r.data:[],()=>[]);
+  const [dc,cl,ce,ml,ld,pr,bl]=await Promise.all([
+    q(sb.from('device_calls').select('by_id,direction,duration_sec,started_at').ilike('phone',like).order('started_at',{ascending:false}).limit(60)),
+    q(sb.from('calls').select('by_id,duration_sec,created_at').ilike('phone',like).order('created_at',{ascending:false}).limit(60)),
+    q(sb.from('call_events').select('user_id,at,missed').eq('phone',ph).order('at',{ascending:false}).limit(60)),
+    q(sb.from('message_log').select('by_id,channel,direction,body,at,source').eq('phone',ph).order('at',{ascending:false}).limit(80)),
+    q(sb.from('leads').select('name,property').ilike('phone',like).limit(1)),
+    q(sb.from('properties').select('id,owner_name,project').or('owner_phone.ilike.'+lk2+',owner_phone2.ilike.'+lk2).limit(1)),
+    q(sb.from('buyer_leads').select('buyer_name,project').ilike('buyer_phone',like).limit(1))]);
+  const nmOf=id=>(P[id]&&P[id].name)||'';const items=[];
+  dc.forEach(c=>items.push({at:c.started_at,k:'call',dir:c.direction,sec:c.duration_sec||0,by:nmOf(c.by_id)}));
+  cl.forEach(c=>items.push({at:c.created_at,k:'call',dir:'out',sec:c.duration_sec||0,by:nmOf(c.by_id),man:1}));
+  ce.forEach(e=>{const tm=new Date(e.at).getTime();if(dc.some(c=>Math.abs(new Date(c.started_at).getTime()-tm)<120000))return;items.push({at:e.at,k:'call',dir:e.missed?'missed':'in',sec:0,by:nmOf(e.user_id)})});
+  ml.forEach(m=>items.push({at:m.at,k:m.channel,dir:m.direction,body:m.body,by:nmOf(m.by_id),src:m.source}));
+  items.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const nm=(ld[0]&&ld[0].name)||(pr[0]&&pr[0].owner_name&&('Owner: '+pr[0].owner_name))||(bl[0]&&bl[0].buyer_name&&('Buyer: '+bl[0].buyer_name))||'Unknown number';
+  const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].project)||'';
+  const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
+  const row=i=>{const tm=new Date(i.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});const ex=i.k==='call'&&i.sec?' · talked '+fmt(i.sec):'';const bd=i.body?esc(i.body):(i.k==='wa'&&i.src==='crm'?'Chat opened from CRM':'');return '<div style="padding:8px 0;border-top:1px solid #eef1f6"><div style="font-weight:600;color:'+(i.dir==='missed'?'#dc2626':'#111')+'">'+lab(i)+'</div><div class="mu">'+tm+(i.by?' · '+esc(i.by):'')+ex+(i.man?' · timer':'')+'</div>'+(bd?'<div style="margin-top:2px">'+bd+'</div>':'')+'</div>'};
+  box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:17px;font-weight:700">'+esc(nm)+'</div><div class="mu">'+esc(ph)+(sub?' · '+esc(sub):'')+'</div></div><button onclick="document.getElementById(\'nhv\').remove()">✕</button></div>'
+   +'<div style="display:flex;gap:8px;margin:10px 0"><a class="btn p" href="tel:'+ph+'">📞 Call</a><a class="btn" target="_blank" rel="noopener" href="https://wa.me/91'+ph+'" onclick="waLog(\''+ph+'\')">💬 WhatsApp</a></div>'
+   +'<div style="border:1px solid #e5e7eb;border-radius:10px;padding:8px;margin-bottom:8px"><div class="mu" style="margin-bottom:4px">Log a WhatsApp message</div><textarea id="nhtx" rows="2" style="width:100%" placeholder="Paste the message here"></textarea><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px"><button onclick="nhSave(\''+ph+'\',\'in\')">Received</button><button onclick="nhSave(\''+ph+'\',\'out\')">Sent</button></div></div>'
+   +'<div class="mu"><b>History ('+items.length+')</b></div>'+(items.map(row).join('')||'<div class="mu" style="padding:8px 0">No history yet for this number.</div>');
+}
 let SYNC=null;async function chkSync(){try{const r=await sb.from('device_calls').select('id',{count:'exact',head:true}).eq('by_id',ME.id).gte('started_at',new Date(Date.now()-7*864e5).toISOString());if((r.count||0)>0){SYNC=true;render()}}catch(e){}}
 function autoTT(l){const o={m:0,s:0};if(SYNC!==true)return o;const a=(PHC[l.id]||[]).find(c=>(c.duration_sec||0)>0&&c.by_id===ME.id&&Date.now()-new Date(c.started_at)<6*36e5);if(!a)return o;o.m=Math.floor(a.duration_sec/60);o.s=a.duration_sec%60;o.src=a;return o}
 async function rfTT(id){await histMap([id]);render()}
@@ -1071,7 +1106,7 @@ VIEW['fe:fcalls']=async()=>{
   return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="cDate='${shiftDate(d,-1)}';render()" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="if(this.value){cDate=this.value;render()}" style="min-height:44px"><button onclick="cDate='${shiftDate(d,1)}';render()" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="cDate=null;render()" style="min-height:44px">Today</button></div></div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab+' calls',rows.length)}${tile('Baat hui',conn,'',conn?'ok':'')}${tile('Talk time',talk>=60?Math.floor(talk/60)+' min':talk+' sec',talk>=60?(talk%60)+' sec':'')}</div>
   ${miss?`<div class="mu" style="margin:4px 2px 8px">❗ ${miss} missed / cut call</div>`:''}
-  <div class="card">${rows.map(r=>{const l=nm[r.ph];return `<div class="lr" style="display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;align-items:center"><div style="min-width:0"><b>${ic[r.dir]||'📞'} ${esc(l?l.name||'Owner':(r.ttl||'Naya number'))}</b>${l?` <span class="tag">${esc(ST[l.status]||'')}</span>`:''}<div class="mu">${esc(l&&l.property?l.property+' · ':'')}${new Date(r.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}${r.man?' · timer se':''}</div></div><div style="text-align:right;white-space:nowrap"><a href="tel:${r.ph}">${esc(r.ph)}</a><div class="mu">${r.sec?fmt(r.sec):r.ev&&r.dir=='in'?'Incoming':r.dir=='in'||r.dir=='out'?'baat nahi hui':'—'}</div></div></div>`}).join('')||'<div class="mu" style="padding:8px">Is din koi call nahi mili. Calls tabhi dikhti hain jab phone mein EasyDeals CRM app (APK) chalu ho.</div>'}</div>`;
+  <div class="card">${rows.map(r=>{const l=nm[r.ph];return `<div class="lr" onclick="numHist('${r.ph}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;align-items:center"><div style="min-width:0"><b>${ic[r.dir]||'📞'} ${esc(l?l.name||'Owner':(r.ttl||'Naya number'))}</b>${l?` <span class="tag">${esc(ST[l.status]||'')}</span>`:''}<div class="mu">${esc(l&&l.property?l.property+' · ':'')}${new Date(r.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}${r.man?' · timer se':''}</div></div><div style="text-align:right;white-space:nowrap"><a href="tel:${r.ph}" onclick="event.stopPropagation()">${esc(r.ph)}</a><div class="mu">${r.sec?fmt(r.sec):r.ev&&r.dir=='in'?'Incoming':r.dir=='in'||r.dir=='out'?'baat nahi hui':'—'}</div></div></div>`}).join('')||'<div class="mu" style="padding:8px">Is din koi call nahi mili. Calls tabhi dikhti hain jab phone mein EasyDeals CRM app (APK) chalu ho.</div>'}</div>`;
 };
 async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
