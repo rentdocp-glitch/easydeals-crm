@@ -347,7 +347,7 @@ function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(
   if(/not listed/i.test(t)||!p[idk])return ['no','✗ Listed nahi',t||'Is portal par listing nahi'];
   return ['off','✗ '+t.split(' ')[0],t]}
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
-const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Leads bhejo</a><a class="w" href="javascript:void(0)" onclick="invOpen('${esc(p.id)}')">🧾 Invoice</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
+const ownerActs=p=>{const ow=ph10(p.owner_phone);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner ko call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Leads bhejo</a><a class="w" href="javascript:void(0)" onclick="invOpen('${esc(p.id)}')">🧾 Invoice</a><a class="w" href="javascript:void(0)" onclick="ownerUpd('${esc(p.id)}')">📊 Owner update</a></div>`:'<div class="mu er" style="margin-top:6px">Owner ka mobile nahi hai · Edit se jodo</div>'};
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
 function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · wapas call karo (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
 async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Ho gaya ✅');render()}
@@ -1074,6 +1074,26 @@ function olParts(){
   if(cur||!parts.length)parts.push(cur);
   return {p,n:ls.length,msgs:parts.map((t,i)=>(i===0?head:`(Part ${i+1}/${parts.length})\n\n`)+t+(i===parts.length-1?foot:'')),};
 }
+function ownerUpd(id,k){
+  var p=PR.find(function(x){return x.id===id});if(!p)return;k=k||'nol';
+  var o=document.getElementById('oum');if(!o){o=document.createElement('div');o.id='oum';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
+  var ow=ph10(p.owner_phone),n=BL.filter(function(l){return l.property_id===id}).length;
+  var live=[];String(p.portal_status||'').split('|').forEach(function(s){var m=s.split(':');if(m.length>1&&/^\s*live/i.test(m[1]))live.push(m[0].trim())});
+  var pt=live.length?live.join(', ').replace(/, ([^,]*)$/,' and $1'):'your selected property portals';
+  var days=p.date_added?Math.max(0,Math.floor((Date.now()-new Date(p.date_added+'T00:00:00').getTime())/864e5)):null;
+  var nm=(p.owner_name||'').trim().split(/\s+/)[0],hi='Namaste '+(nm?nm+' ji':'Sir/Madam')+',\n\n';
+  var pr=(p.project||'your property')+' ('+p.id+')',ft='\n\nWarm regards,\nTeam Easy Deals';
+  var T={
+   nol:hi+'Thank you for reaching out. Here is a status update on your property, '+pr+'.\n\nYour property is live on '+pt+'.\n\nWe understand your concern that no buyer enquiry has been shared yet. Our team is working on your listing on all portals and monitoring it closely. The overall property market is moving slowly at the moment, and buyers are taking more time to enquire and decide.\n\nAs soon as a genuine enquiry comes in, we will share it with you immediately.'+ft,
+   enq:hi+'Good news. We have received '+n+' buyer enquir'+(n===1?'y':'ies')+' for your property, '+pr+'.\n\nOur team is following up with each buyer and will share the details and the visit schedule with you.'+ft,
+   vis:hi+'A buyer has shown interest in your property, '+pr+', and a visit is planned on [date] at [time].\n\nPlease let us know if this time works for you.'+ft,
+   wk:hi+'Weekly update for '+pr+':\n- Live on: '+pt+'\n- Total enquiries so far: '+n+'\n\nWe will keep you posted on any progress.'+ft};
+  var L={nol:'No leads yet',enq:'Enquiries received',vis:'Visit scheduled',wk:'Weekly update'};
+  var chips=Object.keys(L).map(function(x){return '<button onclick="ownerUpd(\''+id+'\',\''+x+'\')" style="margin:0 6px 6px 0;'+(x===k?'background:#e6f1fb;font-weight:600':'')+'">'+L[x]+'</button>'}).join('');
+  o.innerHTML='<div style="background:var(--card,#fff);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><b>📊 '+esc(p.id)+' · '+esc(p.project||'')+'</b><button onclick="document.getElementById(\'oum\').remove()">✕</button></div><div class="mu" style="margin:4px 0 8px">Live on: '+esc(live.join(', ')||'-')+(days!==null?' · '+days+' days live':'')+' · '+n+' lead'+(n===1?'':'s')+' in CRM</div><div style="margin-bottom:6px">'+chips+'</div><textarea id="oumsg" rows="12" style="width:100%;font-size:13px;line-height:1.5">'+esc(T[k])+'</textarea>'+(ow?'':'<div class="mu er">Owner mobile is missing. Add it from Edit.</div>')+'<div style="display:flex;gap:8px;margin-top:8px"><button onclick="ouWa(\''+ow+'\')">WhatsApp</button><button onclick="ouCp()">Copy</button></div><div class="mu" style="margin-top:6px">Nothing is sent automatically. Review the message, then tap Send in WhatsApp.</div></div>';
+}
+function ouWa(ow){var m=document.getElementById('oumsg').value;if(!ow)return;window.open('https://wa.me/91'+ow+'?text='+encodeURIComponent(m),'_blank')}
+function ouCp(){var e=document.getElementById('oumsg');e.select();try{document.execCommand('copy')}catch(x){}}
 function ownerLeads(id){OLM={id,full:true};olShow()}
 function olShow(){
   let o=document.getElementById('olm');if(!o){o=document.createElement('div');o.id='olm';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
