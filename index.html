@@ -278,8 +278,8 @@ async function boot(user){
 /* ---------- shell ---------- */
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team'],['zones','🗺 Zones & Areas']],
-  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup']],
-  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup']]};
+  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']],
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']]};
 let MR={on:false,f:'',t:''},MF=null,MFk=null;
 function go(t){if(t=='today'){mDate=null;MR.on=false}tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
@@ -777,6 +777,50 @@ async function lookupAny(){
     <div class="mu cp">👤 ${who}</div></div>`}).join('');
 }
 VIEW['telecaller:lk']=VIEW['fe:lk']=()=>`<div class="card"><b>🔎 Number Lookup</b><div class="mu" style="margin-bottom:8px">Customer called? Enter the number to see whether it is in our data and who has it.</div><div class="f2" style="grid-template-columns:1fr auto"><input id="lkn" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookupAny()"><button class="p" onclick="lookupAny()">Look up</button></div></div><div id="lkr"></div>`;
+
+/* ---------- Buyer Leads: sirf admin ne jo di ho ---------- */
+const BUY_ST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Not Interested','Deal Closed'];
+let BUYL=[],BUYP={},buyOpen=null,buyF='all';
+const buyToday=()=>new Date().toLocaleDateString('en-CA');
+VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
+  const {data,error}=await sb.from('buyer_leads').select('*').eq('assigned_to',ME.id).order('id',{ascending:false}).limit(500);
+  if(error)throw error;BUYL=data||[];
+  const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean))];BUYP={};
+  if(ids.length){try{const r=await sb.from('emp_props').select('id,project,locality,bhk,price').in('id',ids);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
+  const t=buyToday(),isNew=b=>(b.status||'New')=='New',due=b=>b.next_fu&&b.next_fu<=t&&!['Not Interested','Deal Closed'].includes(b.status);
+  let l=BUYL;if(buyF=='new')l=l.filter(isNew);else if(buyF=='due')l=l.filter(due);
+  const chip=(k,lab,n)=>`<button class="${buyF==k?'p':''}" style="padding:7px 12px;border-radius:99px" onclick="buyF='${k}';render()">${lab} ${n}</button>`;
+  return `<div class="card" style="margin-bottom:10px"><b>👥 Buyer Leads</b> <span class="mu">· assigned to you by admin</span></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chip('all','All',BUYL.length)}${chip('new','New',BUYL.filter(isNew).length)}${chip('due','Follow-up due',BUYL.filter(due).length)}</div>`+
+  (l.map(b=>buyCard(b,due(b))).join('')||'<div class="card"><div class="mu">No leads yet. Leads assigned by admin will appear here.</div></div>');
+};
+function buyCard(b,due){
+  const p=BUYP[b.property_id],ph=ph10(b.buyer_phone),o=buyOpen==b.id;
+  return `<div class="card"><div onclick="buyOpen=${o?'null':b.id};render()" style="cursor:pointer">
+   <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(b.buyer_name||'Buyer')}</b><span class="mu">${esc(b.code||'')}</span></div>
+   <div class="mu">${p?esc(p.id+' · '+(p.project||'')+(p.locality?' · '+p.locality:'')):esc(b.property_id||'No property linked')} · ${esc(b.source||'')}</div>
+   <div style="margin-top:4px"><span style="background:#eaf1ff;color:#1e3a8a;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600">${esc(b.status||'New')}</span></div>
+   ${b.next_fu?`<div class="mu" style="${due?'color:#b45309;font-weight:600':''}">🔁 Next follow-up: ${dshort(b.next_fu)}</div>`:''}${b.visit_at?`<div class="mu">📅 Visit: ${new Date(b.visit_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`:''}
+   ${b.requirement?`<div class="mu" style="margin-top:4px">${esc(b.requirement)}</div>`:''}</div>
+   <div class="acts" style="margin-top:8px">${ph?`<a class="btn" href="tel:${ph}">📞 Call</a><a class="btn" target="_blank" rel="noopener" href="https://wa.me/91${ph}">💬 WhatsApp</a>`:'<span class="mu er">No number</span>'}</div>
+   ${o?buyForm(b):''}</div>`;
+}
+function buyForm(b){
+  const va=b.visit_at?new Date(new Date(b.visit_at).getTime()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16):'';
+  return `<div class="form" style="margin-top:10px"><div class="f2"><div><label>Status</label><select id="by_st">${BUY_ST.map(s=>`<option ${(b.status||'New')==s?'selected':''}>${s}</option>`).join('')}</select></div><div><label>Next follow-up</label><input id="by_nf" type="date" value="${esc(b.next_fu||'')}"></div></div>
+  <div><label>Site visit (date-time)</label><input id="by_va" type="datetime-local" value="${va}"></div>
+  <div><label>Note (what was discussed)</label><textarea id="by_note" rows="2"></textarea></div>
+  <button class="p" onclick="buySave(${b.id})">💾 Save</button><div class="mu" style="margin-top:6px">Remarks: ${esc(b.remarks||'-')}</div></div>`;
+}
+async function buySave(id){
+  const b=BUYL.find(x=>x.id==id);if(!b)return;
+  const st=$('#by_st').value,nf=$('#by_nf').value||null,va=$('#by_va').value,note=$('#by_note').value.trim();
+  const upd={status:st,next_fu:nf,visit_at:va?new Date(va).toISOString():null};
+  if(note||st!=(b.status||'New'))upd.last_fu=buyToday();
+  const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
+  if(note||st!=(b.status||'New')){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+(b.status||'New')+' → '+st)})}
+  buyOpen=null;toast('Saved ✅');render();
+}
 VIEW['telecaller:fu']=async()=>{
   await loadFilt();let qy=sb.from('leads').select('*').eq('tc_id',ME.id).in('status',['followup','callback']).order('follow_date',{ascending:true,nullsFirst:false}).order('follow_time',{ascending:true,nullsFirst:false}).limit(100);qy=gxQ(qy);const {data,error}=await qy;
   if(error)throw error;

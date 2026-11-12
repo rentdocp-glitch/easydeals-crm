@@ -235,6 +235,7 @@ a{color:var(--pr2)}
 .oacts{display:flex;gap:8px;margin-top:8px}.oacts a{flex:1;text-align:center;padding:9px 8px;font-size:14px;font-weight:700;border-radius:11px;text-decoration:none}
 .oacts .c{background:#eaf1ff;color:#1e3a8a;border:1px solid #cfe0fb}.oacts .w{background:#25d366;color:#fff}
 .hitc{border:2px solid #15803d!important;background:#f3fff7}
+.tsel{border-color:#2563eb!important;background:#eef4ff!important}
 a.btn.g,a.btn.g:hover{color:#fff}
 </style>
 </head><body>
@@ -324,6 +325,7 @@ function openDrawer(){
   <div class="ds">Buyers</div>
   <div class="di" onclick="go('props')"><span>🏢 Properties</span><span class="cnt">${PR.filter(p=>!isSold(p)).length}</span></div>
   <div class="di" onclick="go('buyers')"><span>🧑‍🤝‍🧑 Buyer Leads</span><span class="cnt">${BL.length}</span></div>
+  <div class="di" onclick="go('team')"><span>👥 Assign leads to team</span><span class="cnt ${BL.some(b=>!b.assigned_to)?'hi':''}">${BL.filter(b=>!b.assigned_to).length}</span></div>
   <div class="di" onclick="go('fu')"><span>🔁 Follow-up</span><span class="cnt hi">${fuList().length}</span></div>
   <div class="di" onclick="go('un')"><span>❓ Unassigned leads</span><span class="cnt ${un?'hi':''}">${un}</span></div>
   <div class="di" onclick="go('deal')"><span>✅ Deal Closed owners</span><span class="cnt">${OW.length}</span></div>
@@ -1108,6 +1110,38 @@ function olShow(){
   </div>`;
 }
 
+/* ---------- Leads team ko do (employee assignment) ---------- */
+let EMP=null,TF='none',TSEL=new Set(),TLIM=60;
+async function loadEmp(){try{const {data}=await sb.from('profiles').select('id,name,role');EMP=(data||[]).filter(p=>p.role!='admin')}catch(e){EMP=[]}render()}
+const empName=id=>{const e=(EMP||[]).find(x=>x.id==id);return e?(e.name||'Employee'):'?'};
+function tList(){let l=BL.slice().sort((a,b)=>b.id-a.id);if(TF=='none')l=l.filter(b=>!b.assigned_to);else if(TF!='all')l=l.filter(b=>b.assigned_to==TF);
+  if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');l=l.filter(b=>[b.buyer_name,b.code,b.requirement,b.remarks,b.property_id].join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(b.buyer_phone).includes(d)))}return l}
+function tUpd(){const l=tList(),n=l.filter(b=>TSEL.has(b.id)).length;const c=$('#tcnt');if(c)c.textContent=n+' selected';const a=$('#tall');if(a)a.checked=l.length>0&&n==l.length;
+  document.querySelectorAll('.trow').forEach(r=>r.classList.toggle('tsel',TSEL.has(+r.dataset.id)))}
+function tTog(id,v){v?TSEL.add(id):TSEL.delete(id);tUpd()}
+function tAll(v){tList().forEach(b=>v?TSEL.add(b.id):TSEL.delete(b.id));document.querySelectorAll('.tcb').forEach(c=>c.checked=v);tUpd()}
+function tFilt(k){TF=k;TSEL.clear();TLIM=60;render()}
+async function tAssign(clear){
+  const ids=tList().filter(b=>TSEL.has(b.id)).map(b=>b.id);if(!ids.length)return toast('Select at least one lead first',1);
+  const uid=clear?null:$('#temp').value;if(!clear&&!uid)return toast('Choose an employee',1);
+  const who=clear?'nobody':empName(uid);
+  if(ids.length>20&&!confirm('Assign '+ids.length+' leads to '+who+'?'))return;
+  for(let i=0;i<ids.length;i+=200){const {error}=await sb.from('buyer_leads').update({assigned_to:uid}).in('id',ids.slice(i,i+200));if(error)return toast(error.message,1)}
+  BL.forEach(b=>{if(ids.includes(b.id))b.assigned_to=uid});TSEL.clear();toast(ids.length+' leads '+(clear?'unassigned ✅':'assigned to '+empName(uid)+' ✅'));render();
+}
+VIEW.team=()=>{
+  if(!EMP){loadEmp();return '<div class="mu">Loading…</div>'}
+  const l=tList(),cnt=k=>k=='none'?BL.filter(b=>!b.assigned_to).length:k=='all'?BL.length:BL.filter(b=>b.assigned_to==k).length;
+  const chip=(k,lab)=>`<button class="${TF==k?'p':''}" style="padding:7px 12px;border-radius:99px;white-space:nowrap" onclick="tFilt('${k}')">${esc(lab)} ${cnt(k)}</button>`;
+  const n=l.filter(b=>TSEL.has(b.id)).length;
+  return `<div class="sec">👥 Assign leads to team</div><div class="mu" style="margin:0 2px 10px">Tick leads, choose a name, tap Assign. Each employee sees only the leads you give them.</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chip('none','Not assigned')}${chip('all','All')}${(EMP||[]).map(e=>chip(e.id,e.name||'Employee')).join('')}</div>
+  <input placeholder="Search by name, number or code" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{TSEL.clear();render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
+  <div class="card" style="position:sticky;top:0;z-index:20;padding:10px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><label style="display:flex;align-items:center;gap:8px;font-weight:600"><input id="tall" type="checkbox" style="width:20px;height:20px" ${l.length&&n==l.length?'checked':''} onchange="tAll(this.checked)"> Select all (${l.length})</label><b id="tcnt" style="margin-left:auto">${n} selected</b></div>
+  <div style="display:flex;gap:6px"><select id="temp" style="flex:1"><option value="">Assign to…</option>${(EMP||[]).map(e=>`<option value="${e.id}">${esc(e.name||'Employee')}</option>`).join('')}</select><button class="p" onclick="tAssign(false)">Assign</button><button onclick="tAssign(true)">Unassign</button></div></div>
+  <div style="margin-top:10px">${l.slice(0,TLIM).map(b=>{const p=P(b.property_id);return `<label class="card trow ${TSEL.has(b.id)?'tsel':''}" data-id="${b.id}" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;cursor:pointer"><input class="tcb" type="checkbox" style="width:22px;height:22px;flex:none;margin-top:2px" ${TSEL.has(b.id)?'checked':''} onchange="tTog(${b.id},this.checked)"><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(b.buyer_name||'Buyer')}</b><span class="mu">${esc(b.code||'')}</span></div><div class="mu">${p?esc(p.id+' · '+(p.project||'')):'No property linked'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div><div>${pill(b.status||'New')}${b.assigned_to?`<span class="pill" style="background:#e0f5e6;color:#1b6b34">${esc(empName(b.assigned_to))}</span>`:'<span class="pill" style="background:#fff6e0;color:#7a5200">Not assigned</span>'}</div></div></label>`}).join('')||'<div class="empty"><b>No leads in this filter</b></div>'}
+  ${l.length>TLIM?`<button style="width:100%;margin:6px 0" onclick="TLIM+=60;render()">Show more (${l.length-TLIM} left)</button>`:''}</div>`;
+};
 VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+unGroups()+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
 
 /* ---------- deal closed owners ---------- */
