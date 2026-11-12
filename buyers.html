@@ -338,6 +338,8 @@ function openDrawer(){
   <div class="di" onclick="go('props');editP={};render()"><span>➕ Nayi Property</span></div>
   <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ Naya Buyer Lead</span></div>
   <div class="di" onclick="go('mb')"><span>⬆️ Bulk upload (99acres · Magicbricks · Housing)</span></div>
+  <div class="ds">Alerts</div>
+  <div class="di" onclick="toggleRing()"><span>🔔 New lead sound <span class="mu">· when CRM is open</span></span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>
   <div class="ds">Backup</div>
   <div class="di" onclick="closeDrawer();backup()"><span>⬇️ Download backup <span class="mu">· CSV</span></span></div>`;
   $('#dr').classList.add('open');$('#ov').style.display='block';
@@ -1202,6 +1204,33 @@ sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLog
   var wasOpen=bar.style.display=='block';sync();
   if(wasOpen&&!open().length&&history.state&&history.state.sheet)history.back();
  }).observe(document.body,{childList:true});
+})();
+</script>
+
+<script>
+(function(){
+ var KEY='ring',on=true,seen=null,who=null,ctx=null,busy=false,bn=null;
+ try{on=localStorage.getItem(KEY)!='0'}catch(e){}
+ function ac(){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state=='suspended')ctx.resume()}catch(e){}return ctx}
+ ['touchstart','click','keydown'].forEach(function(ev){document.addEventListener(ev,function(){if(on)ac()},{passive:true})});
+ function beep(){var c=ac();if(!c)return;var t=c.currentTime;for(var i=0;i<3;i++){[880,660].forEach(function(f,j){var o=c.createOscillator(),g=c.createGain(),s=t+i*0.9+j*0.22;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.5,s+0.02);g.gain.exponentialRampToValueAtTime(0.0001,s+0.2);o.connect(g);g.connect(c.destination);o.start(s);o.stop(s+0.22)})}try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}}
+ window.toggleRing=function(){on=!on;try{localStorage.setItem(KEY,on?'1':'0')}catch(e){}if(on)beep();toast(on?'New lead sound ON':'New lead sound OFF');try{closeDrawer()}catch(e){}};
+ window.ringState=function(){return on?'ON':'OFF'};
+ window.openNewLeads=function(){if(bn)bn.style.display='none';if(/buyers\.html/.test(location.pathname)){go('team')}else if(ME.role=='admin'){location.href='buyers.html'}else{go('buy')}};
+ function banner(nw){if(!bn){bn=document.createElement('div');bn.style.cssText='position:fixed;top:10px;left:10px;right:10px;z-index:120;background:#1e3a8a;color:#fff;border-radius:14px;padding:12px 14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.35);cursor:pointer;display:none';bn.onclick=window.openNewLeads;document.body.appendChild(bn)}
+  bn.textContent='🔔 New lead'+(nw.length>1?'s ('+nw.length+')':'')+': '+nw.slice(0,2).map(function(x){return x.buyer_name||x.code||'Buyer'}).join(', ')+' · tap to open';bn.style.display='block';clearTimeout(bn._t);bn._t=setTimeout(function(){bn.style.display='none'},12000)}
+ async function poll(){
+  if(busy||document.hidden)return;if(typeof ME==='undefined'||!ME||!ME.role)return;busy=true;
+  try{
+   if(who!==ME.id){who=ME.id;seen=null}
+   var q=sb.from('buyer_leads').select('id,buyer_name,code').order('id',{ascending:false}).limit(300);
+   q=ME.role=='admin'?q.is('assigned_to',null):q.eq('assigned_to',ME.id);
+   var r=await q;if(r.error)return;var d=r.data||[];
+   if(seen){var nw=d.filter(function(x){return !seen.has(x.id)});if(nw.length&&on){beep();banner(nw)}}
+   seen=new Set(d.map(function(x){return x.id}));
+  }catch(e){}finally{busy=false}
+ }
+ window.__ringPoll=poll;setInterval(poll,25000);setTimeout(poll,4000);
 })();
 </script>
 </body></html>
