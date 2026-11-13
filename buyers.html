@@ -334,6 +334,7 @@ function openDrawer(){
   <div class="di" onclick="go('un')"><span>❓ Unassigned leads</span><span class="cnt ${un?'hi':''}">${un}</span></div>
   <div class="di" onclick="go('deal')"><span>✅ Deal Closed owners</span><span class="cnt">${OW.length}</span></div>
   <div class="di" onclick="go('rep')"><span>📈 Property-wise Report</span></div>
+  <div class="di" onclick="go('access')"><span>🔑 Team access</span></div>
   <div class="ds">Naya</div>
   <div class="di" onclick="go('props');editP={};render()"><span>➕ Nayi Property</span></div>
   <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ Naya Buyer Lead</span></div>
@@ -1149,6 +1150,15 @@ VIEW.team=()=>{
   <div style="margin-top:10px">${l.slice(0,TLIM).map(b=>{const p=P(b.property_id);return `<label class="card trow ${TSEL.has(b.id)?'tsel':''}" data-id="${b.id}" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;cursor:pointer"><input class="tcb" type="checkbox" style="width:22px;height:22px;flex:none;margin-top:2px" ${TSEL.has(b.id)?'checked':''} onchange="tTog(${b.id},this.checked)"><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(b.buyer_name||'Buyer')}</b><span class="mu">${esc(b.code||'')}</span></div><div class="mu">${p?esc(p.id+' · '+(p.project||'')):'No property linked'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div><div>${pill(b.status||'New')}${b.assigned_to?`<span class="pill" style="background:#e0f5e6;color:#1b6b34">${esc(empName(b.assigned_to))}</span>`:'<span class="pill" style="background:#fff6e0;color:#7a5200">Not assigned</span>'}</div></div></label>`}).join('')||'<div class="empty"><b>No leads in this filter</b></div>'}
   ${l.length>TLIM?`<button style="width:100%;margin:6px 0" onclick="TLIM+=60;render()">Show more (${l.length-TLIM} left)</button>`:''}</div>`;
 };
+/* ---------- Team access: who can use the Properties page ---------- */
+let TA=null;
+async function loadTA(){try{const {data,error}=await sb.from('team_access').select('user_id,props');if(error)throw error;TA={};(data||[]).forEach(r=>TA[r.user_id]=!!r.props)}catch(e){TA={};toast(e.message,1)}render()}
+async function setAccess(id,v){const {error}=await sb.from('team_access').upsert({user_id:id,props:v},{onConflict:'user_id'});if(error){toast(error.message,1);return loadTA()}TA[id]=v;toast(v?'Properties access given ✅':'Properties access removed ✅')}
+VIEW.access=()=>{
+  if(!EMP){loadEmp();return '<div class="mu">Loading…</div>'}
+  if(!TA){loadTA();return '<div class="mu">Loading…</div>'}
+  return `<div class="sec">🔑 Team access</div><div class="mu" style="margin:0 2px 10px">Tick a name to show the Properties page in their CRM menu (owner call, WhatsApp reports, Send leads). They cannot edit, delete, invoice or download backups.</div>`+
+  (EMP.map(e=>`<label class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer"><div><b>${esc(e.name||'Employee')}</b><div class="mu">${esc(e.role=='fe'?'Field Exec':'Telecaller')}</div></div><span style="display:flex;align-items:center;gap:8px"><span class="mu">Properties</span><input type="checkbox" style="width:24px;height:24px" ${TA[e.id]?'checked':''} onchange="setAccess('${e.id}',this.checked)"></span></label>`).join('')||'<div class="empty"><b>No employees found</b></div>')};
 VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+unGroups()+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
 
 /* ---------- deal closed owners ---------- */

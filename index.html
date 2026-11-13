@@ -266,6 +266,7 @@ async function boot(user){
   const {data:me,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
   ME=me;ME.email=user.email||'';for(const k in VC)delete VC[k];
+  try{const ta=await sb.from('team_access').select('props').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(ME.props&&TABS[ME.role]&&!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties'])}catch(e){}
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
@@ -1547,11 +1548,44 @@ window.waSend=function(a){
   try{if(c.t=='b'){sb.from('buyer_history').insert({buyer_id:c.b.id,status:c.b.status,note:'💬 WhatsApp sent: '+label()}).then(function(){})}
   else{waLog(ph,body,'out','template')}}catch(e){}
   setTimeout(closeWa,500);return true};
+
+/* ----- Properties page for team members who were given access ----- */
+var PQ='';
+function pPortals(p){var live=[];String(p.portal_status||'').split('|').forEach(function(x){var m=x.split(':');if(m.length>1&&/^\s*live/i.test(m[1]))live.push(m[0].trim())});
+  return live.length?'<div style="margin:6px 0">'+live.map(function(x){return '<span style="background:#e0f5e6;color:#1b6b34;border-radius:99px;padding:2px 9px;font-size:12px;font-weight:600;margin-right:4px">'+esc(x)+' ✓ Live</span>'}).join('')+'</div>':''}
+function pCard(p){var ow=ph10(p.owner_phone),n=WAENQ[p.id]||0;
+  return '<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b style="color:#0f5a28">👤 '+esc(p.owner_name||'Owner ?')+'</b><div style="font-weight:700">'+esc(p.id)+' · '+esc(p.project||'-')+'</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:800;color:#1e3a8a">'+n+'</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>'+
+   '<div class="mu">'+esc([p.bhk,p.locality].filter(Boolean).join(' · '))+(p.price?' · '+rs(p.price):'')+'</div>'+pPortals(p)+
+   '<div class="acts" style="margin-top:6px">'+(ow?'<a class="btn" href="tel:'+ow+'">📞 Owner call</a><button type="button" onclick="waSheet(\'prop\',\''+esc(p.id)+'\')">💬 WhatsApp</button>':'<span class="mu er">Owner mobile missing</span>')+'<button type="button" onclick="waLeads(\''+esc(p.id)+'\')">📤 Send leads</button></div></div>'}
+function pList(){var q=PQ.toLowerCase().trim(),d=PQ.replace(/\D/g,'');
+  var l=WAPR.filter(function(p){return !isSold(p)}).filter(function(p){return !q||[p.id,p.project,p.locality,p.owner_name].join(' ').toLowerCase().indexOf(q)>-1||(d.length>=4&&(ph10(p.owner_phone).indexOf(d)>-1||ph10(p.owner_phone2).indexOf(d)>-1))});
+  return l.map(pCard).join('')||'<div class="card"><div class="mu">No properties found.</div></div>'}
+window.waPq=function(v){PQ=v;var e=document.getElementById('pl');if(e)e.innerHTML=pList()};
+VIEW['telecaller:props']=VIEW['fe:props']=async function(){
+  await loadData();
+  return '<div class="card"><b>🏢 Properties</b> <span class="mu">· owner calls and reports</span></div><input id="pq" type="search" placeholder="Search owner, ED-ID, project, area or number" value="'+esc(PQ)+'" oninput="waPq(this.value)" style="margin-bottom:10px"><div id="pl">'+pList()+'</div>'};
+window.waLeads=async function(pid){
+  try{toast('Loading…');await loadData();var p=P(pid);if(!p)return toast('Property not found',1);
+   var r=await sb.rpc('prop_leads',{pid:pid});if(r.error)return toast(r.error.message,1);var ls=r.data||[];
+   var fd=function(x){try{return new Date(x).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}catch(e){return ''}};
+   var nm=first(p.owner_name)||'Sir/Madam',loc=[p.bhk,p.locality].filter(Boolean);
+   var head='Hello '+nm+',\n\nHere are the buyer enquiries received so far for your property *'+(p.project||p.id)+'*'+(loc.length?' ('+loc.join(', ')+')':'')+' through Easy Deals marketing:\n\n';
+   var foot='\nTotal enquiries: '+ls.length+'. Our team is following up with every buyer and will update you on site visits and feedback.\n\n- Team Easy Deals';
+   var lines=ls.map(function(b,i){return (i+1)+'. '+(b.buyer_name||'Buyer')+' - '+ph10(b.buyer_phone)+' - '+fd(b.lead_date)+(b.status&&b.status!=='New'?' ('+b.status+')':'')});
+   var parts=[],cur='';lines.forEach(function(x){if((cur+x+'\n').length>1300){parts.push(cur);cur=''}cur+=x+'\n'});if(cur||!parts.length)parts.push(cur);
+   var msgs=parts.map(function(t,i){return (i===0?head:'(Part '+(i+1)+'/'+parts.length+')\n\n')+t+(i===parts.length-1?foot:'')});
+   var ow=ph10(p.owner_phone);WL={ow:ow,msgs:msgs};
+   var o=document.getElementById('wlm');if(!o){o=document.createElement('div');o.id='wlm';o.style.cssText='position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';o.onclick=function(e){if(e.target===o)o.remove()};document.body.appendChild(o)}
+   o.innerHTML='<div style="background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px;box-sizing:border-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>📤 '+esc(p.id)+' · '+esc(p.project||'')+'</b><button type="button" onclick="document.getElementById(\'wlm\').remove()" style="width:42px;height:42px">✕</button></div><div class="mu" style="margin-bottom:8px">'+ls.length+' lead'+(ls.length===1?'':'s')+' · owner: '+esc(p.owner_name||'-')+(ow?' (+91 '+ow+')':' (mobile missing)')+'</div>'+
+    msgs.map(function(m,i){return '<div style="margin-bottom:12px"><textarea id="wlt'+i+'" rows="10" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.45">'+esc(m)+'</textarea><div style="display:flex;gap:8px;margin-top:6px"><button type="button" style="flex:1" onclick="navigator.clipboard.writeText(document.getElementById(\'wlt'+i+'\').value).then(function(){toast(\'Copied ✅\')})">📋 Copy</button>'+(ow?'<a class="btn p" style="flex:2;text-align:center;background:#25d366;color:#fff;border-color:#25d366" target="_blank" rel="noopener" href="#" onclick="waLsend(this,'+i+')">Send'+(msgs.length>1?' part '+(i+1):'')+' on WhatsApp</a>':'')+'</div></div>'}).join('')+'<div class="mu">Nothing is sent automatically. Review the message, then tap Send in WhatsApp.</div></div>'}catch(e){toast(e.message||'Could not open',1)}};
+var WL=null;
+window.waLsend=function(a,i){var t=document.getElementById('wlt'+i).value;a.href='https://wa.me/91'+WL.ow+'?text='+encodeURIComponent(t);try{waLog(WL.ow,t,'out','template')}catch(e){}return true};
 window.waSheet=async function(kind,id){
   try{
    toast('Loading…');await loadData();
    if(kind=='buyer'){var b=(typeof BUYL!=='undefined'?BUYL.find(function(x){return x.id==id}):null);if(!b){var r=await sb.from('buyer_leads').select('*').eq('id',id).single();b=r.data}
     if(!b)return toast('Lead not found',1);W={c:{t:'b',b:b},k:WTdef(b)}}
+   else if(kind=='prop'){var pp=P(id);if(!pp)return toast('Property not found',1);W={c:{t:'d',l:{name:pp.owner_name,phone:pp.owner_phone,property:pp.project},p:pp},k:'wk'}}
    else{var r2=await sb.from('leads').select('*').eq('id',id).single();var l=r2.data;if(!l)return toast('Lead not found',1);
     if(l.status=='deal_closed'){var ph=ph10(l.phone),p=WAPR.find(function(x){return ph10(x.owner_phone)==ph||(x.owner_phone2&&ph10(x.owner_phone2)==ph)})||null;W={c:{t:'d',l:l,p:p},k:'wk'}}
     else{var st=String(l.status||'');var k=st=='meeting_assigned'?'meetc':/follow|callback/.test(st)?'fu':/avail|answer|busy|switch|ring/.test(st)?'nr':'after';W={c:{t:'o',l:l},k:k}}}
