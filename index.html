@@ -381,7 +381,7 @@ function actions(l){
   if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
   const b=[];
   b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
-  b.push(`<a class="btn ic wi" title="WhatsApp" href="https://wa.me/91${esc(ph10(l.phone))}" onclick="waLog('${esc(ph10(l.phone))}')" target="_blank" rel="noopener"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
+  b.push(`<a class="btn ic wi" title="WhatsApp" href="javascript:void(0)" onclick="waSheet('lead',${l.id})"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
   b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
   b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
   if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
@@ -802,7 +802,7 @@ function buyCard(b,due){
    <div style="margin-top:4px"><span style="background:#eaf1ff;color:#1e3a8a;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600">${esc(b.status||'New')}</span></div>
    ${b.next_fu?`<div class="mu" style="${due?'color:#b45309;font-weight:600':''}">🔁 Next follow-up: ${dshort(b.next_fu)}</div>`:''}${b.visit_at?`<div class="mu">📅 Visit: ${new Date(b.visit_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`:''}
    ${b.requirement?`<div class="mu" style="margin-top:4px">${esc(b.requirement)}</div>`:''}</div>
-   <div class="acts" style="margin-top:8px">${ph?`<a class="btn" href="tel:${ph}">📞 Call</a><a class="btn" target="_blank" rel="noopener" href="https://wa.me/91${ph}">💬 WhatsApp</a>`:'<span class="mu er">No number</span>'}</div>
+   <div class="acts" style="margin-top:8px">${ph?`<a class="btn" href="tel:${ph}">📞 Call</a><a class="btn" href="javascript:void(0)" onclick="waSheet('buyer',${b.id})">💬 WhatsApp</a>`:'<span class="mu er">No number</span>'}</div>
    ${o?buyForm(b):''}</div>`;
 }
 function buyForm(b){
@@ -1384,6 +1384,179 @@ sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLog
   }catch(e){}finally{busy=false}
  }
  window.__ringPoll=poll;setInterval(poll,25000);setTimeout(poll,4000);
+})();
+</script>
+
+<script>
+/* ===== WhatsApp templates: owner data, buyer leads, deal-closed owners (all roles) ===== */
+window.__prof=function(){try{return P}catch(e){return {}}};
+(function(){
+var WAPR=[],WAENQ={},loaded=0;
+var rs=function(n){n=+n;if(!n)return '';return n>=1e7?'₹'+(n/1e7).toFixed(2).replace(/\.?0+$/,'')+' Cr':'₹'+(n/1e5).toFixed(2).replace(/\.?0+$/,'')+' L'};
+var isSold=function(p){return /^sold/i.test(p.status||'')};
+var PR={filter:function(f){return WAPR.filter(f)}};
+var P=function(id){return WAPR.find(function(p){return p.id==id})};
+var SGN='\n\nRegards,\nTeam Easy Deals';
+function pitch(p,name){
+  if(!p)return `Hello${name?' '+name:''},\nThank you for your property enquiry with Easy Deals. Please share your preferred location and budget, and we will send you matching options.\n\nRegards,\nTeam Easy Deals`;
+  const d=p.details||{},n=x=>x!=null&&String(x).trim()!=='';
+  const area=p.carpet||p.sqft,typ=(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat';
+  const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';
+  const L=[];
+  L.push(`Hello${name?' '+name:''},`);
+  L.push(`Thank you for your enquiry. Here are the details of the property:`);
+  L.push('');
+  L.push(`🏡 *${[p.bhk,typ].filter(n).join(' ')} for ${sale?'Sale':'Rent'}*`);
+  L.push(`🏢 ${p.project||''}${n(p.locality)?', '+p.locality:''}`);
+  if(sale&&p.price)L.push(`💰 ${rs(p.price).replace(/ L$/,' Lakh')}`);else if(p.rent)L.push(`💰 ₹${Number(p.rent).toLocaleString('en-IN')} per month`);
+  const sp=[n(area)?`Carpet ${area} sqft`:'',n(p.builtup)?`Built-up ${p.builtup} sqft`:''].filter(Boolean).join(' · ');if(sp)L.push(`📐 ${sp}`);
+  if(n(p.floor_no))L.push(`🏬 Floor ${p.floor_no}${n(p.total_floors)?' of '+p.total_floors:''}`);
+  const fe=[p.furnishing,n(p.baths)?p.baths+' bathroom'+(p.baths>1?'s':''):'',n(p.balconies)?p.balconies+(p.balconies>1?' balconies':' balcony'):''].filter(n).join(' · ');if(fe)L.push(`🛋 ${fe}`);
+  const ex=[(d.parking||[]).length?'🚗 '+d.parking.map(x=>x.replace(/ car$/,' parking')).join(', '):'',n(d.facing)?'🧭 '+d.facing+' facing':''].filter(Boolean);if(ex.length)L.push(ex.join(' · '));
+  if((d.amenities||[]).length)L.push(`✨ ${d.amenities.slice(0,6).join(', ')}`);
+  if(n(d.usp))L.push(`⭐ ${d.usp}`);
+  if(n(p.landmark))L.push(`📍 Near ${p.landmark}`);
+  const md=[[p.reel_url,'📱 Instagram Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>n(x[0]));
+  if(md.length){L.push('');md.forEach(x=>L.push(`${x[1]}: ${x[0]}`))}
+  L.push('');L.push('Would you like to schedule a site visit? Please reply with a convenient day and time.');L.push('');L.push('Regards,');L.push('Team Easy Deals');
+  return L.join('\n');
+}
+/* ---------- WhatsApp templates (buyer lead) ---------- */
+const WT=[['details','🏡 Property details'],['noans','📵 Call nahi utha'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 Visit ke baad'],['similar','🏘 Aur options']];
+const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
+let waB=null,waK=null,WS=new Set(),wqDays=7,wqOn=false,wqDone=0,WQS=new Set();
+const wqKey=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
+function wqList(){
+  const sentK=new Set(BL.filter(b=>WS.has(b.id)).map(wqKey)),seen=new Set(),from=wqDays?new Date(Date.now()-wqDays*864e5).toISOString().slice(0,10):'';
+  return BL.filter(b=>b.status=='New'&&ph10(b.buyer_phone).length==10&&!WS.has(b.id)&&!WQS.has(b.id)&&!sentK.has(wqKey(b))&&(!from||String(b.lead_date||'')>=from))
+    .sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id)
+    .filter(b=>{const k=wqKey(b);if(seen.has(k))return false;seen.add(k);return true});
+}
+function wqShow(){
+  const L=wqList(),b=L[0];
+  const days=`<div class="chips">${[[1,'Aaj+kal'],[7,'7 din'],[30,'30 din'],[0,'Sab']].map(d=>`<button class="${wqDays==d[0]?'on':''}" onclick="wqDays=${d[0]};wqShow()">${d[1]}</button>`).join('')}</div>`;
+  let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Wapas</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 Nayi leads ko WhatsApp</div>
+  <div class="mu">Sirf "New" leads jinhe abhi tak koi WhatsApp nahi gaya. Har buyer ko uski property ki details jaati hain.</div>${days}
+  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> baaki${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} bheje ✅</span>`:''}</div></div>`;
+  if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>Sab ho gaya!</b><div class="mu">In dino ki saari nayi leads ko message chala gaya. Upar se din badal kar purani leads dekh sakte ho.</div></div>`;return}
+  const p=P(b.property_id);
+  h+=`<div class="card"><div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
+  <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Property judi nahi</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
+  ${b.requirement?`<div class="mu">${esc(b.requirement)}</div>`:''}
+  ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel / Virtual tour link nahi juda. Message phir bhi jayega, par link jodne se achha banega.</div>':''}
+  <textarea id="wtx" rows="13" style="margin-top:10px;font-size:13.5px">${esc(waText('details',b))}</textarea>
+  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 WhatsApp par bhejo → agla</a></div>
+  <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Abhi chhodo</button><button onclick="wqNo(${b.id})">🚫 Message nahi bhejna</button></div></div>`;
+  $('#app').innerHTML=h;scrollTo(0,0)}
+function wqSend(a,id){const b=BL.find(x=>x.id==id);a.href='https://wa.me/91'+ph10(b.buyer_phone)+'?text='+encodeURIComponent($('#wtx').value);
+  WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp bheja: Property details (nayi lead)'}).then(()=>{delete hist[id]});
+  setTimeout(wqShow,400);return true}
+function wqSkip(id){WQS.add(id);wqShow()}
+function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: message nahi bhejna'}).then(()=>{delete hist[id]});wqShow()}
+function wqOpen(){wqOn=true;wqDone=0;wqShow()}
+const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/month':''}`};
+const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 Near '+p.landmark);return L};
+const pMedia=p=>[[p.reel_url,'📱 Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>x[0]&&String(x[0]).trim()).map(x=>x[1]+': '+x[0]);
+function similarProps(p,b){
+  const bhk=p&&p.bhk?String(p.bhk).match(/\d/):null,loc=p&&p.locality;
+  return PR.filter(x=>!isSold(x)&&(!p||x.id!=p.id)).map(x=>({x,s:(bhk&&String(x.bhk||'').includes(bhk[0])?2:0)+(loc&&x.locality==loc?1:0)+(x.reel_url||x.tour_url?0.5:0)})).sort((a,c)=>c.s-a.s).slice(0,3).map(o=>o.x);
+}
+function waText(k,b){
+  const p=P(b.property_id),nm=b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?' '+b.buyer_name.split(' ')[0]:'',hi=`Hello${nm},`,sign='Regards,\nTeam Easy Deals';
+  const vt=b.visit_at?new Date(b.visit_at):null,vd=vt?vt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}):'(date)',vh=vt?vt.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}).toUpperCase():'(time)';
+  if(!p&&k!='noans'&&k!='similar')return `${hi}\nThank you for your property enquiry with Easy Deals. Please share your preferred location and budget, and we will send you matching options.\n\n${sign}`;
+  if(k=='details')return pitch(p,nm.trim());
+  if(k=='noans')return `${hi}\nThis is Easy Deals. You recently enquired${b.source?' on '+b.source:''} about ${p?'*'+pShort(p)+'*':'a property'}. We tried calling you but could not connect.\n\nPlease let us know a convenient time to call, or simply reply "DETAILS" and we will share complete information here.\n\n${sign}`;
+  if(k=='fu'){const m=pMedia(p);return `${hi}\nJust a quick follow-up: *${pShort(p)}* is still available.\n${m.length?'\n'+m.join('\n')+'\n':''}\nWould you like to visit the property this week? Weekend visits can also be arranged. Please reply with a convenient day and time.\n\n${sign}`}
+  if(k=='visit')return `${hi}\n✅ *Your site visit is confirmed*\n\n🏡 ${pShort(p)}\n📅 ${vd}, ${vh}\n${pLoc(p).join('\n')}\n\nOur team member will meet you at the property. Kindly message us when you are on your way, and let us know in advance if your plans change.\n\n${sign}`;
+  if(k=='remind')return `${hi}\nA friendly reminder of your site visit today at ${vh}.\n\n🏡 ${pShort(p)}\n${pLoc(p).join('\n')}\n\nPlease reply "YES" to confirm, or let us know if you would like to reschedule.\n\n${sign}`;
+  if(k=='after')return `${hi}\nThank you for visiting ${p.project||'the property'}. We hope you liked it.\n\nPlease share your feedback by replying with a number:\n1️⃣ I liked it, let's discuss further\n2️⃣ I would like to discuss the price\n3️⃣ I want to visit again with family\n4️⃣ Please show me other options\n\n${sign}`;
+  if(k=='similar'){const L=similarProps(p,b);if(!L.length)return `${hi}\nWe will share new properties matching your requirement as soon as they are available.\n\n${sign}`;
+    const nums=['1️⃣','2️⃣','3️⃣'];return `${hi}\nBased on your requirement, here are a few more options you may like:\n\n`+L.map((x,i)=>`${nums[i]} *${pShort(x)}*${pMedia(x).length?'\n   '+pMedia(x)[0]:''}`).join('\n\n')+`\n\nIf any of these interest you, just reply with its number and we will share full details and arrange a visit.\n\n${sign}`}
+  return pitch(p,nm.trim());
+}
+var BL_T=[['details','Property details'],['noans','No answer'],['fu','Follow-up'],['visit','Visit confirmed'],['remind','Visit reminder'],['after','After visit'],['similar','Similar properties']];
+var first=function(s){return String(s||'').trim().split(/\s+/)[0]||''};
+function fdate(d){try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}catch(e){return '(date)'}}
+function ftime(t){if(!t)return '(time)';var h=+t.slice(0,2),m=t.slice(3,5),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap}
+function ownTxt(k,l,p){
+  var nm=first(l.name),hi='Hello'+(nm?' '+nm:'')+',\n',me=(typeof ME!=='undefined'&&ME&&ME.name)?first(ME.name):'our team';
+  var pf=window.__prof()||{},fx=(l.fe_id&&pf[l.fe_id]&&pf[l.fe_id].name)?first(pf[l.fe_id].name):'our executive';
+  var what='your '+[l.bhk,'property'].filter(Boolean).join(' ')+(l.locality?' in '+l.locality:'');
+  var D={
+   after:hi+'This is '+me+' from Easy Deals. Thank you for speaking with us about '+what+'.\n\nWe can list your property on 99acres, Magicbricks and Housing.com and connect you with genuine buyers. Please share a few photos and the expected price whenever convenient.'+SGN,
+   nr:hi+'This is '+me+' from Easy Deals. We tried calling you about '+what+' but could not connect.\n\nPlease let us know a convenient time to call, or reply here with your requirement.'+SGN,
+   fu:hi+'Just a quick follow-up on '+what+'. Are you still planning to go ahead? We would be happy to help with the listing and buyer enquiries.\n\nPlease reply with a convenient time to talk.'+SGN,
+   meetc:hi+'Your meeting with our executive '+fx+' is confirmed.\n\nDate: '+fdate(l.meeting_date)+'\nTime: '+ftime((l.meeting_time||'').slice(0,5))+'\nPlace: '+what.replace(/^your /,'your ')+'\n\nPlease keep the property documents ready. Let us know if your plans change.'+SGN,
+   meetr:hi+'A friendly reminder: our executive '+fx+' will meet you today at '+ftime((l.meeting_time||'').slice(0,5))+' for '+what+'.\n\nPlease reply YES to confirm.'+SGN,
+   meetd:hi+'Thank you for your time today. We will now prepare your listing and share the details for your approval.\n\nFeel free to message us for any questions.'+SGN};
+  return D[k]}
+var OW_T=[['after','After call'],['nr','Not reachable'],['fu','Follow-up'],['meetc','Meeting confirmed'],['meetr','Meeting reminder'],['meetd','After meeting']];
+function dealTxt(k,l,p,n){
+  var live=[];String((p&&p.portal_status)||'').split('|').forEach(function(s){var m=s.split(':');if(m.length>1&&/^\s*live/i.test(m[1]))live.push(m[0].trim())});
+  var pt=live.length?live.join(', ').replace(/, ([^,]*)$/,' and $1'):'your selected property portals';
+  var nm=first((p&&p.owner_name)||l.name),hi='Namaste '+(nm?nm+' ji':'Sir/Madam')+',\n\n';
+  var pr=((p&&p.project)||l.property||'your property')+(p?' ('+p.id+')':''),ft='\n\nWarm regards,\nTeam Easy Deals';
+  var D={
+   nol:hi+'Thank you for reaching out. Here is a status update on your property, '+pr+'.\n\nYour property is live on '+pt+'.\n\nWe understand your concern that no buyer enquiry has been shared yet. Our team is working on your listing on all portals and monitoring it closely. The overall property market is moving slowly at the moment, and buyers are taking more time to enquire and decide.\n\nAs soon as a genuine enquiry comes in, we will share it with you immediately.'+ft,
+   enq:hi+'Good news. We have received '+n+' buyer enquir'+(n===1?'y':'ies')+' for your property, '+pr+'.\n\nOur team is following up with each buyer and will share the details and the visit schedule with you.'+ft,
+   vis:hi+'A buyer has shown interest in your property, '+pr+', and a visit is planned on [date] at [time].\n\nPlease let us know if this time works for you.'+ft,
+   wk:hi+'Weekly update for '+pr+':\n- Live on: '+pt+'\n- Total enquiries so far: '+n+'\n\nWe will keep you posted on any progress.'+ft};
+  return D[k]}
+var DL_T=[['nol','No leads yet'],['enq','Enquiries received'],['vis','Visit scheduled'],['wk','Weekly update']];
+var W=null;
+async function loadData(){
+  if(Date.now()-loaded<120000&&WAPR.length)return;
+  try{var r=await sb.from('properties').select('*').limit(2000);if(!r.error){WAPR=r.data||[]}}catch(e){}
+  try{var c=await sb.rpc('enq_counts');WAENQ={};(c.data||[]).forEach(function(x){WAENQ[x.property_id]=+x.n})}catch(e){}
+  loaded=Date.now()}
+function text(){
+  var c=W.c,k=W.k;
+  if(c.t=='b'){var b=c.b;return waText(k,b)}
+  if(c.t=='o')return ownTxt(k,c.l,c.p);
+  return dealTxt(k,c.l,c.p,c.p?(WAENQ[c.p.id]||0):0)}
+function tlist(){return W.c.t=='b'?BL_T:W.c.t=='o'?OW_T:DL_T}
+function label(){var t=tlist().find(function(x){return x[0]==W.k});return t?t[1]:W.k}
+function warns(){var c=W.c,w=[];
+  if(c.t=='b'){var p=P(c.b.property_id);if(W.k=='details'&&p&&!p.reel_url&&!p.tour_url)w.push('No Reel or virtual tour link is added for this property.');
+   if((W.k=='visit'||W.k=='remind')&&!c.b.visit_at)w.push('Visit date and time is not set. Set it in the lead first.');
+   if((W.k=='visit'||W.k=='remind')&&p&&!(p.details||{}).maps)w.push('Google Maps link is not added for this property.')}
+  if(c.t=='o'&&(W.k=='meetc'||W.k=='meetr')&&!c.l.meeting_date)w.push('No meeting is fixed for this lead yet.');
+  if(c.t=='d'&&!c.p)w.push('Could not match this owner to a property, so some details are generic.');
+  return w}
+function show(){
+  var c=W.c,o=document.getElementById('wam');
+  if(!o){o=document.createElement('div');o.id='wam';o.style.cssText='position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';o.onclick=function(e){if(e.target===o)closeWa()};document.body.appendChild(o)}
+  var nm=c.t=='b'?(c.b.buyer_name||'Buyer'):(c.l.name||'Contact'),ph=c.t=='b'?ph10(c.b.buyer_phone):ph10(c.l.phone);
+  o.innerHTML='<div style="background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px;box-sizing:border-box">'+
+   '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><b style="font-size:16px">💬 WhatsApp · '+esc(nm)+'</b><button type="button" onclick="waClose()" style="width:42px;height:42px">✕</button></div>'+
+   '<div class="mu" style="margin-bottom:8px">'+(c.t=='b'?'Buyer lead':c.t=='o'?'Owner data':'Deal-closed owner')+' · pick a message</div>'+
+   '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+tlist().map(function(t){return '<button type="button" class="'+(W.k==t[0]?'p':'')+'" style="padding:7px 12px;border-radius:99px" onclick="waPick(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</div>'+
+   warns().map(function(x){return '<div style="background:#fdecec;border:1px solid #f3b9b9;color:#9b1c1c;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:6px">'+esc(x)+'</div>'}).join('')+
+   '<textarea id="watx" rows="14" style="width:100%;box-sizing:border-box;font-size:13.5px;line-height:1.45">'+esc(text())+'</textarea>'+
+   '<div class="mu" style="margin:4px 0 8px">You can edit the message before sending. Nothing is sent automatically.</div>'+
+   '<div style="display:flex;gap:8px"><button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'watx\').value).then(function(){toast(\'Copied ✅\')})" style="flex:1">📋 Copy</button>'+
+   (ph?'<a class="btn p" style="flex:2;text-align:center;background:#25d366;color:#fff;border-color:#25d366" target="_blank" rel="noopener" href="#" onclick="waSend(this)">Send on WhatsApp</a>':'<span class="er">No mobile number</span>')+'</div></div>'}
+window.waPick=function(k){W.k=k;show()};
+function closeWa(){var o=document.getElementById('wam');if(o)o.remove();W=null}
+window.waClose=closeWa;
+window.waSend=function(a){
+  var c=W.c,body=document.getElementById('watx').value,ph=c.t=='b'?ph10(c.b.buyer_phone):ph10(c.l.phone);
+  a.href='https://wa.me/91'+ph+'?text='+encodeURIComponent(body);
+  try{if(c.t=='b'){sb.from('buyer_history').insert({buyer_id:c.b.id,status:c.b.status,note:'💬 WhatsApp sent: '+label()}).then(function(){})}
+  else{waLog(ph,body,'out','template')}}catch(e){}
+  setTimeout(closeWa,500);return true};
+window.waSheet=async function(kind,id){
+  try{
+   toast('Loading…');await loadData();
+   if(kind=='buyer'){var b=(typeof BUYL!=='undefined'?BUYL.find(function(x){return x.id==id}):null);if(!b){var r=await sb.from('buyer_leads').select('*').eq('id',id).single();b=r.data}
+    if(!b)return toast('Lead not found',1);W={c:{t:'b',b:b},k:WTdef(b)}}
+   else{var r2=await sb.from('leads').select('*').eq('id',id).single();var l=r2.data;if(!l)return toast('Lead not found',1);
+    if(l.status=='deal_closed'){var ph=ph10(l.phone),p=WAPR.find(function(x){return ph10(x.owner_phone)==ph||(x.owner_phone2&&ph10(x.owner_phone2)==ph)})||null;W={c:{t:'d',l:l,p:p},k:'wk'}}
+    else{var st=String(l.status||'');var k=st=='meeting_assigned'?'meetc':/follow|callback/.test(st)?'fu':/avail|answer|busy|switch|ring/.test(st)?'nr':'after';W={c:{t:'o',l:l},k:k}}}
+   show()}catch(e){toast(e.message||'Could not open',1)}
+};
 })();
 </script>
 </body></html>
