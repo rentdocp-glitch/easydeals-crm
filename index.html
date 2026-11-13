@@ -266,7 +266,7 @@ async function boot(user){
   const {data:me,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
   ME=me;ME.email=user.email||'';for(const k in VC)delete VC[k];
-  try{const ta=await sb.from('team_access').select('props').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(ME.props&&TABS[ME.role]&&!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties'])}catch(e){}
+  try{const ta=await sb.from('team_access').select('props').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(TABS[ME.role]&&ME.role!='admin'&&!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties'])}catch(e){}
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
@@ -784,10 +784,10 @@ const BUY_ST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit D
 let BUYL=[],BUYP={},buyOpen=null,buyF='all';
 const buyToday=()=>new Date().toLocaleDateString('en-CA');
 VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
-  const {data,error}=await sb.from('buyer_leads').select('*').eq('assigned_to',ME.id).order('id',{ascending:false}).limit(500);
+  const {data,error}=await sb.from('buyer_leads').select('*').contains('assignees',[ME.id]).order('id',{ascending:false}).limit(500);
   if(error)throw error;BUYL=data||[];
   const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean))];BUYP={};
-  if(ids.length){try{const r=await sb.from('emp_props').select('id,project,locality,bhk,price').in('id',ids);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
+  if(ids.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price').in('id',ids);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
   const t=buyToday(),isNew=b=>(b.status||'New')=='New',due=b=>b.next_fu&&b.next_fu<=t&&!['Not Interested','Deal Closed'].includes(b.status);
   let l=BUYL;if(buyF=='new')l=l.filter(isNew);else if(buyF=='due')l=l.filter(due);
   const chip=(k,lab,n)=>`<button class="${buyF==k?'p':''}" style="padding:7px 12px;border-radius:99px" onclick="buyF='${k}';render()">${lab} ${n}</button>`;
@@ -1378,7 +1378,7 @@ sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLog
   try{
    if(who!==ME.id){who=ME.id;seen=null}
    var q=sb.from('buyer_leads').select('id,buyer_name,code').order('id',{ascending:false}).limit(300);
-   q=ME.role=='admin'?q.is('assigned_to',null):q.eq('assigned_to',ME.id);
+   q=ME.role=='admin'?q.eq('assignees','{}'):q.contains('assignees',[ME.id]);
    var r=await q;if(r.error)return;var d=r.data||[];
    if(seen){var nw=d.filter(function(x){return !seen.has(x.id)});if(nw.length&&on){beep();banner(nw)}}
    seen=new Set(d.map(function(x){return x.id}));
@@ -1477,35 +1477,44 @@ function waText(k,b){
     const nums=['1️⃣','2️⃣','3️⃣'];return `${hi}\nBased on your requirement, here are a few more options you may like:\n\n`+L.map((x,i)=>`${nums[i]} *${pShort(x)}*${pMedia(x).length?'\n   '+pMedia(x)[0]:''}`).join('\n\n')+`\n\nIf any of these interest you, just reply with its number and we will share full details and arrange a visit.\n\n${sign}`}
   return pitch(p,nm.trim());
 }
-var BL_T=[['details','Property details'],['noans','No answer'],['fu','Follow-up'],['visit','Visit confirmed'],['remind','Visit reminder'],['after','After visit'],['similar','Similar properties']];
+var BL_T=[['details','Property details'],['noans','No answer'],['fu','Follow-up'],['visit','Visit confirmed'],['remind','Visit reminder'],['missed','Visit missed'],['after','After visit'],['price','Price discussion'],['similar','Similar properties'],['last','Last follow-up']];
 var first=function(s){return String(s||'').trim().split(/\s+/)[0]||''};
 function fdate(d){try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}catch(e){return '(date)'}}
 function ftime(t){if(!t)return '(time)';var h=+t.slice(0,2),m=t.slice(3,5),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap}
 function ownTxt(k,l,p){
   var nm=first(l.name),hi='Hello'+(nm?' '+nm:'')+',\n',me=(typeof ME!=='undefined'&&ME&&ME.name)?first(ME.name):'our team';
   var pf=window.__prof()||{},fx=(l.fe_id&&pf[l.fe_id]&&pf[l.fe_id].name)?first(pf[l.fe_id].name):'our executive';
-  var what='your '+[l.bhk,'property'].filter(Boolean).join(' ')+(l.locality?' in '+l.locality:'');
+  var what='your '+[l.bhk,'property'].filter(Boolean).join(' ')+(l.locality?' in '+l.locality:''),mt=ftime((l.meeting_time||'').slice(0,5));
   var D={
-   after:hi+'This is '+me+' from Easy Deals. Thank you for speaking with us about '+what+'.\n\nWe can list your property on 99acres, Magicbricks and Housing.com and connect you with genuine buyers. Please share a few photos and the expected price whenever convenient.'+SGN,
-   nr:hi+'This is '+me+' from Easy Deals. We tried calling you about '+what+' but could not connect.\n\nPlease let us know a convenient time to call, or reply here with your requirement.'+SGN,
-   fu:hi+'Just a quick follow-up on '+what+'. Are you still planning to go ahead? We would be happy to help with the listing and buyer enquiries.\n\nPlease reply with a convenient time to talk.'+SGN,
-   meetc:hi+'Your meeting with our executive '+fx+' is confirmed.\n\nDate: '+fdate(l.meeting_date)+'\nTime: '+ftime((l.meeting_time||'').slice(0,5))+'\nPlace: '+what.replace(/^your /,'your ')+'\n\nPlease keep the property documents ready. Let us know if your plans change.'+SGN,
-   meetr:hi+'A friendly reminder: our executive '+fx+' will meet you today at '+ftime((l.meeting_time||'').slice(0,5))+' for '+what+'.\n\nPlease reply YES to confirm.'+SGN,
-   meetd:hi+'Thank you for your time today. We will now prepare your listing and share the details for your approval.\n\nFeel free to message us for any questions.'+SGN};
+   first:hi+'This is '+me+' from Easy Deals, Pune. We understand you are planning to sell or rent '+what+'.\n\nWe help owners reach genuine buyers through 99acres, Magicbricks, Housing.com, reels and virtual tours, and our team handles buyer calls and site visits for you.\n\nMay we call you at a convenient time to explain how it works?'+SGN,
+   after:hi+'Thank you for speaking with us today about '+what+'.\n\nIn short: we list your property on the major portals, promote it with a reel and virtual tour, talk to the buyers, and arrange the site visits. You also get regular updates.\n\nPlease let us know a good time for the next step.'+SGN,
+   nr:hi+'This is '+me+' from Easy Deals. We tried calling you about '+what+' but could not connect.\n\nPlease tell us a convenient time to call, or reply here if you would like the details on WhatsApp.'+SGN,
+   svc:hi+'Here is how Easy Deals works for '+what+':\n\n1. Professional listing on 99acres, Magicbricks and Housing.com\n2. Reel and virtual tour to attract buyers\n3. Our team speaks to every buyer and arranges site visits\n4. Regular updates to you on enquiries and visits\n\nWe will explain the plan details on a call. When can we speak?'+SGN,
+   fu:hi+'Just checking in on '+what+'. Have you had a chance to think about listing it with us?\n\nWe are happy to answer any questions. Please reply with a time that suits you.'+SGN,
+   meetc:hi+'Your meeting with our executive '+fx+' is confirmed.\n\nDate: '+fdate(l.meeting_date)+'\nTime: '+mt+'\nPlace: '+what+'\n\nPlease keep ready: ownership proof, society details and your expected price. Let us know if your plans change.'+SGN,
+   meetr:hi+'A friendly reminder: our executive '+fx+' will meet you today at '+mt+' for '+what+'. Please reply YES to confirm.'+SGN,
+   meetd:hi+'Thank you for your time today. Once the registration is complete, we will take photos and a video of your property and start the listing.\n\nPlease share any pending details or documents. Feel free to message us for any questions.'+SGN,
+   ni:hi+'Thank you for letting us know. If you decide to sell or rent your property later, please message us anytime and we will be happy to help.'+SGN,
+   welcome:hi+'Welcome to Easy Deals. '+(what.charAt(0).toUpperCase()+what.slice(1))+' is now registered with us.\n\nNext steps: we will take photos and a video, create your listing, and start sharing it with buyers. We will keep you updated on every enquiry and visit.'+SGN};
   return D[k]}
-var OW_T=[['after','After call'],['nr','Not reachable'],['fu','Follow-up'],['meetc','Meeting confirmed'],['meetr','Meeting reminder'],['meetd','After meeting']];
+var OW_T=[['first','New listing owner'],['after','After call'],['nr','Not reachable'],['svc','Service details'],['fu','Follow-up'],['meetc','Meeting confirmed'],['meetr','Meeting reminder'],['meetd','After meeting'],['ni','Not interested now'],['welcome','Welcome (registered)']];
 function dealTxt(k,l,p,n){
-  var live=[];String((p&&p.portal_status)||'').split('|').forEach(function(s){var m=s.split(':');if(m.length>1&&/^\s*live/i.test(m[1]))live.push(m[0].trim())});
+  var live=[];String((p&&p.portal_status)||'').split('|').forEach(function(x){var m=x.split(':');if(m.length>1&&/^\s*live/i.test(m[1]))live.push(m[0].trim())});
   var pt=live.length?live.join(', ').replace(/, ([^,]*)$/,' and $1'):'your selected property portals';
   var nm=first((p&&p.owner_name)||l.name),hi='Namaste '+(nm?nm+' ji':'Sir/Madam')+',\n\n';
   var pr=((p&&p.project)||l.property||'your property')+(p?' ('+p.id+')':''),ft='\n\nWarm regards,\nTeam Easy Deals';
   var D={
-   nol:hi+'Thank you for reaching out. Here is a status update on your property, '+pr+'.\n\nYour property is live on '+pt+'.\n\nWe understand your concern that no buyer enquiry has been shared yet. Our team is working on your listing on all portals and monitoring it closely. The overall property market is moving slowly at the moment, and buyers are taking more time to enquire and decide.\n\nAs soon as a genuine enquiry comes in, we will share it with you immediately.'+ft,
-   enq:hi+'Good news. We have received '+n+' buyer enquir'+(n===1?'y':'ies')+' for your property, '+pr+'.\n\nOur team is following up with each buyer and will share the details and the visit schedule with you.'+ft,
+   nol:hi+'Here is a status update on your property, '+pr+'. Your property is live on '+pt+'.\n\nNo buyer enquiry has come in yet. We are monitoring the listing closely, and the overall market is moving slowly at the moment. We will inform you as soon as a genuine enquiry arrives.'+ft,
+   enq:hi+'Good news. We have received '+n+' buyer enquir'+(n===1?'y':'ies')+' for your property, '+pr+'.\n\nOur team is following up with each buyer and will share the visit schedule with you.'+ft,
    vis:hi+'A buyer has shown interest in your property, '+pr+', and a visit is planned on [date] at [time].\n\nPlease let us know if this time works for you.'+ft,
-   wk:hi+'Weekly update for '+pr+':\n- Live on: '+pt+'\n- Total enquiries so far: '+n+'\n\nWe will keep you posted on any progress.'+ft};
+   arr:hi+'Buyers are interested in your property, '+pr+', and we would like to plan site visits smoothly. Could you please tell us which days and timings suit you for visits, and who will be available to open the flat or where the key can be collected?'+ft,
+   fb:hi+'A buyer visited your property, '+pr+', on [date]. Feedback: [feedback]\n\nWe will keep following up with the buyer and update you.'+ft,
+   offer:hi+'A buyer who visited your property, '+pr+', has shared an offer of [amount]. Would you like to consider it, or share the lowest price you are comfortable with? We will take it forward with the buyer accordingly.'+ft,
+   wk:hi+'Weekly update for '+pr+':\n- Live on: '+pt+'\n- Total enquiries so far: '+n+'\n- Site visits: [number]\n\nWe will keep you posted on any progress.'+ft,
+   price:hi+'Your property, '+pr+', has had '+n+' enquiries so far. Based on buyer feedback, a small price adjustment could bring more serious buyers.\n\nMay we discuss this with you on a call?'+ft,
+   refresh:hi+'Your listing for '+pr+' has been live for some time. We are refreshing it on the portals so it stays visible to buyers. Please confirm that the property is still available at the same price.'+ft};
   return D[k]}
-var DL_T=[['nol','No leads yet'],['enq','Enquiries received'],['vis','Visit scheduled'],['wk','Weekly update']];
+var DL_T=[['nol','No leads yet'],['enq','Enquiries received'],['vis','Visit scheduled'],['arr','Visit arrangement'],['fb','Visit feedback'],['offer','Buyer offer'],['wk','Weekly update'],['price','Price advice'],['refresh','Listing refresh']];
 var W=null;
 async function loadData(){
   if(Date.now()-loaded<120000&&WAPR.length)return;
@@ -1514,7 +1523,11 @@ async function loadData(){
   loaded=Date.now()}
 function text(){
   var c=W.c,k=W.k;
-  if(c.t=='b'){var b=c.b;return waText(k,b)}
+  if(c.t=='b'){var b=c.b,bn=first(b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?b.buyer_name:''),bh='Hello'+(bn?' '+bn:'')+',\n',bp=P(b.property_id),bw=bp?pShort(bp):'the property';
+   if(k=='missed')return bh+'We missed you at the site visit today. No problem, we can reschedule at a time that suits you. Please reply with a convenient day and time.'+SGN;
+   if(k=='price')return bh+'Thank you for your interest in '+bw+'. If you would like to discuss the price, please share your budget and we will speak to the owner and come back to you.'+SGN;
+   if(k=='last')return bh+'We have not heard back, so we will assume you have finalised your search. If you are still looking, just reply and we will be happy to help.'+SGN;
+   return waText(k,b)}
   if(c.t=='o')return ownTxt(k,c.l,c.p);
   return dealTxt(k,c.l,c.p,c.p?(WAENQ[c.p.id]||0):0)}
 function tlist(){return W.c.t=='b'?BL_T:W.c.t=='o'?OW_T:DL_T}
@@ -1557,13 +1570,17 @@ function pCard(p){var ow=ph10(p.owner_phone),n=WAENQ[p.id]||0;
   return '<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b style="color:#0f5a28">👤 '+esc(p.owner_name||'Owner ?')+'</b><div style="font-weight:700">'+esc(p.id)+' · '+esc(p.project||'-')+'</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:800;color:#1e3a8a">'+n+'</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>'+
    '<div class="mu">'+esc([p.bhk,p.locality].filter(Boolean).join(' · '))+(p.price?' · '+rs(p.price):'')+'</div>'+pPortals(p)+
    '<div class="acts" style="margin-top:6px">'+(ow?'<a class="btn" href="tel:'+ow+'">📞 Owner call</a><button type="button" onclick="waSheet(\'prop\',\''+esc(p.id)+'\')">💬 WhatsApp</button>':'<span class="mu er">Owner mobile missing</span>')+'<button type="button" onclick="waLeads(\''+esc(p.id)+'\')">📤 Send leads</button></div></div>'}
-function pList(){var q=PQ.toLowerCase().trim(),d=PQ.replace(/\D/g,'');
-  var l=WAPR.filter(function(p){return !isSold(p)}).filter(function(p){return !q||[p.id,p.project,p.locality,p.owner_name].join(' ').toLowerCase().indexOf(q)>-1||(d.length>=4&&(ph10(p.owner_phone).indexOf(d)>-1||ph10(p.owner_phone2).indexOf(d)>-1))});
-  return l.map(pCard).join('')||'<div class="card"><div class="mu">No properties found.</div></div>'}
+var PV='mine';
+function pList(){var q=PQ.toLowerCase().trim(),d=PQ.replace(/\D/g,''),me=(typeof ME!=='undefined'&&ME)?ME.id:'';
+  var l=WAPR.filter(function(p){return !isSold(p)}).filter(function(p){return PV=='all'||(p.assignees||[]).indexOf(me)>-1}).filter(function(p){return !q||[p.id,p.project,p.locality,p.owner_name].join(' ').toLowerCase().indexOf(q)>-1||(d.length>=4&&(ph10(p.owner_phone).indexOf(d)>-1||ph10(p.owner_phone2).indexOf(d)>-1))});
+  return l.map(pCard).join('')||'<div class="card"><div class="mu">'+(PV=='mine'?'No properties assigned to you yet. Admin will assign them here.':'No properties found.')+'</div></div>'}
+function pChips(){var me=ME.id,n=WAPR.filter(function(p){return !isSold(p)&&(p.assignees||[]).indexOf(me)>-1}).length;
+  return '<div style="display:flex;gap:6px;margin-bottom:10px"><button type="button" class="'+(PV=='mine'?'p':'')+'" style="padding:7px 14px;border-radius:99px" onclick="waPv(\'mine\')">My properties ('+n+')</button>'+(ME.props?'<button type="button" class="'+(PV=='all'?'p':'')+'" style="padding:7px 14px;border-radius:99px" onclick="waPv(\'all\')">All properties</button>':'')+'</div>'}
+window.waPv=function(v){PV=v;render()};
 window.waPq=function(v){PQ=v;var e=document.getElementById('pl');if(e)e.innerHTML=pList()};
 VIEW['telecaller:props']=VIEW['fe:props']=async function(){
   await loadData();
-  return '<div class="card"><b>🏢 Properties</b> <span class="mu">· owner calls and reports</span></div><input id="pq" type="search" placeholder="Search owner, ED-ID, project, area or number" value="'+esc(PQ)+'" oninput="waPq(this.value)" style="margin-bottom:10px"><div id="pl">'+pList()+'</div>'};
+  return '<div class="card"><b>🏢 Properties</b> <span class="mu">· owner calls and reports</span></div>'+pChips()+'<input id="pq" type="search" placeholder="Search owner, ED-ID, project, area or number" value="'+esc(PQ)+'" oninput="waPq(this.value)" style="margin-bottom:10px"><div id="pl">'+pList()+'</div>'};
 window.waLeads=async function(pid){
   try{toast('Loading…');await loadData();var p=P(pid);if(!p)return toast('Property not found',1);
    var r=await sb.rpc('prop_leads',{pid:pid});if(r.error)return toast(r.error.message,1);var ls=r.data||[];
@@ -1588,7 +1605,7 @@ window.waSheet=async function(kind,id){
    else if(kind=='prop'){var pp=P(id);if(!pp)return toast('Property not found',1);W={c:{t:'d',l:{name:pp.owner_name,phone:pp.owner_phone,property:pp.project},p:pp},k:'wk'}}
    else{var r2=await sb.from('leads').select('*').eq('id',id).single();var l=r2.data;if(!l)return toast('Lead not found',1);
     if(l.status=='deal_closed'){var ph=ph10(l.phone),p=WAPR.find(function(x){return ph10(x.owner_phone)==ph||(x.owner_phone2&&ph10(x.owner_phone2)==ph)})||null;W={c:{t:'d',l:l,p:p},k:'wk'}}
-    else{var st=String(l.status||'');var k=st=='meeting_assigned'?'meetc':/follow|callback/.test(st)?'fu':/avail|answer|busy|switch|ring/.test(st)?'nr':'after';W={c:{t:'o',l:l},k:k}}}
+    else{var st=String(l.status||'');var k=st=='new'?'first':st=='meeting_assigned'?'meetc':/meeting_done|online_meet_done/.test(st)?'meetd':st=='not_interested'?'ni':/followup|callback/.test(st)?'fu':/not_available|ringing/.test(st)?'nr':'after';W={c:{t:'o',l:l},k:k}}}
    show()}catch(e){toast(e.message||'Could not open',1)}
 };
 })();

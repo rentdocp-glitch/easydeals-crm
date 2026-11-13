@@ -329,7 +329,7 @@ function openDrawer(){
   <div class="ds">Buyers</div>
   <div class="di" onclick="go('props')"><span>🏢 Properties</span><span class="cnt">${PR.filter(p=>!isSold(p)).length}</span></div>
   <div class="di" onclick="go('buyers')"><span>🧑‍🤝‍🧑 Buyer Leads</span><span class="cnt">${BL.length}</span></div>
-  <div class="di" onclick="go('team')"><span>👥 Assign leads to team</span><span class="cnt ${BL.some(b=>!b.assigned_to)?'hi':''}">${BL.filter(b=>!b.assigned_to).length}</span></div>
+  <div class="di" onclick="go('team')"><span>👥 Assign work</span><span class="cnt ${(tPend('buyer')+tPend('prop'))?'hi':''}">${tPend('buyer')+tPend('prop')}</span></div>
   <div class="di" onclick="go('fu')"><span>🔁 Follow-up</span><span class="cnt hi">${fuList().length}</span></div>
   <div class="di" onclick="go('un')"><span>❓ Unassigned leads</span><span class="cnt ${un?'hi':''}">${un}</span></div>
   <div class="di" onclick="go('deal')"><span>✅ Deal Closed owners</span><span class="cnt">${OW.length}</span></div>
@@ -1118,37 +1118,71 @@ function olShow(){
   </div>`;
 }
 
-/* ---------- Leads team ko do (employee assignment) ---------- */
-let EMP=null,TF='none',TSEL=new Set(),TLIM=60;
+/* ---------- Assign work: buyer leads + deal-closed properties, 1 to 4 people, auto rotation ---------- */
+let EMP=null,TK='buyer',TF='none',TSEL=new Set(),TEM=new Set(),TLIM=60,RUL=null;
 async function loadEmp(){try{const {data}=await sb.from('profiles').select('id,name,role');EMP=(data||[]).filter(p=>p.role!='admin')}catch(e){EMP=[]}render()}
 const empName=id=>{const e=(EMP||[]).find(x=>x.id==id);return e?(e.name||'Employee'):'?'};
-function tList(){let l=BL.slice().sort((a,b)=>b.id-a.id);if(TF=='none')l=l.filter(b=>!b.assigned_to);else if(TF!='all')l=l.filter(b=>b.assigned_to==TF);
-  if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');l=l.filter(b=>[b.buyer_name,b.code,b.requirement,b.remarks,b.property_id].join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(b.buyer_phone).includes(d)))}return l}
-function tUpd(){const l=tList(),n=l.filter(b=>TSEL.has(b.id)).length;const c=$('#tcnt');if(c)c.textContent=n+' selected';const a=$('#tall');if(a)a.checked=l.length>0&&n==l.length;
-  document.querySelectorAll('.trow').forEach(r=>r.classList.toggle('tsel',TSEL.has(+r.dataset.id)))}
+const aOf=x=>x.assignees||[];
+const tItems=()=>TK=='buyer'?BL:PR.filter(p=>!isSold(p));
+const tKey=x=>String(x.id);
+function tList(){let l=tItems().slice();l.sort(TK=='buyer'?(a,b)=>b.id-a.id:(a,b)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true}));
+  if(TF=='none')l=l.filter(x=>!aOf(x).length);else if(TF!='all')l=l.filter(x=>aOf(x).includes(TF));
+  if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');l=l.filter(x=>(TK=='buyer'?[x.buyer_name,x.code,x.requirement,x.remarks,x.property_id,x.buyer_phone]:[x.id,x.project,x.owner_name,x.locality,x.owner_phone]).join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(x.buyer_phone||x.owner_phone).includes(d)))}
+  return l}
+const tPend=k=>(k=='buyer'?BL:PR.filter(p=>!isSold(p))).filter(x=>!aOf(x).length).length;
+function tUpd(){const l=tList(),n=l.filter(b=>TSEL.has(tKey(b))).length;const c=$('#tcnt');if(c)c.textContent=n+' selected';const a=$('#tall');if(a)a.checked=l.length>0&&n==l.length;
+  document.querySelectorAll('.trow').forEach(r=>r.classList.toggle('tsel',TSEL.has(r.dataset.id)))}
 function tTog(id,v){v?TSEL.add(id):TSEL.delete(id);tUpd()}
-function tAll(v){tList().forEach(b=>v?TSEL.add(b.id):TSEL.delete(b.id));document.querySelectorAll('.tcb').forEach(c=>c.checked=v);tUpd()}
+function tAll(v){tList().forEach(b=>v?TSEL.add(tKey(b)):TSEL.delete(tKey(b)));document.querySelectorAll('.tcb').forEach(c=>c.checked=v);tUpd()}
+function tFirst(){const n=parseInt($('#tn').value)||0;if(n<1)return toast('Enter how many',1);TSEL.clear();tList().slice(0,n).forEach(b=>TSEL.add(tKey(b)));render()}
 function tFilt(k){TF=k;TSEL.clear();TLIM=60;render()}
+function tKind(k){TK=k;TF='none';TSEL.clear();TLIM=60;q='';render()}
+function tEm(id,btn){TEM.has(id)?TEM.delete(id):TEM.add(id);btn.classList.toggle('p',TEM.has(id))}
 async function tAssign(clear){
-  const ids=tList().filter(b=>TSEL.has(b.id)).map(b=>b.id);if(!ids.length)return toast('Select at least one lead first',1);
-  const uid=clear?null:$('#temp').value;if(!clear&&!uid)return toast('Choose an employee',1);
-  const who=clear?'nobody':empName(uid);
-  if(ids.length>20&&!confirm('Assign '+ids.length+' leads to '+who+'?'))return;
-  for(let i=0;i<ids.length;i+=200){const {error}=await sb.from('buyer_leads').update({assigned_to:uid}).in('id',ids.slice(i,i+200));if(error)return toast(error.message,1)}
-  BL.forEach(b=>{if(ids.includes(b.id))b.assigned_to=uid});TSEL.clear();toast(ids.length+' leads '+(clear?'unassigned ✅':'assigned to '+empName(uid)+' ✅'));render();
+  const sel=tList().filter(x=>TSEL.has(tKey(x)));if(!sel.length)return toast('Select at least one item first',1);
+  const ids=clear?[]:[...TEM];if(!clear&&!ids.length)return toast('Choose at least one person',1);
+  const who=clear?'nobody':ids.map(empName).join(' + ');
+  if(sel.length>20&&!confirm('Assign '+sel.length+' to '+who+'?'))return;
+  const tbl=TK=='buyer'?'buyer_leads':'properties',upd=TK=='buyer'?{assignees:ids,assigned_to:ids[0]||null}:{assignees:ids},keys=sel.map(x=>x.id);
+  for(let i=0;i<keys.length;i+=150){const {error}=await sb.from(tbl).update(upd).in('id',keys.slice(i,i+150));if(error)return toast(error.message,1)}
+  sel.forEach(x=>Object.assign(x,upd));TSEL.clear();toast(sel.length+(clear?' unassigned ✅':' assigned to '+who+' ✅'));render();
 }
+async function loadRules(){try{const {data,error}=await sb.from('assign_rules').select('*');if(error)throw error;RUL={};(data||[]).forEach(r=>RUL[r.kind]={kind:r.kind,enabled:!!r.enabled,next_idx:r.next_idx||0,groups:(r.groups||[]).map(g=>g.slice())})}catch(e){RUL={};toast(e.message,1)}render()}
+function rObj(k){return RUL[k]||(RUL[k]={kind:k,enabled:false,next_idx:0,groups:[]})}
+function rToggle(k,v){rObj(k).enabled=v}
+function rAdd(k){rObj(k).groups.push([]);render()}
+function rDel(k,i){rObj(k).groups.splice(i,1);render()}
+function rMem(k,i,id,btn){const g=rObj(k).groups[i],j=g.indexOf(id);j<0?g.push(id):g.splice(j,1);btn.classList.toggle('p',j<0)}
+async function rSave(k){const r=rObj(k);r.groups=r.groups.filter(g=>g.length);if(r.enabled&&!r.groups.length)return toast('Add at least one group with a person, or switch Auto-assign off',1);
+  const row={kind:k,enabled:r.enabled,groups:r.groups,next_idx:r.groups.length?r.next_idx%r.groups.length:0};
+  const {error}=await sb.from('assign_rules').upsert(row,{onConflict:'kind'});if(error)return toast(error.message,1);toast('Rule saved ✅');render()}
+function ruleHtml(k,title){const r=rObj(k);
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${title}</b><label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" style="width:22px;height:22px" ${r.enabled?'checked':''} onchange="rToggle('${k}',this.checked)"> Auto-assign</label></div>
+  <div class="mu" style="margin:4px 0 8px">New items go to Group 1, then Group 2, then Group 3 and so on, then repeat. Next: ${r.groups.length?'Group '+((r.next_idx%r.groups.length)+1):'-'}. Changing groups affects only new items.</div>
+  ${r.groups.map((g,gi)=>`<div class="card" style="padding:8px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b>Group ${gi+1}</b><button type="button" onclick="rDel('${k}',${gi})">Remove</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${(EMP||[]).map(e=>`<button type="button" class="${g.includes(e.id)?'p':''}" style="border-radius:99px;padding:6px 12px" onclick="rMem('${k}',${gi},'${e.id}',this)">${esc(e.name||'Employee')}</button>`).join('')}</div></div>`).join('')}
+  <div style="display:flex;gap:8px"><button type="button" onclick="rAdd('${k}')">+ Add group</button><button type="button" class="p" onclick="rSave('${k}')">Save</button></div></div>`}
 VIEW.team=()=>{
   if(!EMP){loadEmp();return '<div class="mu">Loading…</div>'}
-  const l=tList(),cnt=k=>k=='none'?BL.filter(b=>!b.assigned_to).length:k=='all'?BL.length:BL.filter(b=>b.assigned_to==k).length;
+  if(!RUL){loadRules();return '<div class="mu">Loading…</div>'}
+  const l=tList(),cnt=k=>k=='none'?tPend(TK):k=='all'?tItems().length:tItems().filter(x=>aOf(x).includes(k)).length;
   const chip=(k,lab)=>`<button class="${TF==k?'p':''}" style="padding:7px 12px;border-radius:99px;white-space:nowrap" onclick="tFilt('${k}')">${esc(lab)} ${cnt(k)}</button>`;
-  const n=l.filter(b=>TSEL.has(b.id)).length;
-  return `<div class="sec">👥 Assign leads to team</div><div class="mu" style="margin:0 2px 10px">Tick leads, choose a name, tap Assign. Each employee sees only the leads you give them.</div>
+  const n=l.filter(b=>TSEL.has(tKey(b))).length,pb=tPend('buyer'),pp=tPend('prop');
+  const tab=(k,lab,p)=>`<button class="${TK==k?'p':''}" style="flex:1;padding:9px 6px" onclick="tKind('${k}')">${lab} <span class="${p?'wr':''}">(${p} pending)</span></button>`;
+  const row=x=>{const ass=aOf(x),pr=TK=='buyer'?P(x.property_id):null;return `<label class="card trow ${TSEL.has(tKey(x))?'tsel':''}" data-id="${esc(tKey(x))}" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;cursor:pointer"><input class="tcb" type="checkbox" style="width:22px;height:22px;flex:none;margin-top:2px" ${TSEL.has(tKey(x))?'checked':''} onchange="tTog('${esc(tKey(x))}',this.checked)"><div style="flex:1;min-width:0">`+
+    (TK=='buyer'?`<div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.buyer_name||'Buyer')}</b><span class="mu">${esc(x.code||'')}</span></div><div class="mu">${pr?esc(pr.id+' · '+(pr.project||'')):'No property linked'} · ${esc(x.source||'')} · ${dshort(x.lead_date)}</div><div>${pill(x.status||'New')}`:
+    `<div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.owner_name||'Owner ?')}</b><span class="mu">${esc(x.id)}</span></div><div class="mu">${esc(x.project||'-')} · ${esc([x.bhk,x.locality].filter(Boolean).join(', '))}</div><div>`)+
+    (ass.length?ass.map(a=>`<span class="pill" style="background:#e0f5e6;color:#1b6b34">${esc(empName(a))}</span>`).join(''):'<span class="pill" style="background:#fff6e0;color:#7a5200">Not assigned</span>')+`</div></div></label>`};
+  return `<div class="sec">👥 Assign work</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px">${tab('buyer','Buyer leads',pb)}${tab('prop','Deal closed',pp)}</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chip('none','Not assigned')}${chip('all','All')}${(EMP||[]).map(e=>chip(e.id,e.name||'Employee')).join('')}</div>
-  <input placeholder="Search by name, number or code" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{TSEL.clear();render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
-  <div class="card" style="position:sticky;top:0;z-index:20;padding:10px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><label style="display:flex;align-items:center;gap:8px;font-weight:600"><input id="tall" type="checkbox" style="width:20px;height:20px" ${l.length&&n==l.length?'checked':''} onchange="tAll(this.checked)"> Select all (${l.length})</label><b id="tcnt" style="margin-left:auto">${n} selected</b></div>
-  <div style="display:flex;gap:6px"><select id="temp" style="flex:1"><option value="">Assign to…</option>${(EMP||[]).map(e=>`<option value="${e.id}">${esc(e.name||'Employee')}</option>`).join('')}</select><button class="p" onclick="tAssign(false)">Assign</button><button onclick="tAssign(true)">Unassign</button></div></div>
-  <div style="margin-top:10px">${l.slice(0,TLIM).map(b=>{const p=P(b.property_id);return `<label class="card trow ${TSEL.has(b.id)?'tsel':''}" data-id="${b.id}" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;cursor:pointer"><input class="tcb" type="checkbox" style="width:22px;height:22px;flex:none;margin-top:2px" ${TSEL.has(b.id)?'checked':''} onchange="tTog(${b.id},this.checked)"><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(b.buyer_name||'Buyer')}</b><span class="mu">${esc(b.code||'')}</span></div><div class="mu">${p?esc(p.id+' · '+(p.project||'')):'No property linked'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div><div>${pill(b.status||'New')}${b.assigned_to?`<span class="pill" style="background:#e0f5e6;color:#1b6b34">${esc(empName(b.assigned_to))}</span>`:'<span class="pill" style="background:#fff6e0;color:#7a5200">Not assigned</span>'}</div></div></label>`}).join('')||'<div class="empty"><b>No leads in this filter</b></div>'}
-  ${l.length>TLIM?`<button style="width:100%;margin:6px 0" onclick="TLIM+=60;render()">Show more (${l.length-TLIM} left)</button>`:''}</div>`;
+  <input placeholder="Search" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{TSEL.clear();render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
+  <div class="card" style="position:sticky;top:0;z-index:20;padding:10px">
+   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:8px;font-weight:600"><input id="tall" type="checkbox" style="width:20px;height:20px" ${l.length&&n==l.length?'checked':''} onchange="tAll(this.checked)"> Select all (${l.length})</label><span style="display:flex;gap:4px;align-items:center"><input id="tn" type="number" inputmode="numeric" placeholder="15" style="width:64px"><button type="button" onclick="tFirst()">Select first</button></span><b id="tcnt" style="margin-left:auto">${n} selected</b></div>
+   <div class="mu" style="margin-bottom:4px">Give to (tap one or more):</div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${(EMP||[]).map(e=>`<button type="button" class="${TEM.has(e.id)?'p':''}" style="border-radius:99px;padding:7px 14px" onclick="tEm('${e.id}',this)">${esc(e.name||'Employee')}</button>`).join('')}</div>
+   <div style="display:flex;gap:8px"><button class="p" style="flex:1" onclick="tAssign(false)">Assign</button><button style="flex:1" onclick="tAssign(true)">Unassign</button></div></div>
+  <div style="margin-top:10px">${l.slice(0,TLIM).map(row).join('')||'<div class="empty"><b>Nothing here</b></div>'}${l.length>TLIM?`<button style="width:100%;margin:6px 0" onclick="TLIM+=60;render()">Show more (${l.length-TLIM} left)</button>`:''}</div>
+  <div class="sec">⚙️ Auto-assign rules</div>${ruleHtml('buyer','Buyer leads')}${ruleHtml('property','Deal closed (new properties)')}`;
 };
 /* ---------- Team access: who can use the Properties page ---------- */
 let TA=null;
@@ -1234,7 +1268,7 @@ sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLog
   try{
    if(who!==ME.id){who=ME.id;seen=null}
    var q=sb.from('buyer_leads').select('id,buyer_name,code').order('id',{ascending:false}).limit(300);
-   q=ME.role=='admin'?q.is('assigned_to',null):q.eq('assigned_to',ME.id);
+   q=ME.role=='admin'?q.eq('assignees','{}'):q.contains('assignees',[ME.id]);
    var r=await q;if(r.error)return;var d=r.data||[];
    if(seen){var nw=d.filter(function(x){return !seen.has(x.id)});if(nw.length&&on){beep();banner(nw)}}
    seen=new Set(d.map(function(x){return x.id}));
