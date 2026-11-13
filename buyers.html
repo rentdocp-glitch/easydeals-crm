@@ -247,7 +247,7 @@ a.btn.g,a.btn.g:hover{color:#fff}
 <main id="app"></main>
 <nav id="nav" style="display:none"></nav>
 <div id="ov" onclick="closeDrawer()"></div>
-<aside id="dr"><div class="dh"><div class="av">A</div><div><b id="dnm">Admin</b><div class="mu">Buyers (sirf admin)</div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
+<aside id="dr"><div class="dh"><div class="av">A</div><div><b id="dnm">Admin</b><div class="mu">Buyers (admin only)</div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -278,7 +278,7 @@ let OWN_N=0,CE=[],ME=null,PR=[],BL=[],OW=[],tab='props',openP=null,openB=null,q=
 /* ---------- login ---------- */
 function showLogin(msg){
   $('#hdr').style.display='none';$('#nav').style.display='none';
-  $('#app').innerHTML=`<div class="login"><img src="icon-192.png" alt="Easy Deals" style="width:96px;height:96px;border-radius:24px;display:block;margin:0 auto 6px"><h1>EasyDeals CRM</h1><div class="mu" style="margin:-4px 0 6px">Buyers · sirf admin</div>
+  $('#app').innerHTML=`<div class="login"><img src="icon-192.png" alt="Easy Deals" style="width:96px;height:96px;border-radius:24px;display:block;margin:0 auto 6px"><h1>EasyDeals CRM</h1><div class="mu" style="margin:-4px 0 6px">Buyers · admin only</div>
   <input id="em" type="email" placeholder="Email" autocomplete="username">
   <input id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key=='Enter')login()">
   <button class="p" onclick="login()">Login</button><div class="er" id="lerr">${esc(msg||'')}</div></div>`;
@@ -288,7 +288,7 @@ async function logout(){await sb.auth.signOut();ME=null;showLogin()}
 async function boot(user){
   const {data:me}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(!me){showLogin('Profile not found.');return}
-  if(me.role!='admin'){$('#app').innerHTML=`<div class="login"><h1>EasyDeals CRM</h1><p>Yeh page sirf admin ke liye hai.</p><a class="btn p" href="./">Main CRM kholo</a></div>`;return}
+  if(me.role!='admin'){$('#app').innerHTML=`<div class="login"><h1>EasyDeals CRM</h1><p>This page is for admin only.</p><a class="btn p" href="./">Open main CRM</a></div>`;return}
   ME=me;ME.email=user.email||'';$('#dem').textContent=ME.email;$('#dnm').textContent=ME.name||'Admin';
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   await reload(true);
@@ -304,7 +304,7 @@ async function reload(first){
     try{const {count}=await sb.from('leads').select('id',{count:'exact',head:true});OWN_N=count||0}catch(e){}
     try{const {data:ws}=await sb.from('buyer_history').select('buyer_id').like('note','💬 WhatsApp%').limit(5000);WS=new Set((ws||[]).map(x=>x.buyer_id))}catch(e){}
     try{const since=new Date(Date.now()-7*864e5).toISOString();const {data:ce}=await sb.from('call_events').select('*').eq('missed',true).eq('called_back',false).in('bucket',['paid_owner','buyer']).gte('at',since).order('at',{ascending:false});CE=ce||[]}catch(e){CE=[]}
-  }catch(e){$('#app').innerHTML=`<div class="errc"><div class="ei">⚠️</div><div><b>Data load nahi hua</b><div class="mu">${esc(e.message||e)}</div><div class="mu">Kya Supabase mein Step 1 ki SQL chal gayi hai?</div><div class="acts"><button class="p" onclick="reload()">⟳ Try again</button></div></div></div>`;return}
+  }catch(e){$('#app').innerHTML=`<div class="errc"><div class="ei">⚠️</div><div><b>Data did not load</b><div class="mu">${esc(e.message||e)}</div><div class="mu">Has the Step 1 SQL been run in Supabase?</div><div class="acts"><button class="p" onclick="reload()">⟳ Try again</button></div></div></div>`;return}
   render();
 }
 const P=id=>PR.find(p=>p.id==id);
@@ -320,12 +320,12 @@ function go(t){tab=t;openP=null;openB=null;q='';editP=null;addB=false;newFromLea
 function render(){
   $('#nav').innerHTML=NAV.map(([id,lab])=>{const i=lab.indexOf(' ');return `<button class="${tab==id?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`}).join('');
   let h='';
-  try{h=(VIEW[tab]||VIEW.props)()}catch(e){console.error(e);h=`<div class="errc"><div class="ei">⚠️</div><div><b>Kuch gadbad hui</b><div class="mu">${esc(e.message||e)}</div></div></div>`}
-  $('#app').innerHTML=`<div class="beta">🧪 Test version · sirf admin ko dikhta hai · team ka app isse nahi badla</div>`+h;
+  try{h=(VIEW[tab]||VIEW.props)()}catch(e){console.error(e);h=`<div class="errc"><div class="ei">⚠️</div><div><b>Something went wrong</b><div class="mu">${esc(e.message||e)}</div></div></div>`}
+  $('#app').innerHTML=`<div class="beta">🧪 Test version · visible to admin only · team app not affected</div>`+h;
 }
 function openDrawer(){
   const un=BL.filter(b=>!b.property_id).length;
-  $('#drb').innerHTML=`<div class="di" onclick="location.href='./'"><span>↩ Main CRM (team wala)</span></div>
+  $('#drb').innerHTML=`<div class="di" onclick="location.href='./'"><span>↩ Main CRM (team)</span></div>
   <div class="ds">Buyers</div>
   <div class="di" onclick="go('props')"><span>🏢 Properties</span><span class="cnt">${PR.filter(p=>!isSold(p)).length}</span></div>
   <div class="di" onclick="go('buyers')"><span>🧑‍🤝‍🧑 Buyer Leads</span><span class="cnt">${BL.length}</span></div>
@@ -335,9 +335,9 @@ function openDrawer(){
   <div class="di" onclick="go('deal')"><span>✅ Deal Closed owners</span><span class="cnt">${OW.length}</span></div>
   <div class="di" onclick="go('rep')"><span>📈 Property-wise Report</span></div>
   <div class="di" onclick="go('access')"><span>🔑 Team access</span></div>
-  <div class="ds">Naya</div>
-  <div class="di" onclick="go('props');editP={};render()"><span>➕ Nayi Property</span></div>
-  <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ Naya Buyer Lead</span></div>
+  <div class="ds">New</div>
+  <div class="di" onclick="go('props');editP={};render()"><span>➕ New Property</span></div>
+  <div class="di" onclick="go('buyers');addB=true;render()"><span>➕ New Buyer Lead</span></div>
   <div class="di" onclick="go('mb')"><span>⬆️ Bulk upload (99acres · Magicbricks · Housing)</span></div>
   <div class="ds">Alerts</div>
   <div class="di" onclick="toggleRing()"><span>🔔 New lead sound <span class="mu">· when CRM is open</span></span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>
@@ -352,15 +352,15 @@ const VIEW={};
 const PORT=[['99acres','id_99acres','99acres'],['Magicbricks','id_magicbricks','MB'],['Housing','id_housing','Housing']];
 function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(name+'\\s*:\\s*([^|]+)','i'));const t=m?m[1].trim():'';
   if(/^live/i.test(t))return ['live','✓ Live',t];
-  if(/not checked/i.test(t)||(!t&&p[idk]))return ['unk','? Check nahi',t||'ID hai, live check nahi hua'];
-  if(/not listed/i.test(t)||!p[idk])return ['no','✗ Listed nahi',t||'Is portal par listing nahi'];
+  if(/not checked/i.test(t)||(!t&&p[idk]))return ['unk','? Not checked',t||'ID exists, live check not done'];
+  if(/not listed/i.test(t)||!p[idk])return ['no','✗ Not listed',t||'No listing on this portal'];
   return ['off','✗ '+t.split(' ')[0],t]}
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
 const ownerActs=p=>{const ow=ph10(p.owner_phone),o2=ph10(p.owner_phone2);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="c omb" href="javascript:void(0)" onclick="oaMore(this)">More ▾</a></div><div class="oacts oamore" onclick="event.stopPropagation()" style="display:none">${o2?'<a class="c" href="tel:'+o2+'">Call 2</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91'+o2+'">WhatsApp 2</a>':''}<a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Send leads</a><a class="w" href="javascript:void(0)" onclick="invOpen('${esc(p.id)}')">🧾 Invoice</a><a class="w" href="javascript:void(0)" onclick="ownerUpd('${esc(p.id)}')">📊 Owner update</a></div>`:'<div class="mu er" style="margin-top:6px">Owner mobile is missing · add it from Edit</div>'};
 function oaMore(a){const m=a.closest('.oacts').nextElementSibling;const open=m.style.display=='none';m.style.display=open?'flex':'none';a.textContent=open?'Less ▴':'More ▾'}
 const stPills=arr=>{const c=countBy(arr,'status');return BST.filter(s=>c[s]).map(s=>pill(s,c[s])).join('')};
-function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · wapas call karo (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
-async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Ho gaya ✅');render()}
+function missedCard(){if(!CE.length)return '';return `<div class="card" style="border:2px solid #d97706;background:#fff8ec"><b>❗ Missed calls · call back (${CE.length})</b>${CE.slice(0,10).map(c=>`<div class="lr"><span><b>${esc(c.title||c.phone)}</b><br><span class="mu">${esc(String(c.detail||'').split('\n')[0])} · ${dtime(c.at)}</span></span><span style="display:flex;gap:6px;align-items:center"><a class="btn cl" href="tel:${esc(c.phone)}">📞</a><button onclick="cbDone(${c.id})">✔</button></span></div>`).join('')}</div>`}
+async function cbDone(id){const {error}=await sb.from('call_events').update({called_back:true}).eq('id',id);if(error)return toast(error.message,1);CE=CE.filter(c=>c.id!=id);toast('Done ✅');render()}
 let pOpen='';
 function pdT(k,o){if(o)pOpen=k;else if(pOpen===k)pOpen=''}
 function pzTog(k){const s=new Set(pZ?pZ.split(','):[]);if(s.has(k))s.delete(k);else s.add(k);pZ=[...s].join(',');pA='';pOpen='z';render()}
@@ -455,54 +455,54 @@ VIEW.props=()=>{
   let list=pShow=='renew'?renewL:pShow=='fee'?feeL:pShow=='due'?dueL:PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
   const zsel=pZ?pZ.split(',').filter(Boolean):[],asel=pA?pA.split(',').filter(Boolean):[];
   const zrows=[...ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name]),['none','❓ Bina zone']].map(([k,l])=>[k,l,k==='none'?list.filter(p=>!p.zone_id).length:list.filter(p=>String(p.zone_id)===k).length]);
-  const zlab=!zsel.length?'Sab zone ('+list.length+')':zrows.filter(r=>zsel.includes(r[0])).map(r=>r[1]).join(', ');
+  const zlab=!zsel.length?'All zones ('+list.length+')':zrows.filter(r=>zsel.includes(r[0])).map(r=>r[1]).join(', ');
   const aopts=zsel.filter(k=>k!=='none').flatMap(k=>{const z=ZA.zones.find(z=>String(z.id)===k);return z?zAreas(z.id):[]});
-  const alab=!asel.length?'Sab area':aopts.filter(a=>asel.includes(String(a.id))).map(a=>a.name).join(', ');
+  const alab=!asel.length?'All areas':aopts.filter(a=>asel.includes(String(a.id))).map(a=>a.name).join(', ');
   const ck=(on,fn,l,n)=>`<label style="display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--bd);cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="${fn}" style="width:22px;height:22px;flex:none"><span style="flex:1">${esc(l)}</span><span class="mu">${n}</span></label>`;
   const ddm=(key,title,lab,body)=>`<details style="margin-bottom:10px" ${pOpen===key?'open':''} ontoggle="pdT('${key}',this.open)"><summary style="list-style:none;cursor:pointer;padding:11px 13px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;min-height:44px;display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span class="mu">${title}</span> <b>${esc(lab)}</b></span><span>▾</span></summary><div style="border:1.5px solid var(--bd);border-radius:12px;background:#fff;margin-top:6px;padding:4px 12px;max-height:50vh;overflow:auto">${body}<button class="p" style="width:100%;margin:10px 0" onclick="pOpen='';render()">Done</button></div></details>`;
-  const zbar=zUI()?ddm('z','Zone',zlab,ck(!zsel.length,'pzAll()','Sab select',list.length)+zrows.map(r=>ck(zsel.includes(r[0]),`pzTog('${r[0]}')`,r[1],r[2])).join(''))+(aopts.length?ddm('a','Area',alab,ck(!asel.length,'paAll()','Sab select',list.filter(p=>aopts.some(a=>String(a.id)===String(p.area_id))).length)+aopts.map(a=>ck(asel.includes(String(a.id)),`paTog('${a.id}')`,a.name,list.filter(p=>String(p.area_id)===String(a.id)).length)).join('')):''):'';
+  const zbar=zUI()?ddm('z','Zone',zlab,ck(!zsel.length,'pzAll()','Select all',list.length)+zrows.map(r=>ck(zsel.includes(r[0]),`pzTog('${r[0]}')`,r[1],r[2])).join(''))+(aopts.length?ddm('a','Area',alab,ck(!asel.length,'paAll()','Select all',list.filter(p=>aopts.some(a=>String(a.id)===String(p.area_id))).length)+aopts.map(a=>ck(asel.includes(String(a.id)),`paTog('${a.id}')`,a.name,list.filter(p=>String(p.area_id)===String(a.id)).length)).join('')):''):'';
   if(zsel.length)list=list.filter(p=>zsel.includes(p.zone_id?String(p.zone_id):'none'));
   if(asel.length)list=list.filter(p=>asel.includes(String(p.area_id)));
   let bHits=[];if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');list=list.filter(p=>[p.id,p.project,p.owner_name,p.locality,p.owner_phone].join(' ').toLowerCase().includes(s)||(d.length>=4&&String(p.owner_phone||'').replace(/\D/g,'').includes(d)));if(d.length>=4)bHits=BL.filter(b=>ph10(b.buyer_phone).includes(d))}
   list=list.map(p=>({p,l:leadsOf(p.id)})).sort((a,b)=>b.l.length-a.l.length);
-  const cap=[];if(BL.length>=3000)cap.push(`Buyer leads ${BL.length.toLocaleString('en-IN')} ho gayi hain`);if(OWN_N>=15000)cap.push(`Owner data ${OWN_N.toLocaleString('en-IN')} ho gaya hai`);
-  const capCard=cap.length?`<div class="warn" style="margin-bottom:10px">⚙️ <b>CRM speed upgrade ka samay aa gaya</b><br>${cap.join(' · ')}. App slow ho sakta hai. Claude ko bolo: <b>"CRM speed upgrade karo"</b> (buyers page smart load + 21,000 wali seema hatana + weekly backup).</div>`:'';
+  const cap=[];if(BL.length>=3000)cap.push(`Buyer leads: ${BL.length.toLocaleString('en-IN')} done`);if(OWN_N>=15000)cap.push(`Owner data: ${OWN_N.toLocaleString('en-IN')} done`);
+  const capCard=cap.length?`<div class="warn" style="margin-bottom:10px">⚙️ <b>Time for a CRM speed upgrade</b><br>${cap.join(' · ')}. The app may be slow. Tell Claude: <b>"Upgrade CRM speed"</b> (buyers page smart load + removing the 21,000 limit + weekly backup).</div>`:'';
   return capCard+missedCard()+`<div class="grid">
    <div class="card stat"><div class="mu">Buyer leads</div><b>${BL.length}</b></div>
-   <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Aaj follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
+   <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Today follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
    <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
    <div class="card stat" onclick="go('un')" style="cursor:pointer"><div class="mu">Unassigned</div><b class="${un?'wr':''}">${un}</b></div></div>
-  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].concat(renewL.length||pShow=='renew'?[['renew','⏳ Renewal '+renewL.length]]:[]).concat(feeL.length||pShow=='fee'?[['fee','💰 Success fee baaki '+feeL.length]]:[]).concat(dueL.length||pShow=='due'?[['due','💳 Package baaki '+dueL.length]]:[]).map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ Nayi</button></div>${zbar}
-  <input placeholder="📞 Number ya naam: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
+  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].concat(renewL.length||pShow=='renew'?[['renew','⏳ Renewal '+renewL.length]]:[]).concat(feeL.length||pShow=='fee'?[['fee','💰 Success fee pending '+feeL.length]]:[]).concat(dueL.length||pShow=='due'?[['due','💳 Package pending '+dueL.length]]:[]).map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ New</button></div>${zbar}
+  <input placeholder="📞 Number or name: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
   ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
     <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
     <div class="mu">${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">Sold</b>':''}</div>
-    <div>${stPills(l)}</div>${portalRow(p)}${ownerActs(p)}</div>`).join('')||(bHits.length?'':'<div class="empty"><div class="ei">🏢</div><b>Is naam/number ka koi owner nahi mila</b></div>')}
-  ${bHits.length?`<div class="sec">🧑 Yeh number buyer leads mein hai (${bHits.length})</div>`+bHits.slice(0,20).map(b=>bCard(b,repeats())).join(''):''}`;
+    <div>${stPills(l)}</div>${portalRow(p)}${ownerActs(p)}</div>`).join('')||(bHits.length?'':'<div class="empty"><div class="ei">🏢</div><b>No owner found for this name/number</b></div>')}
+  ${bHits.length?`<div class="sec">🧑 This number is in buyer leads (${bHits.length})</div>`+bHits.slice(0,20).map(b=>bCard(b,repeats())).join(''):''}`;
 };
 function propDetail(p){
-  if(!p)return '<div class="empty"><b>Property nahi mili</b></div>';
+  if(!p)return '<div class="empty"><b>Property not found</b></div>';
   const l=leadsOf(p.id).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))),sc=countBy(l,'status'),src=countBy(l,'source'),rp=repeats();
   const links=[['reel_url','📱 Reel'],['tour_url','🎥 Tour'],['video_url','▶️ YouTube'],['photos_url','🖼 Photos (Drive)']].filter(k=>p[k[0]]).map(k=>`<a class="btn" target="_blank" rel="noopener" href="${esc(p[k[0]])}">${k[1]}</a>`).join('');
   const ow=ph10(p.owner_phone);
   return `<button onclick="openP=null;render()" style="margin-bottom:10px">← Properties</button>
   <div class="card"><div class="row"><div><div class="nm" style="font-size:19px;font-weight:800">${esc(p.id)} · ${esc(p.project||'')}</div><div class="mu">${esc(p.bhk||'')} · ${esc(p.ptype||'')} · ${p.sqft?esc(p.sqft)+' sqft · ':''}${rs(p.price)} · ${esc(p.status||'')}</div></div><button onclick="editP=Object.assign({},P('${esc(p.id)}'));render()">✏️ Edit</button></div>
-   <div class="own" style="margin-top:10px">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>${ph10(p.owner_phone2)?' &nbsp;|&nbsp; <a href="tel:'+ph10(p.owner_phone2)+'">'+esc(p.owner_phone2)+'</a> <a class="wa" target="_blank" href="https://wa.me/91'+ph10(p.owner_phone2)+'">WhatsApp 2</a>':''}`:'<span class="er">mobile nahi hai</span>'}</div>
+   <div class="own" style="margin-top:10px">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div> ${ow?`<a href="tel:${ow}">${esc(p.owner_phone)}</a> <a class="wa" target="_blank" href="https://wa.me/91${ow}">WhatsApp</a>${ph10(p.owner_phone2)?' &nbsp;|&nbsp; <a href="tel:'+ph10(p.owner_phone2)+'">'+esc(p.owner_phone2)+'</a> <a class="wa" target="_blank" href="https://wa.me/91'+ph10(p.owner_phone2)+'">WhatsApp 2</a>':''}`:'<span class="er">mobile number is missing</span>'}</div>
    <div class="mu" style="margin-top:4px">${esc(p.address||p.locality||'')}</div>
    ${portalRow(p)}<div class="mu" style="margin-top:4px">${esc([p.id_99acres&&'99: '+p.id_99acres,p.id_magicbricks&&'MB: '+p.id_magicbricks,p.id_housing&&'HS: '+p.id_housing].filter(Boolean).join(' · '))}</div>
-   <div class="acts">${links||'<span class="mu">Tour / video link abhi nahi jode · Edit se jodo</span>'}</div>
+   <div class="acts">${links||'<span class="mu">Tour / video link not added yet · add via Edit</span>'}</div>
    ${svcHtml(p)}
-   <div class="acts"><button class="p" onclick="welcomeMsg('${esc(p.id)}')">🎉 Welcome message${(p.details||{}).welcome_at?' ✓':''}</button><button class="g" onclick="ownerReport('${esc(p.id)}')">📤 Owner ko report bhejo</button><button class="p" onclick="sendPitch('${esc(p.id)}')">🏡 Buyer wala message</button></div></div>
+   <div class="acts"><button class="p" onclick="welcomeMsg('${esc(p.id)}')">🎉 Welcome message${(p.details||{}).welcome_at?' ✓':''}</button><button class="g" onclick="ownerReport('${esc(p.id)}')">📤 Send report to owner</button><button class="p" onclick="sendPitch('${esc(p.id)}')">🏡 Buyer message</button></div></div>
   <div class="grid"><div class="card stat"><div class="mu">Total leads</div><b>${l.length}</b></div><div class="card stat"><div class="mu">Pending</div><b>${l.filter(b=>PEND.includes(b.status)).length}</b></div><div class="card stat"><div class="mu">Site visits</div><b>${(sc['Site Visit Scheduled']||0)+(sc['Site Visit Done']||0)}</b></div><div class="card stat"><div class="mu">Portal</div><div style="font-size:13px;margin-top:4px">${Object.entries(src).map(([k,v])=>esc(k)+' '+v).join(' · ')||'-'}</div></div></div>
   <div class="sec">Buyer leads (${l.length})</div>
-  ${l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>Abhi koi buyer lead nahi</b></div>'}`;
+  ${l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>No buyer leads yet</b></div>'}`;
 }
 function propForm(p){
   const isNew=!p.id;const v=k=>esc(p[k]==null?'':p[k]);
   const f=(k,lab,t)=>`<div><label>${lab}</label><input id="pf_${k}" ${t?`type="${t}"`:''} value="${v(k)}"></div>`;
   return `<button onclick="editP=null;newFromLead=null;render()" style="margin-bottom:10px">← Cancel</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">${isNew?'➕ Nayi Property':'✏️ '+esc(p.id)}</div>
-  ${newFromLead?`<div class="mu">Owner lead se: ${esc(newFromLead.name||'')} · ${esc(newFromLead.phone||'')}</div>`:''}
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">${isNew?'➕ New Property':'✏️ '+esc(p.id)}</div>
+  ${newFromLead?`<div class="mu">From owner lead: ${esc(newFromLead.name||'')} · ${esc(newFromLead.phone||'')}</div>`:''}
   <div class="form">
   <div class="f2"><div><label>Property ID</label><input id="pf_id" value="${isNew?nextId():v('id')}" ${isNew?'':'disabled'}></div><div><label>Status</label><select id="pf_status">${['Available - Sale','Available - Rent','On Hold','Sold','Rented'].map(s=>`<option ${p.status==s?'selected':''}>${s}</option>`).join('')}</select></div></div>
   <div class="f2">${f('owner_name','Owner name')}${f('owner_phone','Owner mobile (primary)')}</div><div class="f2">${f('owner_phone2','Owner mobile 2 (secondary, optional)')}</div><a href="javascript:void(0)" onclick="swapOw()" style="font-size:12px;display:inline-block;margin:2px 0 6px">⇄ Swap primary and secondary</a>
@@ -515,13 +515,13 @@ function propForm(p){
   <div class="f2">${f('id_housing','Housing ID')}${f('date_added','Date added','date')}</div>
   ${f('portal_status','Portal status (jaise: 99acres: Live | Housing: Expired | Magicbricks: Live)')}
   <div class="f2">${f('reel_url','📱 Instagram Reel link')}${f('tour_url','🎥 Virtual tour link')}</div>
-  <div class="f2">${f('video_url','▶️ YouTube link (optional)')}${f('photos_url','🖼 Photos folder (sirf aapke liye)')}</div>
-  <div><label>📍 Google Maps location link (site visit message ke liye)</label><input id="pf_maps" value="${esc((p.details||{}).maps||'')}" placeholder="Maps mein property → Share → Copy link"></div>
+  <div class="f2">${f('video_url','▶️ YouTube link (optional)')}${f('photos_url','🖼 Photos folder (for you only)')}</div>
+  <div><label>📍 Google Maps location link (for the site visit message)</label><input id="pf_maps" value="${esc((p.details||{}).maps||'')}" placeholder="In Maps: property → Share → Copy link"></div>
   <div class="sec">📅 Service & Fees</div>
   <div class="f2"><div><label>Service start</label><input id="pf_svc_start" type="date" value="${esc(dd(p).service_start||'')}"></div>${f('service_till','Service end','date')}</div>
-  <div class="f2"><div><label>Package total (₹)</label><input id="pf_pkg" type="number" value="${esc(dd(p).package_amount||'')}" placeholder="jaise 35400"></div>${f('plan_amount','Down payment mila (₹)','number')}</div>
-  <div class="f2"><div><label>Success fee (₹)</label><input id="pf_sfee" type="number" value="${esc(dd(p).success_fee||'')}" placeholder="jaise 11800"></div><div></div></div>
-  <div class="sec">🔗 Portal listing links (welcome message ke liye)</div>
+  <div class="f2"><div><label>Package total (₹)</label><input id="pf_pkg" type="number" value="${esc(dd(p).package_amount||'')}" placeholder="e.g. 35400"></div>${f('plan_amount','Down payment received (₹)','number')}</div>
+  <div class="f2"><div><label>Success fee (₹)</label><input id="pf_sfee" type="number" value="${esc(dd(p).success_fee||'')}" placeholder="e.g. 11800"></div><div></div></div>
+  <div class="sec">🔗 Portal listing links (for the welcome message)</div>
   <div><label>99acres link</label><input id="pf_u99" value="${esc(dd(p).url_99acres||'')}" placeholder="https://www.99acres.com/..."></div>
   <div><label>MagicBricks link</label><input id="pf_umb" value="${esc(dd(p).url_magicbricks||'')}" placeholder="https://mbtrk.co/..."></div>
   <div><label>Housing link</label><input id="pf_uhs" value="${esc(dd(p).url_housing||'')}" placeholder="https://hsng.co/..."></div>
@@ -537,12 +537,12 @@ async function saveProp(isNew){
   {const m=($('#pf_maps')||{}).value;if(m!=null){const old=(!isNew&&editP&&editP.details)||{},g=id=>(($('#'+id)||{}).value||'').trim()||null;
     row.details=Object.assign({},old,{maps:m.trim()||null,service_start:g('pf_svc_start'),success_fee:+g('pf_sfee')||null,package_amount:+g('pf_pkg')||null,url_99acres:g('pf_u99'),url_magicbricks:g('pf_umb'),url_housing:g('pf_uhs')})}}
   const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
-  if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID aur project name zaroori hai.</div>';return}
+  if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID and project name are required.</div>';return}
   if(isNew){
-    if(P(id)){$('#pf_err').innerHTML=`<div class="warn">${esc(id)} pehle se hai. Duplicate property nahi bana sakte.</div>`;return}
+    if(P(id)){$('#pf_err').innerHTML=`<div class="warn">${esc(id)} already exists. Duplicate property cannot be created.</div>`;return}
     const ph=ph10(row.owner_phone),pj=(row.project||'').toLowerCase();
     const same=PR.find(p=>(ph&&ph10(p.owner_phone)==ph&&(p.project||'').toLowerCase()==pj));
-    if(same&&!dupOk){dupOk=true;$('#pf_err').innerHTML=`<div class="warn">Isi owner aur project ki property ${esc(same.id)} pehle se hai. Phir bhi banani ho to Save dobara dabao.</div>`;return}
+    if(same&&!dupOk){dupOk=true;$('#pf_err').innerHTML=`<div class="warn">A property ${esc(same.id)} of the same owner and project already exists. To create anyway, tap Save again.</div>`;return}
     row.id=id;if(newFromLead)row.owner_lead_id=String(newFromLead.id);
     const {error}=await sb.from('properties').insert(row);if(error)return toast(error.message,1);
   }else{const {error}=await sb.from('properties').update(row).eq('id',id);if(error)return toast(error.message,1)}
@@ -576,24 +576,24 @@ function zonePicker(px,loc){
 function zpInner(px){
   const s=ZP[px],areas=s.z?zAreas(s.z):[];
   return `<label>Zone</label><div class="zch">${ZA.zones.filter(z=>z.active||z.id==s.z).map(z=>`<button type="button" class="${s.z==z.id?'on':''}" onclick="zpZone('${px}',${z.id})">${esc(z.name)}</button>`).join('')}</div>
-  ${s.z?`<label>Area <span class="mu">(sirf ${esc(zName(s.z))} ke)</span></label><select id="zpa_${px}" onchange="zpArea('${px}',this.value)"><option value="">— Area chuno —</option>${areas.map(a=>`<option value="${a.id}" ${s.a==a.id&&!s.other?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="other" ${s.other?'selected':''}>➕ Other (list mein nahi hai)</option></select>`:(s.orig?`<div class="mu" style="margin:4px 0 6px">Abhi likha hai: <b>${esc(s.orig)}</b> · zone chuno</div>`:'')}
-  ${s.z&&s.other?`<label>Area ka asli naam likho</label><input id="zpo_${px}" value="${esc(s.other===true&&s.orig&&!areaOf(s.orig)?s.orig:'')}" placeholder="Jaise: Pimple Gurav" oninput="zpSug('${px}')"><div id="zps_${px}"></div><div class="mu">Naya area admin ke approval ke liye jayega. Lead abhi save ho jayegi.</div>`:''}`;
+  ${s.z?`<label>Area <span class="mu">(only for ${esc(zName(s.z))})</span></label><select id="zpa_${px}" onchange="zpArea('${px}',this.value)"><option value="">— Select area —</option>${areas.map(a=>`<option value="${a.id}" ${s.a==a.id&&!s.other?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="other" ${s.other?'selected':''}>➕ Other (is not in the list)</option></select>`:(s.orig?`<div class="mu" style="margin:4px 0 6px">Currently written: <b>${esc(s.orig)}</b> · select zone</div>`:'')}
+  ${s.z&&s.other?`<label>Enter the actual area name</label><input id="zpo_${px}" value="${esc(s.other===true&&s.orig&&!areaOf(s.orig)?s.orig:'')}" placeholder="e.g. Pimple Gurav" oninput="zpSug('${px}')"><div id="zps_${px}"></div><div class="mu">The new area will go to admin for approval. The lead will be saved now.</div>`:''}`;
 }
 function zpRe(px){const e=$('#zp_'+px);if(e)e.innerHTML=zpInner(px);if(ZP[px].other&&ZP[px].z)zpSug(px)}
 function zpZone(px,z){const s=ZP[px];s.touched=true;if(s.z!=z){s.z=z;s.a=null;s.other=s.orig&&!areaOf(s.orig)?true:false}zpRe(px)}
 function zpArea(px,v){const s=ZP[px];s.touched=true;if(v=='other'){s.other=true;s.a=null}else{s.other=false;s.a=v?+v:null}zpRe(px)}
 function zpSug(px){const s=ZP[px],i=$('#zpo_'+px),box=$('#zps_'+px);if(!i||!box)return;s.pick=null;const t=i.value.trim();if(t.length<3){box.innerHTML='';return}
   const ex=areaOf(t);const b=ex?{a:ex,s:1}:zBest(t);
-  if(b&&b.s>=0.6)box.innerHTML=`<div class="zsug">🤔 Kya aapka matlab <b>${esc(b.a.name)}</b> (${esc(zName(b.a.zone_id))}) hai?<div class="acts" style="margin-top:6px"><button type="button" class="p" onclick="zpUse('${px}',${b.a.id})">Haan, ${esc(b.a.name)}</button><button type="button" onclick="this.closest('.zsug').remove()">Nahi, naya area</button></div></div>`;
+  if(b&&b.s>=0.6)box.innerHTML=`<div class="zsug">🤔 Did you mean <b>${esc(b.a.name)}</b> (${esc(zName(b.a.zone_id))})?<div class="acts" style="margin-top:6px"><button type="button" class="p" onclick="zpUse('${px}',${b.a.id})">Yes, ${esc(b.a.name)}</button><button type="button" onclick="this.closest('.zsug').remove()">No, new area</button></div></div>`;
   else box.innerHTML=''}
 function zpUse(px,id){const a=ZA.areas.find(x=>x.id==id),s=ZP[px];s.z=a.zone_id;s.a=a.id;s.other=false;s.touched=true;zpRe(px)}
 /* -> {locality, area_id} | {keep:true} | {err} */
 async function zpVal(px,required){
   const s=ZP[px];if(!s)return{keep:true};
   if(!s.touched&&!required)return{keep:true};
-  if(!s.z)return required?{err:'Zone chuno'}:{keep:true};
-  if(!s.other){if(!s.a)return{err:'Area chuno (ya Other)'};const a=ZA.areas.find(x=>x.id==s.a);return{locality:a.name,area_id:a.id}}
-  const t=(($('#zpo_'+px)||{}).value||'').trim();if(t.length<3)return{err:'Other mein area ka naam likho'};
+  if(!s.z)return required?{err:'Select zone'}:{keep:true};
+  if(!s.other){if(!s.a)return{err:'Select area (or Other)'};const a=ZA.areas.find(x=>x.id==s.a);return{locality:a.name,area_id:a.id}}
+  const t=(($('#zpo_'+px)||{}).value||'').trim();if(t.length<3)return{err:'Enter the area name in Other'};
   const ex=areaOf(t);if(ex)return{locality:ex.name,area_id:ex.id};
   const {data,error}=await sb.rpc('area_request',{t,z:s.z});if(error)return{err:error.message};
   ZA.t=0;return data.status=='approved'?{locality:data.name,area_id:data.id}:{locality:data.name,area_id:null,pending:true};
@@ -602,7 +602,7 @@ async function zpVal(px,required){
 
 
 /* ---------- service, welcome message, success fee, renewal ---------- */
-const SF_DEF=null; // success fee har client ke liye alag, CRM mein bharni hoti hai
+const SF_DEF=null; // success fee differs per client, entered in the CRM
 const paidOf=p=>(+p.plan_amount||0)+(dd(p).payments||[]).reduce((s,x)=>s+(+x.amt||0),0);
 const dueOf=p=>{const pk=+dd(p).package_amount||0;return pk?Math.max(0,pk-paidOf(p)):0};
 const dd=p=>p.details||{};
@@ -613,18 +613,18 @@ const feeDue=p=>isSold(p)&&dd(p).sf_status!='paid';
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 async function pDet(p,extra){const d=Object.assign({},dd(p),extra);p.details=d;const {error}=await sb.from('properties').update({details:d}).eq('id',p.id);if(error)toast(error.message,1);return !error}
 function svcHtml(p){const d=dd(p),n=daysTo(p.service_till);
-  const svc=p.service_till?`<div class="mu" style="margin-top:6px">📅 Service: ${dmy(d.service_start)||'?'} → ${dmy(p.service_till)} ${n==null?'':n<0?`<b class="er">· ${-n} din pehle khatam</b>`:n<=15?`<b class="wr">· ${n} din baaki (renewal)</b>`:`· ${n} din baaki`}</div>`:'<div class="mu" style="margin-top:6px">📅 Service ki tareekh nahi bhari · Edit se bharo</div>';
-  const wel=d.welcome_at?`<div class="mu">🎉 Welcome message bheja: ${dmy(d.welcome_at)}</div>`:'';
-  const fee=isSold(p)||d.sf_status?`<div class="card" style="margin:8px 0 0;padding:10px;background:${d.sf_status=='paid'?'#e6f7ec':'#fff6e0'}"><b>💰 Success Fee ${d.success_fee?inr(d.success_fee):'(amount nahi bhara)'}</b> · ${d.sf_status=='paid'?`✅ Mila ${dmy(d.sf_paid_at)}`:'⏳ Baaki'}
-    <div class="acts" style="margin-top:6px">${d.sf_status=='paid'?`<button onclick="feeSet('${esc(p.id)}',0)">Galti se? Baaki karo</button>`:`<button class="g" onclick="feeSet('${esc(p.id)}',1)">✅ Success fee mil gayi</button>`}</div></div>`:'';
+  const svc=p.service_till?`<div class="mu" style="margin-top:6px">📅 Service: ${dmy(d.service_start)||'?'} → ${dmy(p.service_till)} ${n==null?'':n<0?`<b class="er">· ${-n} days ago (ended)</b>`:n<=15?`<b class="wr">· ${n} days left (renewal)</b>`:`· ${n} days left`}</div>`:'<div class="mu" style="margin-top:6px">📅 Service date not filled · fill via Edit</div>';
+  const wel=d.welcome_at?`<div class="mu">🎉 Welcome message sent: ${dmy(d.welcome_at)}</div>`:'';
+  const fee=isSold(p)||d.sf_status?`<div class="card" style="margin:8px 0 0;padding:10px;background:${d.sf_status=='paid'?'#e6f7ec':'#fff6e0'}"><b>💰 Success Fee ${d.success_fee?inr(d.success_fee):'(amount not filled)'}</b> · ${d.sf_status=='paid'?`✅ Mila ${dmy(d.sf_paid_at)}`:'⏳ Pending'}
+    <div class="acts" style="margin-top:6px">${d.sf_status=='paid'?`<button onclick="feeSet('${esc(p.id)}',0)">By mistake? Do the rest</button>`:`<button class="g" onclick="feeSet('${esc(p.id)}',1)">✅ Success fee received</button>`}</div></div>`:'';
   const pk=+d.package_amount||0,paid=paidOf(p),due=dueOf(p);
-  const pay=pk||paid?`<div class="card" style="margin:8px 0 0;padding:10px;background:${pk&&!due?'#e6f7ec':'#eef4ff'}"><b>💳 Package ${pk?inr(pk):'(total nahi bhara)'}</b><div style="margin-top:4px">Mila: <b>${inr(paid)}</b>${pk?` · Baaki: <b class="${due?'er':''}">${inr(due)}</b>${due?'':' ✅ Poora mila'}`:''}</div>
+  const pay=pk||paid?`<div class="card" style="margin:8px 0 0;padding:10px;background:${pk&&!due?'#e6f7ec':'#eef4ff'}"><b>💳 Package ${pk?inr(pk):'(total not filled)'}</b><div style="margin-top:4px">Received: <b>${inr(paid)}</b>${pk?` · Pending: <b class="${due?'er':''}">${inr(due)}</b>${due?'':' ✅ Poora mila'}`:''}</div>
     <div class="mu" style="margin-top:4px">${p.plan_amount?`• Down payment ${inr(p.plan_amount)}${d.service_start?' · '+dmy(d.service_start):''}<br>`:''}${(d.payments||[]).map((x,i)=>`• ${inr(x.amt)} · ${dmy(x.d)}${x.note?' · '+esc(x.note):''} <a href="#" onclick="event.preventDefault();payDel('${esc(p.id)}',${i})">✕</a>`).join('<br>')}</div>
-    ${due||!pk?`<div class="f2" style="margin-top:6px"><input id="pay_amt" type="number" inputmode="numeric" placeholder="${due?'Baaki '+due:'Amount'}"><button class="g" onclick="payAdd('${esc(p.id)}')">+ Payment mili</button></div>`:''}</div>`:'';
+    ${due||!pk?`<div class="f2" style="margin-top:6px"><input id="pay_amt" type="number" inputmode="numeric" placeholder="${due?'Pending '+due:'Amount'}"><button class="g" onclick="payAdd('${esc(p.id)}')">+ Payment received</button></div>`:''}</div>`:'';
   return svc+wel+pay+fee}
-async function payAdd(id){const p=P(id),a=+(($('#pay_amt')||{}).value||0);if(!(a>0))return toast('Amount likho',1);const L=(dd(p).payments||[]).concat({amt:a,d:today()});if(await pDet(p,{payments:L}))toast('Payment judi ✅ · Baaki '+inr(dueOf(p)));render()}
+async function payAdd(id){const p=P(id),a=+(($('#pay_amt')||{}).value||0);if(!(a>0))return toast('Enter amount',1);const L=(dd(p).payments||[]).concat({amt:a,d:today()});if(await pDet(p,{payments:L}))toast('Payment added ✅ · Rest '+inr(dueOf(p)));render()}
 async function payDel(id,i){const p=P(id),L=(dd(p).payments||[]).slice();L.splice(i,1);if(await pDet(p,{payments:L}))toast('Payment hatayi');render()}
-async function feeSet(id,paid){const p=P(id);if(await pDet(p,paid?{sf_status:'paid',sf_paid_at:today()}:{sf_status:'pending',sf_paid_at:null}))toast(paid?'Success fee mili ✅':'Baaki kiya');render()}
+async function feeSet(id,paid){const p=P(id);if(await pDet(p,paid?{sf_status:'paid',sf_paid_at:today()}:{sf_status:'pending',sf_paid_at:null}))toast(paid?'Success fee received ✅':'Rest done');render()}
 function welcomeText(p){const d=dd(p);
   const addr=p.address&&String(p.address).trim()?p.address:[p.flat_no?'Flat No - '+p.flat_no:'',p.wing,p.project,p.locality].filter(x=>x&&String(x).trim()).join(', ');
   const L=[[p.tour_url,'360 Digi Tour'],[d.url_99acres,'99acres'],[d.url_magicbricks,'MagicBricks'],[d.url_housing,'Housing'],[p.reel_url,'Instagram'],[p.video_url,'YouTube']].filter(x=>x[0]&&String(x[0]).trim());
@@ -666,12 +666,12 @@ A Success Fee of ${d.success_fee?inr(d.success_fee):'₹______'} (inclusive of a
 The Newest Way to Sell/Rent Properties!`}
 function welcomeMsg(id){const p=P(id),d=dd(p),ow=ph10(p.owner_phone);
   const miss=[[p.tour_url,'360 Digi Tour'],[d.url_99acres,'99acres link'],[d.url_magicbricks,'MagicBricks link'],[d.url_housing,'Housing link'],[p.reel_url,'Instagram Reel'],[p.video_url,'YouTube'],[d.service_start,'Service start date'],[p.service_till,'Service end date'],[d.success_fee,'Success fee amount']].filter(x=>!x[0]||!String(x[0]).trim()).map(x=>x[1]);
-  $('#app').innerHTML=`<button onclick="render()" style="margin-bottom:10px">← Wapas</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">🎉 Welcome message · ${esc(p.id)}</div><div class="mu">${esc(p.owner_name||'')} · ${d.welcome_at?'Pehle bheja: '+dmy(d.welcome_at):'Abhi tak nahi bheja'}</div>
-  ${miss.length?`<div class="warn">Yeh abhi khaali hai (message mein nahi aayega): <b>${miss.map(esc).join(', ')}</b>. <button onclick="editP=P('${esc(p.id)}');openP=null;render()">✏️ Edit karke bharo</button></div>`:''}
+  $('#app').innerHTML=`<button onclick="render()" style="margin-bottom:10px">← Back</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">🎉 Welcome message · ${esc(p.id)}</div><div class="mu">${esc(p.owner_name||'')} · ${d.welcome_at?'Sent earlier: '+dmy(d.welcome_at):'Not sent yet'}</div>
+  ${miss.length?`<div class="warn">This is empty for now (will not appear in the message): <b>${miss.map(esc).join(', ')}</b>. <button onclick="editP=P('${esc(p.id)}');openP=null;render()">✏️ Fill via Edit</button></div>`:''}
   <textarea id="wtx" rows="22" style="margin-top:10px;font-size:13.5px">${esc(welcomeText(p))}</textarea>
-  <div class="mu">Owner ne 48 ghante mein kuch nahi kaha to sab sahi maana jayega. Bhejne ki tareekh CRM mein save hoti hai.</div>
-  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="pDet(P('${esc(p.id)}'),{welcome_at:new Date().toISOString()});this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#wtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
+  <div class="mu">If the owner says nothing within 48 hours, everything is treated as correct. The sent date is saved in the CRM.</div>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="pDet(P('${esc(p.id)}'),{welcome_at:new Date().toISOString()});this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#wtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner mobile number is missing</span>'}</div></div>`;scrollTo(0,0)}
 
 /* ---------- buyer ko property message ---------- */
 function pitch(p,name){
@@ -699,7 +699,7 @@ function pitch(p,name){
   return L.join('\n');
 }
 /* ---------- WhatsApp templates (buyer lead) ---------- */
-const WT=[['details','🏡 Property details'],['noans','📵 Call nahi utha'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 Visit ke baad'],['similar','🏘 Aur options']];
+const WT=[['details','🏡 Property details'],['noans','📵 Call not answered'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 After visit'],['similar','🏘 More options']];
 const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
 let waB=null,waK=null,WS=new Set(),wqDays=7,wqOn=false,wqDone=0,WQS=new Set();
 const wqKey=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
@@ -711,26 +711,26 @@ function wqList(){
 }
 function wqShow(){
   const L=wqList(),b=L[0];
-  const days=`<div class="chips">${[[1,'Aaj+kal'],[7,'7 din'],[30,'30 din'],[0,'Sab']].map(d=>`<button class="${wqDays==d[0]?'on':''}" onclick="wqDays=${d[0]};wqShow()">${d[1]}</button>`).join('')}</div>`;
-  let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Wapas</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 Nayi leads ko WhatsApp</div>
-  <div class="mu">Sirf "New" leads jinhe abhi tak koi WhatsApp nahi gaya. Har buyer ko uski property ki details jaati hain.</div>${days}
-  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> baaki${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} bheje ✅</span>`:''}</div></div>`;
-  if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>Sab ho gaya!</b><div class="mu">In dino ki saari nayi leads ko message chala gaya. Upar se din badal kar purani leads dekh sakte ho.</div></div>`;return}
+  const days=`<div class="chips">${[[1,'Today+yesterday'],[7,'7 days'],[30,'30 days'],[0,'All']].map(d=>`<button class="${wqDays==d[0]?'on':''}" onclick="wqDays=${d[0]};wqShow()">${d[1]}</button>`).join('')}</div>`;
+  let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Back</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 WhatsApp to new leads</div>
+  <div class="mu">Only "New" leads who have not been sent any WhatsApp yet. Each buyer gets the details of their property.</div>${days}
+  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> pending${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} sent ✅</span>`:''}</div></div>`;
+  if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>All done!</b><div class="mu">All new leads of these days have been messaged. Change the day above to see older leads.</div></div>`;return}
   const p=P(b.property_id);
   h+=`<div class="card"><div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
-  <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Property judi nahi</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
+  <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Property not linked</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
   ${b.requirement?`<div class="mu">${esc(b.requirement)}</div>`:''}
-  ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel / Virtual tour link nahi juda. Message phir bhi jayega, par link jodne se achha banega.</div>':''}
+  ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">The Reel / Virtual tour link is not added for this property. The message will still go, but with the link added, it will be better.</div>':''}
   <textarea id="wtx" rows="13" style="margin-top:10px;font-size:13.5px">${esc(waText('details',b))}</textarea>
-  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 WhatsApp par bhejo → agla</a></div>
-  <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Abhi chhodo</button><button onclick="wqNo(${b.id})">🚫 Message nahi bhejna</button></div></div>`;
+  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 Send on WhatsApp → next</a></div>
+  <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Skip for now</button><button onclick="wqNo(${b.id})">🚫 Do not send message</button></div></div>`;
   $('#app').innerHTML=h;scrollTo(0,0)}
 function wqSend(a,id){const b=BL.find(x=>x.id==id);a.href='https://wa.me/91'+ph10(b.buyer_phone)+'?text='+encodeURIComponent($('#wtx').value);
-  WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp bheja: Property details (nayi lead)'}).then(()=>{delete hist[id]});
+  WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp sent: Property details (new lead)'}).then(()=>{delete hist[id]});
   setTimeout(wqShow,400);return true}
 function wqSkip(id){WQS.add(id);wqShow()}
-function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: message nahi bhejna'}).then(()=>{delete hist[id]});wqShow()}
+function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: do not send message'}).then(()=>{delete hist[id]});wqShow()}
 function wqOpen(){wqOn=true;wqDone=0;wqShow()}
 const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/month':''}`};
 const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 Near '+p.landmark);return L};
@@ -755,22 +755,22 @@ function waText(k,b){
 }
 function waOpen(id){waB=BL.find(x=>x.id==id);if(!waB)return;waK=WTdef(waB);waShow()}
 function waShow(){const b=waB,p=P(b.property_id),ph=ph10(b.buyer_phone),t=waText(waK,b);
-  const warn=[];if(waK=='details'&&p&&!p.reel_url&&!p.tour_url)warn.push('Is property ka Reel / Virtual tour link nahi juda. Property Edit mein jodo.');
-  if((waK=='visit'||waK=='remind')&&!b.visit_at)warn.push('Visit ka date-time nahi bhara. Lead kholkar "Site visit" bharo, phir message bhejo.');
-  if((waK=='visit'||waK=='remind')&&p&&!(p.details||{}).maps)warn.push('Google Maps location link nahi juda. Property Edit mein jodo, buyer ko rasta asaani se milega.');
-  $('#app').innerHTML=`<button onclick="waB=null;render()" style="margin-bottom:10px">← Wapas</button>
-  <div class="card"><div class="nm" style="font-size:17px;font-weight:800">💬 ${esc(b.buyer_name||'Buyer')} ko WhatsApp</div><div class="mu">${esc(p?p.id+' · '+(p.project||''):'Property judi nahi')} · ${esc(b.status||'New')}</div>
+  const warn=[];if(waK=='details'&&p&&!p.reel_url&&!p.tour_url)warn.push('Reel / Virtual tour link is not added for this property. Add it in Property Edit.');
+  if((waK=='visit'||waK=='remind')&&!b.visit_at)warn.push('Visit date-time is not set. Open the lead and "Site visit" fill it, then send the message.');
+  if((waK=='visit'||waK=='remind')&&p&&!(p.details||{}).maps)warn.push('Google Maps location link is not added. Add it in Property Edit so the buyer can find the way easily.');
+  $('#app').innerHTML=`<button onclick="waB=null;render()" style="margin-bottom:10px">← Back</button>
+  <div class="card"><div class="nm" style="font-size:17px;font-weight:800">💬 ${esc(b.buyer_name||'Buyer')} ko WhatsApp</div><div class="mu">${esc(p?p.id+' · '+(p.project||''):'Property not linked')} · ${esc(b.status||'New')}</div>
   <div class="sec">Kaunsa message?</div><div class="chips" style="flex-wrap:wrap">${WT.map(w=>`<button class="${waK==w[0]?'on':''}" onclick="waK='${w[0]}';waShow()">${w[1]}</button>`).join('')}</div>
   ${warn.map(w=>`<div class="warn">${esc(w)}</div>`).join('')}
   <textarea id="wtx" rows="15" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
-  <div class="mu">Bhejne se pehle yahan kuch bhi badal sakte ho.</div>
-  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ph?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="waSent();this.href='https://wa.me/91${ph}?text='+encodeURIComponent($('#wtx').value)">WhatsApp par bhejo</a>`:'<span class="er">Buyer ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
-function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;WS.add(b.id);sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp bheja: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
-function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Wapas</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Buyer ko bhejne ka message · ${esc(id)}</div><div class="mu">Yahi message lead ke WhatsApp button se apne aap jaata hai. Yahan se copy karke kisi ko bhi bhej sakte ho.</div>
+  <div class="mu">You can edit anything here before sending.</div>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ph?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="waSent();this.href='https://wa.me/91${ph}?text='+encodeURIComponent($('#wtx').value)">Send on WhatsApp</a>`:'<span class="er">Buyer mobile number is missing</span>'}</div></div>`;scrollTo(0,0)}
+function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;WS.add(b.id);sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp sent: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
+function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Back</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Message to send to buyer · ${esc(id)}</div><div class="mu">This same message goes automatically from the lead WhatsApp button. You can also copy it from here and send it to anyone.</div>
   <textarea id="ptx" rows="16" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
-  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#ptx').value).then(()=>toast('Copied ✅'))">📋 Copy</button><a class="btn g" style="color:#fff" target="_blank" href="#" onclick="this.href='https://wa.me/?text='+encodeURIComponent($('#ptx').value)">WhatsApp par bhejo</a></div>
-  ${!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel ya Virtual tour link abhi nahi juda. Property Edit mein jodo, message aur achha banega.</div>':''}</div>`;scrollTo(0,0)}
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#ptx').value).then(()=>toast('Copied ✅'))">📋 Copy</button><a class="btn g" style="color:#fff" target="_blank" href="#" onclick="this.href='https://wa.me/?text='+encodeURIComponent($('#ptx').value)">Send on WhatsApp</a></div>
+  ${!p.reel_url&&!p.tour_url?'<div class="warn">The Reel or Virtual tour link is not added for this property yet. Add it in Property Edit for a better message.</div>':''}</div>`;scrollTo(0,0)}
 
 /* ---------- owner weekly report (WhatsApp, buyer numbers masked) ---------- */
 const ORW=['Online listings refreshed','New Reel posted on social media','New photos added','Virtual tour added','Premium boost / promoted ad','Shared with our buyer network'];
@@ -787,7 +787,7 @@ function orStats(){
   const p=OR.p,l=leadsOf(p.id),now=new Date(),from=new Date(Date.now()-OR.in.days*864e5),fromD=from.toISOString().slice(0,10);
   const nl=l.filter(b=>String(b.lead_date||'')>=fromD),src=countBy(nl,'source');
   const hp=OR.h.filter(h=>new Date(h.at)>=from);
-  const fol=new Set(hp.map(h=>h.buyer_id)).size,wa=hp.filter(h=>/^💬 WhatsApp bheja/.test(h.note||'')).length;
+  const fol=new Set(hp.map(h=>h.buyer_id)).size,wa=hp.filter(h=>/^💬 WhatsApp (sent|bheja)/.test(h.note||'')).length;
   const vd=new Set([...l.filter(b=>b.visit_at&&new Date(b.visit_at)>=from&&new Date(b.visit_at)<=now&&b.status!='Site Visit Scheduled').map(b=>b.id),...hp.filter(h=>h.status=='Site Visit Done').map(h=>h.buyer_id)]).size;
   const up=l.filter(b=>b.visit_at&&new Date(b.visit_at)>now&&b.status=='Site Visit Scheduled').sort((a,b)=>String(a.visit_at).localeCompare(String(b.visit_at)));
   const tv=new Set([...l.filter(b=>['Site Visit Done','Deal Closed'].includes(b.status)||(b.visit_at&&new Date(b.visit_at)<=now&&b.status!='Site Visit Scheduled')).map(b=>b.id),...OR.h.filter(h=>h.status=='Site Visit Done').map(h=>h.buyer_id)]).size;
@@ -818,21 +818,21 @@ function orUpd(){orSave();$('#rtx').value=orText()}
 function orShow(){
   const p=OR.p,I=OR.in,ow=ph10(p.owner_phone),last=(p.details||{}).last_report_at;
   const ta=(k,lab,ph)=>`<div><label>${lab}</label><textarea rows="2" placeholder="${esc(ph)}" oninput="OR.in.${k}=this.value;orUpd()">${esc(I[k])}</textarea></div>`;
-  $('#app').innerHTML=`<button onclick="OR=null;render()" style="margin-bottom:10px">← Wapas</button>
+  $('#app').innerHTML=`<button onclick="OR=null;render()" style="margin-bottom:10px">← Back</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Owner weekly report · ${esc(p.id)}</div>
-  <div class="mu">${esc(p.owner_name||'')} · ${last?'Pichhli report: '+dshort(last):'Abhi tak koi report nahi bheji'}</div>
-  <div class="sec">Kitne din ki report?</div><div class="chips">${[[7,'7 din'],[15,'15 din'],[30,'30 din']].map(d=>`<button class="${I.days==d[0]?'on':''}" onclick="OR.in.days=${d[0]};orSave();orShow()">${d[1]}</button>`).join('')}</div>
-  <div class="sec">Is hafte kya kaam kiya? (tick karo)</div><div class="chips" style="flex-wrap:wrap">${ORW.map((w,i)=>`<button class="${I.work.includes(w)?'on':''}" onclick="const a=OR.in.work,i=a.indexOf(ORW[${i}]);i<0?a.push(ORW[${i}]):a.splice(i,1);orSave();orShow()">${esc(w)}</button>`).join('')}</div>
+  <div class="mu">${esc(p.owner_name||'')} · ${last?'Pichhli report: '+dshort(last):'No report sent yet'}</div>
+  <div class="sec">Report for how many days?</div><div class="chips">${[[7,'7 days'],[15,'15 days'],[30,'30 days']].map(d=>`<button class="${I.days==d[0]?'on':''}" onclick="OR.in.days=${d[0]};orSave();orShow()">${d[1]}</button>`).join('')}</div>
+  <div class="sec">What work was done this week? (tick)</div><div class="chips" style="flex-wrap:wrap">${ORW.map((w,i)=>`<button class="${I.work.includes(w)?'on':''}" onclick="const a=OR.in.work,i=a.indexOf(ORW[${i}]);i<0?a.push(ORW[${i}]):a.splice(i,1);orSave();orShow()">${esc(w)}</button>`).join('')}</div>
   <div class="form">
-  ${ta('fb','💬 Buyers ne kya kaha (English mein)','Buyers liked the location; 2 felt the price is slightly high.')}
+  ${ta('fb','💬 What buyers said (in English)','Buyers liked the location; 2 felt the price is slightly high.')}
   ${ta('mkt','📈 Market update (optional)','Similar 2 BHK flats in this society are listed at ₹68 L – ₹74 L.')}
-  ${ta('plan','🗓 Agle hafte ka plan (optional)','Listing refresh and a new Reel. More visits on the weekend.')}
-  ${ta('ask','🙏 Owner se kya chahiye (optional)','Please keep the flat accessible on Sat-Sun, 11 AM – 5 PM.')}
-  <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" style="width:auto;min-height:0" ${I.list?'checked':''} onchange="OR.in.list=this.checked;orUpd()"> Recent enquiries list (number chhupe hue)</label></div>
-  <div class="sec">Report (bhejne se pehle yahan badal sakte ho)</div>
+  ${ta('plan','🗓 Plan for next week (optional)','Listing refresh and a new Reel. More visits on the weekend.')}
+  ${ta('ask','🙏 What we need from the owner (optional)','Please keep the flat accessible on Sat-Sun, 11 AM – 5 PM.')}
+  <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" style="width:auto;min-height:0" ${I.list?'checked':''} onchange="OR.in.list=this.checked;orUpd()"> Recent enquiries list (numbers hidden)</label></div>
+  <div class="sec">Report (you can edit here before sending)</div>
   <textarea id="rtx" rows="22" style="font-size:13.5px">${esc(orText())}</textarea>
-  <div class="mu">Report mein kisi portal ka naam ya Listing ID nahi jaata. Buyer ke poore number bhi nahi jaate.</div>
-  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#rtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="orSent();this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#rtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner ka mobile nahi hai</span>'}</div></div>`;scrollTo(0,0)}
+  <div class="mu">The report does not include any portal name or Listing ID. Full buyer numbers are not included either.</div>
+  <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#rtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ow?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="orSent();this.href='https://wa.me/91${ow}?text='+encodeURIComponent($('#rtx').value)">WhatsApp ${esc(p.owner_name||'owner')}</a>`:'<span class="er">Owner mobile number is missing</span>'}</div></div>`;scrollTo(0,0)}
 function orSent(){const p=OR.p,d=Object.assign({},p.details||{},{last_report_at:new Date().toISOString().slice(0,10)});p.details=d;sb.from('properties').update({details:d}).eq('id',p.id).then(()=>{})}
 
 /* ---------- buyers ---------- */
@@ -850,12 +850,12 @@ function bCard(b,rp){
 function bForm(b){
   return `<div class="form"><div class="f2"><div><label>Status</label><select id="bs_st">${BST.map(s=>`<option ${b.status==s?'selected':''}>${s}</option>`).join('')}</select></div><div><label>Next follow-up</label><input id="bs_nf" type="date" value="${esc(b.next_fu||'')}"></div></div>
   <div class="f2"><div><label>Site visit (date-time)</label><input id="bs_va" type="datetime-local" value="${b.visit_at?new Date(new Date(b.visit_at).getTime()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16):''}"></div><div><label>Property</label><select id="bs_p"><option value="">Unassigned</option>${PR.map(p=>`<option value="${esc(p.id)}" ${b.property_id==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div></div>
-  <div><label>Note (kya baat hui)</label><textarea id="bs_note" rows="2" placeholder="Jaise: weekend visit chahiye, budget 90 L"></textarea></div>
+  <div><label>Note (kya baat hui)</label><textarea id="bs_note" rows="2" placeholder="e.g. wants weekend visit, budget 90 L"></textarea></div>
   <button class="p" onclick="saveB(${b.id})">💾 Save</button>
   <div class="mu" style="margin-top:6px">Remarks: ${esc(b.remarks||'-')} ${b.listing_id?'· Listing '+esc(b.listing_id):''}</div>
   <div id="hist_${b.id}">${histHtml(b.id)}</div></div>`;
 }
-const histHtml=id=>hist[id]?(hist[id].length?'<div class="sec">History</div>'+hist[id].map(h=>`<div class="hist"><b>${esc(h.status||'')}</b> <span class="mu">${dtime(h.at)}</span><br>${esc(h.note||'')}</div>`).join(''):'<div class="mu">Abhi koi history nahi.</div>'):'<div class="mu">History load ho rahi hai…</div>';
+const histHtml=id=>hist[id]?(hist[id].length?'<div class="sec">History</div>'+hist[id].map(h=>`<div class="hist"><b>${esc(h.status||'')}</b> <span class="mu">${dtime(h.at)}</span><br>${esc(h.note||'')}</div>`).join(''):'<div class="mu">No history yet.</div>'):'<div class="mu">Loading history…</div>';
 async function loadHist(id){const {data}=await sb.from('buyer_history').select('*').eq('buyer_id',id).order('at',{ascending:false});hist[id]=data||[];const e=$('#hist_'+id);if(e)e.innerHTML=histHtml(id)}
 async function saveB(id){
   const b=BL.find(x=>x.id==id),st=$('#bs_st').value,nf=$('#bs_nf').value||null,va=$('#bs_va').value,pid=$('#bs_p').value||null,note=$('#bs_note').value.trim();
@@ -874,18 +874,18 @@ VIEW.buyers=()=>{
   if(addB)return addBForm();
   const rp=repeats(),list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id),show=list.slice(0,60);
   const wqn=wqList().length;
-  return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ Naya buyer lead</button><button onclick="wqOpen()" style="${wqn?'background:#e7f8ee;border-color:#25a35a;color:#11683a;font-weight:700':''}">📨 Nayi leads ko WhatsApp${wqn?' ('+wqn+' baaki)':''}</button></div>
-  <input placeholder="Search: naam, number, L-ID" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[placeholder^=Search]');if(i){i.focus();i.setSelectionRange(99,99)}},400)">
-  <div class="f2" style="margin:8px 0"><select onchange="fSt=this.value;render()"><option value="">Sab status</option>${BST.map(s=>`<option ${fSt==s?'selected':''}>${s}</option>`).join('')}</select><select onchange="fSrc=this.value;render()"><option value="">Sab portal</option>${SRC.map(s=>`<option ${fSrc==s?'selected':''}>${s}</option>`).join('')}</select></div>
-  <select onchange="fP=this.value;render()" style="margin-bottom:10px"><option value="">Sab properties</option>${PR.map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select>
-  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>60?' · pehli 60 dikh rahi hain, search se dhundo':''}</div>
-  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>Koi lead nahi mili</b></div>'}`;
+  return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ New buyer lead</button><button onclick="wqOpen()" style="${wqn?'background:#e7f8ee;border-color:#25a35a;color:#11683a;font-weight:700':''}">📨 WhatsApp to new leads${wqn?' ('+wqn+' pending)':''}</button></div>
+  <input placeholder="Search: name, number, L-ID" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[placeholder^=Search]');if(i){i.focus();i.setSelectionRange(99,99)}},400)">
+  <div class="f2" style="margin:8px 0"><select onchange="fSt=this.value;render()"><option value="">All statuses</option>${BST.map(s=>`<option ${fSt==s?'selected':''}>${s}</option>`).join('')}</select><select onchange="fSrc=this.value;render()"><option value="">All portals</option>${SRC.map(s=>`<option ${fSrc==s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <select onchange="fP=this.value;render()" style="margin-bottom:10px"><option value="">All properties</option>${PR.map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select>
+  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>60?' · showing first 60, use search to find more':''}</div>
+  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>No leads found</b></div>'}`;
 };
 function addBForm(){
   return `<button onclick="addB=false;dupOk=false;render()" style="margin-bottom:10px">← Cancel</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">➕ Naya buyer lead</div><div class="form">
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">➕ New buyer lead</div><div class="form">
   <div class="f2"><div><label>Buyer name</label><input id="ab_n"></div><div><label>Mobile</label><input id="ab_m" type="tel" inputmode="numeric"></div></div>
-  <div><label>Property</label><select id="ab_p"><option value="">Unassigned (baad mein jodo)</option>${PR.filter(p=>!isSold(p)).map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>
+  <div><label>Property</label><select id="ab_p"><option value="">Unassigned (add later)</option>${PR.filter(p=>!isSold(p)).map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>
   <div class="f2"><div><label>Portal</label><select id="ab_s">${SRC.map(s=>`<option>${s}</option>`).join('')}</select></div><div><label>Lead date</label><input id="ab_d" type="date" value="${today()}"></div></div>
   <div><label>Requirement</label><input id="ab_r" placeholder="2 BHK, budget 90 L"></div>
   <div><label>Remarks</label><textarea id="ab_x" rows="2"></textarea></div>
@@ -893,13 +893,13 @@ function addBForm(){
 }
 async function saveNewB(){
   const ph=ph10($('#ab_m').value),pid=$('#ab_p').value||null;
-  if(ph.length!=10){$('#ab_err').innerHTML='<div class="warn">10 digit mobile number daalo.</div>';return}
+  if(ph.length!=10){$('#ab_err').innerHTML='<div class="warn">Enter a 10-digit mobile number.</div>';return}
   const ex=BL.filter(b=>ph10(b.buyer_phone)==ph);
   const same=ex.find(b=>(b.property_id||null)==pid);
-  if(same&&!dupOk){dupOk=true;$('#ab_err').innerHTML=`<div class="warn">Yeh buyer is property ke liye pehle se hai (${esc(same.code||'')} · ${esc(same.status||'')}). Phir bhi add karna ho to Save dobara dabao, "Repeat - review" mark lagega.</div>`;return}
+  if(same&&!dupOk){dupOk=true;$('#ab_err').innerHTML=`<div class="warn">This buyer already exists for this property (${esc(same.code||'')} · ${esc(same.status||'')}). To add anyway, tap Save again, "Repeat - review" will be marked.</div>`;return}
   const row={code:nextCode(),lead_date:$('#ab_d').value||today(),property_id:pid,source:$('#ab_s').value,buyer_name:$('#ab_n').value.trim()||null,buyer_phone:ph,requirement:$('#ab_r').value.trim()||null,remarks:$('#ab_x').value.trim()||null,status:'New'};
   const {error}=await sb.from('buyer_leads').insert(row);if(error)return toast(error.message,1);
-  toast('Lead added ✅'+(ex.length&&!same?' · yeh buyer doosri property mein bhi hai':''));addB=false;dupOk=false;await reload(true);
+  toast('Lead added ✅'+(ex.length&&!same?' · this buyer is also on another property':''));addB=false;dupOk=false;await reload(true);
 }
 
 /* ---------- follow-up ---------- */
@@ -908,9 +908,9 @@ VIEW.fu=()=>{
   const rp=repeats(),t=today(),due=fuList().sort((a,b)=>String(a.next_fu).localeCompare(String(b.next_fu)));
   const vis=BL.filter(b=>b.status=='Site Visit Scheduled'&&b.visit_at&&b.visit_at.slice(0,10)>=t).sort((a,b)=>String(a.visit_at).localeCompare(String(b.visit_at)));
   const fresh=BL.filter(b=>b.status=='New'&&!b.next_fu&&b.property_id&&!isSold(P(b.property_id)||{})&&!/not a buyer/i.test(b.remarks||'')).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).slice(0,15);
-  return `<div class="sec">📅 Aane wali site visits (${vis.length})</div>${vis.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">Koi visit fixed nahi.</div>'}
-  <div class="sec">🔁 Aaj / overdue follow-up (${due.length})</div>${due.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">Aaj ka koi follow-up baaki nahi 🎉</div>'}
-  <div class="sec">🆕 Nayi leads jinse abhi baat nahi hui (latest 15)</div>${fresh.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">Sab leads se baat ho chuki.</div>'}`;
+  return `<div class="sec">📅 Upcoming site visits (${vis.length})</div>${vis.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">No visit fixed.</div>'}
+  <div class="sec">🔁 Today / overdue follow-up (${due.length})</div>${due.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">No follow-ups pending today 🎉</div>'}
+  <div class="sec">🆕 New leads not yet spoken to (latest 15)</div>${fresh.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">All leads have been spoken to.</div>'}`;
 };
 
 /* ---------- unassigned ---------- */
@@ -985,19 +985,19 @@ function bRows(a,d){
 }
 VIEW.mb=()=>{
   let h=`<div class="card"><b>⬆️ Bulk upload · 99acres · Magicbricks · Housing</b>
-  <div class="mu" style="margin:6px 0 10px">Teeno portals ki leads ki Excel / CSV file yahan chuno, ek saath kitni bhi. Portal CRM khud pehchanega. Har lead ki <b>Listing / Property ID</b> dekh kar use sahi property se jodega. Jo leads pehle se CRM mein hain, woh dobara nahi judengi.</div>
+  <div class="mu" style="margin:6px 0 10px">Select Excel / CSV files of leads from all three portals here, any number at once. The CRM detects the portal itself. For each lead the <b>Listing / Property ID</b> and links it to the right property. Leads already in the CRM will not be added again.</div>
   <input type="file" multiple accept=".xls,.xlsx,.csv" onchange="mbRead(this.files)"></div>`;
   if(!MBP)return h;
-  if(MBP.files&&MBP.files.length)h+=`<div class="card"><b>Chuni hui files</b>${MBP.files.map(f=>`<div class="lr"><span>${esc(f.name)}</span><span class="${f.src?'ok':'wr'}">${f.src?esc(BSRC[f.src].label)+' · '+f.n:'Pehchani nahi'}</span></div>`).join('')}</div>`;
+  if(MBP.files&&MBP.files.length)h+=`<div class="card"><b>Chuni hui files</b>${MBP.files.map(f=>`<div class="lr"><span>${esc(f.name)}</span><span class="${f.src?'ok':'wr'}">${f.src?esc(BSRC[f.src].label)+' · '+f.n:'Not recognised'}</span></div>`).join('')}</div>`;
   const n=MBP.rows.filter(r=>!r.dup),m=n.filter(r=>r.pid),u=n.filter(r=>!r.pid),ids=[...new Map(u.map(r=>[r.src+'|'+r.mbid,r])).values()];
-  h+=`<div class="grid"><div class="card stat"><div class="mu">Files mein leads</div><b>${MBP.rows.length}</b></div><div class="card stat"><div class="mu">Pehle se CRM mein</div><b>${MBP.rows.length-n.length}</b></div><div class="card stat"><div class="mu">Nayi · property mili</div><b class="ok">${m.length}</b></div><div class="card stat"><div class="mu">Nayi · property nahi mili</div><b class="${u.length?'wr':''}">${u.length}</b></div></div>`;
-  if(ids.length)h+=`<div class="card"><b>Yeh ID kis property ka hai?</b><div class="mu">Property purani hai (listing refresh hui) to uske saath jodo, nayi hai to nayi property bana do. CRM yaad rakhega.</div>${ids.map(ex=>{const sg=bSuggest(ex);return `<div class="lr" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%"><b>${esc(ex.mbid)}</b> <span class="mu">· ${esc(BSRC[ex.src].label)}</span><br><span class="mu">${esc([ex.proj,ex.bhk,ex.loc].filter(Boolean).join(' · ')||ex.desc||'')}</span></span>${sg?`<button class="p" style="flex:1 1 100%" onclick="mbMap('${esc(ex.src)}','${esc(ex.mbid)}','${esc(sg.id)}')">🔁 ${esc(sg.id)} · ${esc(sg.project||'')} ki refresh listing hai, jodo</button>`:''}<select style="flex:1 1 55%" onchange="mbMap('${esc(ex.src)}','${esc(ex.mbid)}',this.value)"><option value="">Purani property me jodo…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select><button style="flex:1 1 35%" onclick="mbNew('${esc(ex.src)}','${esc(ex.mbid)}')">➕ Nayi property</button></div>`}).join('')}</div>`;
-  h+=n.length?`<button class="p" style="width:100%" onclick="mbImport(this)">✅ ${n.length} nayi leads CRM mein daalo</button>`:'<div class="empty"><div class="ei">✅</div><b>Sab leads pehle se CRM mein hain</b></div>';
-  h+=`<div class="sec">Nayi leads (${n.length})</div>`+n.slice(0,40).map(r=>`<div class="lr"><span><b>${esc(r.name||'Buyer')}</b> · ${esc(mask(r.phone))}<br><span class="mu">${r.pid?esc(r.pid+' · '+(P(r.pid)||{}).project):'<b class="wr">Property nahi mili</b> · '+esc(BSRC[r.src].tag)+' '+esc(r.mbid)} · ${esc(BSRC[r.src].tag)} · ${dshort(r.date)}</span></span></div>`).join('');
+  h+=`<div class="grid"><div class="card stat"><div class="mu">Leads in files</div><b>${MBP.rows.length}</b></div><div class="card stat"><div class="mu">Already in CRM</div><b>${MBP.rows.length-n.length}</b></div><div class="card stat"><div class="mu">New · property found</div><b class="ok">${m.length}</b></div><div class="card stat"><div class="mu">New · property not found</div><b class="${u.length?'wr':''}">${u.length}</b></div></div>`;
+  if(ids.length)h+=`<div class="card"><b>Which property does this ID belong to?</b><div class="mu">If it is an old refreshed property, link it there; if it is new, create a new property. The CRM will remember.</div>${ids.map(ex=>{const sg=bSuggest(ex);return `<div class="lr" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%"><b>${esc(ex.mbid)}</b> <span class="mu">· ${esc(BSRC[ex.src].label)}</span><br><span class="mu">${esc([ex.proj,ex.bhk,ex.loc].filter(Boolean).join(' · ')||ex.desc||'')}</span></span>${sg?`<button class="p" style="flex:1 1 100%" onclick="mbMap('${esc(ex.src)}','${esc(ex.mbid)}','${esc(sg.id)}')">🔁 ${esc(sg.id)} · is a refresh listing of ${esc(sg.project||'')}, link it</button>`:''}<select style="flex:1 1 55%" onchange="mbMap('${esc(ex.src)}','${esc(ex.mbid)}',this.value)"><option value="">Link to an old property…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select><button style="flex:1 1 35%" onclick="mbNew('${esc(ex.src)}','${esc(ex.mbid)}')">➕ New property</button></div>`}).join('')}</div>`;
+  h+=n.length?`<button class="p" style="width:100%" onclick="mbImport(this)">✅ Add ${n.length} new leads to CRM</button>`:'<div class="empty"><div class="ei">✅</div><b>All leads are already in the CRM</b></div>';
+  h+=`<div class="sec">New leads (${n.length})</div>`+n.slice(0,40).map(r=>`<div class="lr"><span><b>${esc(r.name||'Buyer')}</b> · ${esc(mask(r.phone))}<br><span class="mu">${r.pid?esc(r.pid+' · '+(P(r.pid)||{}).project):'<b class="wr">Property not found</b> · '+esc(BSRC[r.src].tag)+' '+esc(r.mbid)} · ${esc(BSRC[r.src].tag)} · ${dshort(r.date)}</span></span></div>`).join('');
   return h;
 };
 async function mbRead(files){
-  files=[...(files||[])];if(!files.length)return;toast('Files padh raha hoon…');
+  files=[...(files||[])];if(!files.length)return;toast('Reading files…');
   try{
     const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||'')));
     const rows=[],seen=new Set(),info=[];
@@ -1011,8 +1011,8 @@ async function mbRead(files){
     }
     MBP={rows,files:info};render();
     const bad=info.filter(x=>!x.src).length;
-    toast(rows.length+' leads mili'+(bad?' · '+bad+' file pehchani nahi':''),bad&&!rows.length?1:0);
-  }catch(e){toast('File nahi padh paya: '+(e.message||e),1)}
+    toast(rows.length+' leads found'+(bad?' · '+bad+' file not recognised':''),bad&&!rows.length?1:0);
+  }catch(e){toast('Could not read file: '+(e.message||e),1)}
 }
 async function mbMap(src,mbid,pid){
   if(!pid)return;const p=P(pid),info=BSRC[src],c=info.col;const cur=String(p[c]||'').trim();const v=cur?cur+', '+mbid:mbid;
@@ -1034,24 +1034,24 @@ async function mbNew(src,mbid){
   row[info.col]=mbid;
   const {error}=await sb.from('properties').insert(row);if(error)return toast(error.message,1);
   await reload(true);mbRecalc();
-  toast(pid+' ban gayi ✅ · owner ki details baad me Property → Edit se bharna');render();
+  toast(pid+' created ✅ · fill owner details later via Property → Edit');render();
 }
 async function mbImport(btn){
-  btn.disabled=true;btn.textContent='Daal raha hoon…';
+  btn.disabled=true;btn.textContent='Adding…';
   const n=MBP.rows.filter(r=>!r.dup);let c=+String(nextCode()).replace(/\D/g,'');
   const rows=n.map(r=>({code:'L-'+String(c++).padStart(4,'0'),lead_date:r.date,property_id:r.pid,source:r.src,listing_id:r.mbid,buyer_name:r.name||null,buyer_phone:r.phone,requirement:r.desc||null,remarks:[r.email,r.who&&r.who!=='Individual'?r.who:''].filter(Boolean).join('; ')||null,status:'New'}));
-  for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('buyer_leads').insert(rows.slice(i,i+200));if(error){btn.disabled=false;btn.textContent='Dobara try karo';return toast(error.message,1)}}
+  for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('buyer_leads').insert(rows.slice(i,i+200));if(error){btn.disabled=false;btn.textContent='Try again';return toast(error.message,1)}}
   const recent={};n.forEach(r=>{if(r.pid){const k=r.pid+'|'+r.src;if(!recent[k]||r.date>recent[k])recent[k]=r.date}});
   for(const [k,d] of Object.entries(recent)){const [pid,src]=k.split('|'),p=P(pid);if(!p)continue;const lb=BSRC[src].label,ps=String(p.portal_status||''),tag=lb+': Live (lead '+dshort(d)+')';const nps=new RegExp(lb+'\\s*:','i').test(ps)?ps.replace(new RegExp(lb+'\\s*:\\s*[^|]*','i'),tag):(ps?ps+' | ':'')+tag;await sb.from('properties').update({portal_status:nps}).eq('id',pid);p.portal_status=nps}
-  toast(rows.length+' leads CRM mein aa gayi ✅');MBP=null;await reload(true);go('mb');
+  toast(rows.length+' leads added to CRM ✅');MBP=null;await reload(true);go('mb');
 }
 
-/* ---------- Unassigned leads: listing ID ko property se jodo / nayi property ---------- */
+/* ---------- Unassigned leads: link listing ID to a property / new property ---------- */
 function unGroups(){
   const g=new Map();
   BL.filter(b=>!b.property_id&&b.listing_id&&BSRC[b.source]).forEach(b=>{const k=b.source+'|'+b.listing_id;if(!g.has(k))g.set(k,{src:b.source,id:b.listing_id,n:0,req:b.requirement||''});g.get(k).n++});
   if(!g.size)return '';
-  return `<div class="card"><b>🆕 Naye Listing IDs (${g.size})</b><div class="mu">In ID ki leads kisi property se nahi judi. Refresh hui purani property hai to uske saath jodo, nayi hai to nayi property bana do.</div>${[...g.values()].map(x=>`<div class="lr" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%"><b>${esc(x.id)}</b> <span class="mu">· ${esc(BSRC[x.src].label)} · ${x.n} lead${x.n>1?'s':''}</span><br><span class="mu">${esc(x.req)}</span></span><select style="flex:1 1 55%" onchange="unMap('${esc(x.src)}','${esc(x.id)}',this.value)"><option value="">Purani property me jodo…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select><button style="flex:1 1 35%" onclick="unNew('${esc(x.src)}','${esc(x.id)}')">➕ Nayi property</button></div>`).join('')}</div>`;
+  return `<div class="card"><b>🆕 Naye Listing IDs (${g.size})</b><div class="mu">Leads of this ID are not linked to any property. If it is an old refreshed property, link it there; if it is new, create a new property.</div>${[...g.values()].map(x=>`<div class="lr" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%"><b>${esc(x.id)}</b> <span class="mu">· ${esc(BSRC[x.src].label)} · ${x.n} lead${x.n>1?'s':''}</span><br><span class="mu">${esc(x.req)}</span></span><select style="flex:1 1 55%" onchange="unMap('${esc(x.src)}','${esc(x.id)}',this.value)"><option value="">Link to an old property…</option>${PR.map(p=>`<option value="${esc(p.id)}">${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select><button style="flex:1 1 35%" onclick="unNew('${esc(x.src)}','${esc(x.id)}')">➕ New property</button></div>`).join('')}</div>`;
 }
 async function unLink(src,id,pid){
   const info=BSRC[src],p=P(pid);
@@ -1071,7 +1071,7 @@ async function unNew(src,id){
   await reload(true);await unLink(src,id,pid);
 }
 
-/* ---------- Owner ko property ki sari leads ek click me ---------- */
+/* ---------- All property leads to the owner in one click ---------- */
 let OLM=null;
 function olParts(){
   const p=P(OLM.id),ls=leadsOf(OLM.id).slice().sort((a,b)=>String(b.lead_date||'').localeCompare(String(a.lead_date||'')));
@@ -1112,9 +1112,9 @@ function olShow(){
   const r=olParts(),ow=ph10(r.p.owner_phone);
   o.innerHTML=`<div style="background:var(--card,#fff);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px">
   <div style="display:flex;justify-content:space-between;align-items:center"><b>📤 ${esc(r.p.id)} · ${esc(r.p.project||'')}</b><button onclick="OLM=null;olShow()">✕</button></div>
-  <div class="mu" style="margin:4px 0 8px">${r.n} lead${r.n===1?'':'s'} · owner: ${esc(r.p.owner_name||'-')} ${ow?'(+91 '+ow+')':'<b class="wr">(mobile nahi hai)</b>'}</div>
-  <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" ${OLM.full?'checked':''} onchange="OLM.full=this.checked;olShow()" style="width:auto"> Buyer ka poora mobile number bhejo</label>
-  ${r.msgs.map((t,i)=>`<div class="card" style="white-space:pre-wrap;font-size:13px">${esc(t)}</div>${ow?`<a class="btn w" style="display:block;text-align:center;margin-bottom:10px" target="_blank" rel="noopener" href="https://wa.me/91${ow}?text=${encodeURIComponent(t)}">📤 WhatsApp pe bhejo${r.msgs.length>1?' (Part '+(i+1)+'/'+r.msgs.length+')':''}</a>`:''}`).join('')}
+  <div class="mu" style="margin:4px 0 8px">${r.n} lead${r.n===1?'':'s'} · owner: ${esc(r.p.owner_name||'-')} ${ow?'(+91 '+ow+')':'<b class="wr">(mobile number is missing)</b>'}</div>
+  <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" ${OLM.full?'checked':''} onchange="OLM.full=this.checked;olShow()" style="width:auto"> Send the full buyer mobile number</label>
+  ${r.msgs.map((t,i)=>`<div class="card" style="white-space:pre-wrap;font-size:13px">${esc(t)}</div>${ow?`<a class="btn w" style="display:block;text-align:center;margin-bottom:10px" target="_blank" rel="noopener" href="https://wa.me/91${ow}?text=${encodeURIComponent(t)}">📤 Send on WhatsApp${r.msgs.length>1?' (Part '+(i+1)+'/'+r.msgs.length+')':''}</a>`:''}`).join('')}
   </div>`;
 }
 
@@ -1193,7 +1193,7 @@ VIEW.access=()=>{
   if(!TA){loadTA();return '<div class="mu">Loading…</div>'}
   return `<div class="sec">🔑 Team access</div><div class="mu" style="margin:0 2px 10px">Tick a name to show the Properties page in their CRM menu (owner call, WhatsApp reports, Send leads). They cannot edit, delete, invoice or download backups.</div>`+
   (EMP.map(e=>`<label class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer"><div><b>${esc(e.name||'Employee')}</b><div class="mu">${esc(e.role=='fe'?'Field Exec':'Telecaller')}</div></div><span style="display:flex;align-items:center;gap:8px"><span class="mu">Properties</span><input type="checkbox" style="width:24px;height:24px" ${TA[e.id]?'checked':''} onchange="setAccess('${e.id}',this.checked)"></span></label>`).join('')||'<div class="empty"><b>No employees found</b></div>')};
-VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Lead kholo → Property chuno → Save.</div>`+unGroups()+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>Sab leads kisi property se judi hain</b></div>')};
+VIEW.un=()=>{const rp=repeats(),l=BL.filter(b=>!b.property_id);return `<div class="sec">❓ Unassigned leads (${l.length})</div><div class="mu" style="margin:0 2px 10px">Open lead → Select property → Save.</div>`+unGroups()+(l.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">✅</div><b>All leads are linked to a property</b></div>')};
 
 /* ---------- deal closed owners ---------- */
 VIEW.deal=()=>{
@@ -1202,9 +1202,9 @@ VIEW.deal=()=>{
   const rows=OW.map(o=>({o,p:linked(o)})),todo=rows.filter(r=>!r.p),done=rows.filter(r=>r.p);
   const card=({o,p})=>`<div class="card lc"><div class="row"><div class="nm">${esc(o.name||'Owner')}</div>${p?`<span class="pill" style="background:#cdeed6;color:#0f5a28">${esc(p.id)}</span>`:''}</div>
    <div class="mu">${esc(o.phone||'')} · ${esc([o.property,o.bhk,o.locality].filter(Boolean).join(' · '))}${o.price?' · '+esc(o.price):''}</div>
-   <div class="acts">${p?`<button onclick="tab='props';openP='${esc(p.id)}';render()">🏢 Property kholo (${leadsOf(p.id).length} leads)</button>`:`<button class="p" onclick='mkFromLead(${JSON.stringify(String(o.id))})'>➕ Property banao</button>`}</div></div>`;
-  return `<div class="mu" style="margin:0 2px 10px">Team ke CRM mein jo owners "Deal Closed" hain, woh yahan dikhte hain. Property banane ke baad unki buyer leads jodi ja sakti hain.</div>
-  <div class="sec">Property banana baaki (${todo.length})</div>${todo.map(card).join('')||'<div class="mu" style="margin:0 2px">Sab deal closed owners ki property ban chuki ✅</div>'}
+   <div class="acts">${p?`<button onclick="tab='props';openP='${esc(p.id)}';render()">🏢 Open property (${leadsOf(p.id).length} leads)</button>`:`<button class="p" onclick='mkFromLead(${JSON.stringify(String(o.id))})'>➕ Property banao</button>`}</div></div>`;
+  return `<div class="mu" style="margin:0 2px 10px">Owners in the team CRM "Deal Closed" appear here. After creating the property, their buyer leads can be linked.</div>
+  <div class="sec">Property pending creation (${todo.length})</div>${todo.map(card).join('')||'<div class="mu" style="margin:0 2px">Properties created for all deal closed owners ✅</div>'}
   <div class="sec">Property ban chuki (${done.length})</div>${done.map(card).join('')}`;
 };
 function mkFromLead(id){
@@ -1220,7 +1220,7 @@ VIEW.rep=()=>{
   const ps=PR.filter(p=>rSold||!isSold(p)).map(p=>{const l=leadsOf(p.id),c=countBy(l,'status');return {p,t:l.length,c,pen:l.filter(b=>PEND.includes(b.status)).length}}).sort((a,b)=>b.t-a.t);
   const src=countBy(BL.filter(b=>rSold||!isSold(P(b.property_id)||{})),'source');
   const H=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Deal Closed'],AB={'New':'New','Contacted':'Cont.','Follow-up':'F-up','Site Visit Scheduled':'Visit sch.','Site Visit Done':'Visit done','Deal Closed':'Closed'};
-  return `<div class="chips"><button class="${rSold?'':'on'}" onclick="rSold=false;render()">Sold ke bina</button><button class="${rSold?'on':''}" onclick="rSold=true;render()">Sold ke saath</button></div>
+  return `<div class="chips"><button class="${rSold?'':'on'}" onclick="rSold=false;render()">Without Sold</button><button class="${rSold?'on':''}" onclick="rSold=true;render()">With Sold</button></div>
   <div class="card"><b>Portal-wise leads</b>${Object.entries(src).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="lr"><span>${esc(k||'-')}</span><b>${v}</b></div>`).join('')}</div>
   <div class="card"><b>Property-wise report</b><div class="tw"><table class="tbl"><tr><th>Property</th><th>Total</th>${H.map(h=>`<th>${AB[h]}</th>`).join('')}<th>Pending</th></tr>
   ${ps.map(r=>`<tr onclick="tab='props';openP='${esc(r.p.id)}';render()" style="cursor:pointer"><td><b>${esc(r.p.id)}</b><br><span class="mu">${esc(r.p.project||'')}</span></td><td><b>${r.t}</b></td>${H.map(h=>`<td>${r.c[h]||''}</td>`).join('')}<td class="${r.pen?'wr':''}"><b>${r.pen||''}</b></td></tr>`).join('')}</table></div></div>`;
@@ -1229,7 +1229,7 @@ VIEW.rep=()=>{
 /* ---------- backup ---------- */
 function csv(rows){if(!rows.length)return '';const k=Object.keys(rows[0]);return [k.join(',')].concat(rows.map(r=>k.map(x=>{const v=r[x]==null?'':String(r[x]);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(','))).join('\n')}
 function dl(name,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+txt],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
-function backup(){const d=today();dl(`easydeals-properties-${d}.csv`,csv(PR));setTimeout(()=>dl(`easydeals-buyer-leads-${d}.csv`,csv(BL)),600);toast('Backup download ho raha hai ✅')}
+function backup(){const d=today();dl(`easydeals-properties-${d}.csv`,csv(PR));setTimeout(()=>dl(`easydeals-buyer-leads-${d}.csv`,csv(BL)),600);toast('Backup is downloading ✅')}
 
 sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLogin());
 </script>

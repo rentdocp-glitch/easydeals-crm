@@ -233,7 +233,7 @@ body{padding-bottom:24px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SB_URL='https://sfvpslsexobukgerkixi.supabase.co',SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';
-const DRIVE_URL=''; // Google Drive upload (Apps Script) - setup baaki
+const DRIVE_URL=''; // Google Drive upload (Apps Script) - setup pending
 const sb=window.SB_MOCK||supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -248,17 +248,17 @@ const rs=n=>{n=+n;if(!n)return '';return n>=1e7?'₹'+(n/1e7).toFixed(2).replace
 const C=(k,lab,opts,o={})=>({k,lab,t:'chips',opts,...o});
 const T=(k,lab,o={})=>({k,lab,t:'text',...o});
 const STEPS=[
- {title:'Owner aur Flat',f:[
-  T('owner_name','Owner ka naam',{req:1}),
-  T('owner_phone','Humare saath share karne wala mobile',{req:1,type:'tel',v:'phone'}),
+ {title:'Owner and Flat',f:[
+  T('owner_name','Owner name',{req:1}),
+  T('owner_phone','Mobile shared with us',{req:1,type:'tel',v:'phone'}),
   T('owner_phone2','Doosra mobile',{type:'tel'}),
   T('owner_email','Email',{type:'email'}),
-  C('intent','Kya karna hai',['Sell','Rent','Both'],{req:1}),
+  C('intent','What to do',['Sell','Rent','Both'],{req:1}),
   C('ptype','Property type',['Flat','Row House','Bungalow / Villa','Penthouse','Duplex','Plot','Shop / Office'],{req:1}),
-  T('project','Society / Project ka naam',{req:1}),
+  T('project','Society / Project name',{req:1}),
   {row:[T('wing','Wing / Tower',{req:1}),T('flat_no','Flat no.',{req:1})]},
-  {row:[T('floor_no','Floor',{req:1,type:'text'}),T('total_floors','Building ke kul floors',{req:1,type:'number'})]},
-  T('address','Poora address',{req:1,area:1}),
+  {row:[T('floor_no','Floor',{req:1,type:'text'}),T('total_floors','Total floors in building',{req:1,type:'number'})]},
+  T('address','Full address',{req:1,area:1}),
   T('locality','Area / Locality',{req:1,zone:1}),
   {row:[T('pincode','Pin code',{req:1,type:'tel',v:'pin'}),T('city','City',{def:'Pune'})]},
   T('landmark','Landmark')
@@ -268,40 +268,40 @@ const STEPS=[
   {row:[C('baths','Bathroom',['1','2','3','4+'],{req:1}),C('balconies','Balcony',['0','1','2','3+'],{req:1})]},
   {row3:[T('carpet','Carpet (sqft)',{req:1,type:'number'}),T('builtup','Built-up (sqft)',{req:1,type:'number'}),T('super_builtup','Super built-up',{type:'number'})]},
   C('furnishing','Furnishing',['Fully Furnished','Semi Furnished','Unfurnished'],{req:1}),
-  C('age_years','Property ki umar (saal)',['New / 0-1','1-5','5-10','10+'],{req:1}),
-  C('occupancy','Abhi ghar mein',['Khaali','Owner','Tenant'],{req:1}),
-  C('available_from','Kab se available',['Turant','1 mahine mein','2-3 mahine mein'],{req:1}),
-  {row:[T('price','Expected price (Lakh mein)',{type:'number',reqIf:d=>d.intent!='Rent',ph:'jaise 95'}),T('final_price','🔒 Final price (Lakh) · portal par nahi',{type:'number'})]},
+  C('age_years','Property age (years)',['New / 0-1','1-5','5-10','10+'],{req:1}),
+  C('occupancy','Currently at home',['Khaali','Owner','Tenant'],{req:1}),
+  C('available_from','Available from',['Turant','Within 1 month','Within 2-3 months'],{req:1}),
+  {row:[T('price','Expected price (in Lakh)',{type:'number',reqIf:d=>d.intent!='Rent',ph:'e.g. 95'}),T('final_price','🔒 Final price (Lakh) · not on portal',{type:'number'})]},
   {row:[T('rent','Rent / mahina (₹)',{type:'number',reqIf:d=>d.intent!='Sell'}),T('deposit','Deposit (₹)',{type:'number'})]},
   T('maintenance','Maintenance / mahina (₹)',{type:'number'})
  ]},
  {title:'Extra details (optional)',opt:1,f:[
-  C('loan','Loan chal raha hai?',['Haan','Nahi']),
-  {row3:[C('bu','B.U. permission',['Haan','Nahi']),C('noc','NA / NOC',['Haan','Nahi']),C('oc','OC mila',['Haan','Nahi'])]},
+  C('loan','Is a loan running?',['Haan','Nahi']),
+  {row3:[C('bu','B.U. permission',['Haan','Nahi']),C('noc','NA / NOC',['Haan','Nahi']),C('oc','OC received',['Haan','Nahi'])]},
   C('facing','Property facing',['East','West','North','South','North-East','North-West','South-East','South-West']),
   C('door_facing','Door facing',['East','West','North','South']),
-  {row:[T('lifts','Lift (per block)',{type:'number'}),T('total_units','Project mein kul flats',{type:'number'})]},
+  {row:[T('lifts','Lift (per block)',{type:'number'}),T('total_units','Total flats in project',{type:'number'})]},
   C('flooring','Flooring',['Vitrified','Marble','Granite','Wooden','Other']),
   C('parking','Parking',['Covered car','Open car','Basement','2-wheeler','Common','Nahi'],{multi:1}),
   C('kitchen','Kitchen',['Platform','Sink','Loft','Wash area','Store room','Modular'],{multi:1}),
   C('furniture','Furniture / appliances',['Wardrobe','AC','Bed','Sofa','TV','Fridge','Washing machine','Geyser','Chimney','Microwave','Water purifier','Dining table','Curtains','Stove'],{multi:1}),
   C('amenities','Society amenities',['Lift','Security','CCTV','Power backup','Gym','Swimming pool','Club house','Garden','Children play area','Jogging track','Fire fighting','Gas pipeline','Solar'],{multi:1}),
-  T('water','Paani kab aata hai',{ph:'24 ghante / subah-shaam'}),
-  T('usp','Khaas baat (USP)',{area:1,ph:'jaise: river view, corner flat, metro 5 min'}),
-  {row:[T('visit_time','Visit ka time',{ph:'Sat-Sun 10-6'}),T('key_person','Chaabi kiske paas')]},
+  T('water','Water supply timing',{ph:'24 hours / morning-evening'}),
+  T('usp','Khaas baat (USP)',{area:1,ph:'e.g. river view, corner flat, metro 5 min'}),
+  {row:[T('visit_time','Visit time',{ph:'Sat-Sun 10-6'}),T('key_person','Chaabi kiske paas')]},
   {row:[T('dob','Owner DOB',{type:'date'}),T('profession','Owner profession')]},
   T('transfer_fee','Transfer fee (₹)',{type:'number'})
  ]},
- {title:'Photos aur Plan',f:[
-  C('photo_mode','Photos',['Abhi camera se','Baad mein professional shoot'],{req:1}),
+ {title:'Photos and Plan',f:[
+  C('photo_mode','Photos',['Take now with camera','Professional shoot later'],{req:1}),
   {photos:1},
   C('plan','Plan',['Platinum','Premium','All in One','Other'],{req:1}),
-  {row:[T('package_amount','Package total (₹)',{req:1,type:'number',ph:'jaise 35400'}),T('plan_amount','Down payment mila (₹)',{req:1,type:'number',ph:'jaise 17700'})]},
-  {row:[T('success_fee','Success fee (₹)',{type:'number',ph:'jaise 11800'}),T('service_till','Service kab tak',{type:'date',defFn:()=>plusDays(90)})]},
-  C('payment_mode','Payment kaise',['UPI','Cash','Cheque','Other'],{req:1}),
+  {row:[T('package_amount','Package total (₹)',{req:1,type:'number',ph:'e.g. 35400'}),T('plan_amount','Down payment received (₹)',{req:1,type:'number',ph:'e.g. 17700'})]},
+  {row:[T('success_fee','Success fee (₹)',{type:'number',ph:'e.g. 11800'}),T('service_till','Service valid till',{type:'date',defFn:()=>plusDays(90)})]},
+  C('payment_mode','Payment mode',['UPI','Cash','Cheque','Other'],{req:1}),
   T('payment_details','Transaction / cheque detail',{ph:'UPI ref, cheque no., bank'}),
-  T('remarks','Koi aur baat',{area:1}),
-  C('tc','Owner ne Terms & Conditions maan liye',['Haan, maan liye'],{req:1})
+  T('remarks','Anything else',{area:1}),
+  C('tc','Owner accepted Terms & Conditions',['Yes, accept'],{req:1})
  ]}
 ];
 const FIELDS=[];STEPS.forEach((s,i)=>s.f.forEach(x=>{(x.row||x.row3||[x]).forEach(y=>{if(y.k){y.step=i;FIELDS.push(y)}})}));
@@ -320,12 +320,12 @@ function zoneField(f){
   if(D.zone_id==null&&D.locality){const a=areaOf(D.locality);if(a){D.zone_id=a.zone_id;D.locality=a.name}else D.loc_other=1}
   const L=D.zone_id?ZA.areas.filter(a=>a.zone_id==D.zone_id).sort((a,b)=>a.name.localeCompare(b.name)):[];
   return `<div class="q">Zone <em>*</em></div><div class="cs">${ZA.zones.map(z=>`<button type="button" class="${D.zone_id==z.id?'on':''}" onclick="zPick(${z.id})">${esc(z.name)}</button>`).join('')}</div>
-  ${D.zone_id?`<div class="q">Area / Locality <em>*</em></div><select onchange="zArea(this.value)"><option value="">— Area chuno —</option>${L.map(a=>`<option ${!D.loc_other&&D.locality==a.name?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="__other" ${D.loc_other?'selected':''}>➕ Other (list mein nahi hai)</option></select>
-  ${D.loc_other?`<input value="${esc(D.locality||'')}" placeholder="Area ka asli naam likho" oninput="D.locality=this.value;saveDraft();zHint(this.value)"><div id="zh">${zHintHtml(D.locality)}</div><div class="mu">Naya area admin ke approval ke liye jayega.</div>`:''}`:''}`;
+  ${D.zone_id?`<div class="q">Area / Locality <em>*</em></div><select onchange="zArea(this.value)"><option value="">— Select area —</option>${L.map(a=>`<option ${!D.loc_other&&D.locality==a.name?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="__other" ${D.loc_other?'selected':''}>➕ Other (is not in the list)</option></select>
+  ${D.loc_other?`<input value="${esc(D.locality||'')}" placeholder="Enter the actual area name" oninput="D.locality=this.value;saveDraft();zHint(this.value)"><div id="zh">${zHintHtml(D.locality)}</div><div class="mu">The new area will go to admin for approval.</div>`:''}`:''}`;
 }
 function zPick(z){if(D.zone_id!=z){D.zone_id=z;if(!D.loc_other)D.locality=''}saveDraft();const y=scrollY;render();scrollTo(0,y)}
 function zArea(v){if(v=='__other'){D.loc_other=1;D.locality=''}else{D.loc_other=0;D.locality=v}saveDraft();const y=scrollY;render();scrollTo(0,y)}
-function zHintHtml(t){const a=t&&t.length>=3?areaOf(t):null;return a?`<div class="err" style="background:#fff6e0;border-color:#f0d9a0;color:#7a5200">"${esc(a.name)}" list mein hai. <button type="button" onclick="D.zone_id=${a.zone_id};D.loc_other=0;D.locality='${esc(a.name)}';saveDraft();render()">Wahi chuno</button></div>`:''}
+function zHintHtml(t){const a=t&&t.length>=3?areaOf(t):null;return a?`<div class="err" style="background:#fff6e0;border-color:#f0d9a0;color:#7a5200">"${esc(a.name)}" is in the list. <button type="button" onclick="D.zone_id=${a.zone_id};D.loc_other=0;D.locality='${esc(a.name)}';saveDraft();render()">Select the same</button></div>`:''}
 function zHint(t){const e=$('#zh');if(e)e.innerHTML=zHintHtml(t)}
 const DK='ed_onboard_draft';
 function saveDraft(){try{localStorage.setItem(DK,JSON.stringify({D,step,lead:LEAD&&LEAD.id}))}catch(e){}}
@@ -342,7 +342,7 @@ async function boot(user){
   const u=new URLSearchParams(location.search);
   if(u.get('copy')){return showCopy(u.get('copy'))}
   const dr=loadDraft();const lid=u.get('lead');
-  if(dr&&(!lid||String(dr.lead)==lid)&&Object.keys(dr.D||{}).length){D=dr.D;step=dr.step||0;if(dr.lead)LEAD={id:dr.lead};toast('Pichhla adhoora form wapas khula')}
+  if(dr&&(!lid||String(dr.lead)==lid)&&Object.keys(dr.D||{}).length){D=dr.D;step=dr.step||0;if(dr.lead)LEAD={id:dr.lead};toast('Your earlier unfinished form has been restored')}
   else if(lid){const {data:l}=await sb.from('leads').select('*').eq('id',lid).single();if(l){LEAD=l;Object.assign(D,{owner_name:l.name||'',owner_phone:ph10(l.phone),project:l.property||'',locality:l.locality||'',bhk:/bhk|rk/i.test(l.bhk||'')?normBhk(l.bhk):'',carpet:l.sqft||'',price:l.price_l||'',address:l.address||'',remarks:l.remarks||''})}}
   FIELDS.forEach(f=>{if(D[f.k]==null){if(f.def)D[f.k]=f.def;if(f.defFn)D[f.k]=f.defFn()}});
   render();
@@ -362,44 +362,44 @@ function render(){
   const s=STEPS[step];
   let h=`<div class="stp">${STEPS.map((x,i)=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div>
   <div style="font-size:19px;font-weight:800;margin:0 2px">Step ${step+1}/4 · ${esc(s.title)}</div>
-  ${LEAD&&LEAD.name?`<div class="mu" style="margin:2px">Owner lead se: ${esc(LEAD.name)} · ${esc(LEAD.phone||'')}</div>`:''}
-  ${s.opt?'<div class="mu" style="margin:4px 2px">Jitna pata ho utna bharo. Yeh sab optional hai.</div>':''}<div class="card" style="margin-top:10px">`;
+  ${LEAD&&LEAD.name?`<div class="mu" style="margin:2px">From owner lead: ${esc(LEAD.name)} · ${esc(LEAD.phone||'')}</div>`:''}
+  ${s.opt?'<div class="mu" style="margin:4px 2px">Jitfill whatever you know. All of this is optional.</div>':''}<div class="card" style="margin-top:10px">`;
   s.f.forEach(x=>{
     if(x.row)h+=`<div class="g2">${x.row.map(y=>`<div>${fieldHtml(y)}</div>`).join('')}</div>`;
     else if(x.row3)h+=`<div class="g3">${x.row3.map(y=>`<div>${fieldHtml(y)}</div>`).join('')}</div>`;
-    else if(x.photos&&!DRIVE_URL&&D.photo_mode=='Abhi camera se')h+=`<div class="err">Photos ab Google Drive mein jayengi. Uska setup abhi baaki hai, tab tak <b>"Baad mein professional shoot"</b> chuno.</div>`;
-    else if(x.photos)h+=D.photo_mode=='Abhi camera se'?`<div class="q">Photos (kam se kam 5) <em>*</em></div><input type="file" accept="image/*" multiple onchange="addPhotos(this.files)"><div class="ph">${PH.map((p,i)=>`<div><img src="${p.url}"><b onclick="PH.splice(${i},1);render()">✕</b></div>`).join('')}</div><div class="mu">${PH.length} photo chune · har photo chhoti karke save hogi</div>`:'';
+    else if(x.photos&&!DRIVE_URL&&D.photo_mode=='Take now with camera')h+=`<div class="err">Photos will now go to Google Drive. Its setup is pending, until then <b>"Professional shoot later"</b> select.</div>`;
+    else if(x.photos)h+=D.photo_mode=='Take now with camera'?`<div class="q">Photos (at least 5) <em>*</em></div><input type="file" accept="image/*" multiple onchange="addPhotos(this.files)"><div class="ph">${PH.map((p,i)=>`<div><img src="${p.url}"><b onclick="PH.splice(${i},1);render()">✕</b></div>`).join('')}</div><div class="mu">${PH.length} photos selected · each photo will be resized and saved</div>`:'';
     else h+=fieldHtml(x);
   });
-  h+=`</div><div id="er"></div><div class="bar">${step?'<button onclick="go(-1)">← Peeche</button>':''}<button class="p" onclick="${step<3?'go(1)':'submit()'}">${step<3?'Aage →':'✅ Save karo'}</button></div>`;
+  h+=`</div><div id="er"></div><div class="bar">${step?'<button onclick="go(-1)">← Peeche</button>':''}<button class="p" onclick="${step<3?'go(1)':'submit()'}">${step<3?'Aage →':'✅ Save'}</button></div>`;
   $('#app').innerHTML=h;
 }
 function pick(k,o){const f=FIELDS.find(x=>x.k==k);if(f.multi){const a=D[k]||[];D[k]=a.includes(o)?a.filter(x=>x!=o):a.concat(o)}else D[k]=D[k]==o&&!f.req?null:o;saveDraft();const y=scrollY;render();scrollTo(0,y)}
 function check(i){
   const miss=[];FIELDS.filter(f=>f.step==i).forEach(f=>{const req=f.req||(f.reqIf&&f.reqIf(D));const v=D[f.k];if(req&&(v==null||String(v).trim()==''||(Array.isArray(v)&&!v.length)))miss.push(f.lab)});
   if(i==0&&zOn()&&!D.zone_id)miss.push('Zone');
-  if(i==0){if(D.owner_phone&&ph10(D.owner_phone).length!=10)miss.push('Mobile 10 digit ka hona chahiye');if(D.pincode&&!/^\d{6}$/.test(String(D.pincode).trim()))miss.push('Pin code 6 digit ka hona chahiye')}
-  if(i==3&&D.photo_mode=='Abhi camera se'&&!DRIVE_URL)miss.push('Photos ka Drive setup baaki hai: "Baad mein professional shoot" chuno');
-  else if(i==3&&D.photo_mode=='Abhi camera se'&&PH.length<5)miss.push('Kam se kam 5 photos ('+PH.length+' chuni)');
+  if(i==0){if(D.owner_phone&&ph10(D.owner_phone).length!=10)miss.push('Mobile must be 10 digits');if(D.pincode&&!/^\d{6}$/.test(String(D.pincode).trim()))miss.push('Pin code must be 6 digits')}
+  if(i==3&&D.photo_mode=='Take now with camera'&&!DRIVE_URL)miss.push('Photos Drive setup is pending: "Professional shoot later" select');
+  else if(i==3&&D.photo_mode=='Take now with camera'&&PH.length<5)miss.push('At least 5 photos ('+PH.length+' chuni)');
   return miss;
 }
-function go(d){if(d>0){const m=check(step);if(m.length){$('#er').innerHTML=`<div class="err"><b>Yeh bharna baaki hai:</b><br>• ${m.map(esc).join('<br>• ')}</div>`;$('#er').scrollIntoView({behavior:'smooth'});return}}step=Math.max(0,Math.min(3,step+d));saveDraft();render();scrollTo(0,0)}
+function go(d){if(d>0){const m=check(step);if(m.length){$('#er').innerHTML=`<div class="err"><b>Still to be filled:</b><br>• ${m.map(esc).join('<br>• ')}</div>`;$('#er').scrollIntoView({behavior:'smooth'});return}}step=Math.max(0,Math.min(3,step+d));saveDraft();render();scrollTo(0,0)}
 
 /* ---------- photos ---------- */
 async function addPhotos(files){
-  for(const f of files){try{const blob=await shrink(f);PH.push({blob,url:URL.createObjectURL(blob)})}catch(e){toast('Ek photo nahi khuli',1)}}
+  for(const f of files){try{const blob=await shrink(f);PH.push({blob,url:URL.createObjectURL(blob)})}catch(e){toast('One photo could not be opened',1)}}
   render();
 }
 function shrink(file){return new Promise((ok,no)=>{const img=new Image();img.onload=()=>{const m=1280,s=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>b?ok(b):no(),'image/jpeg',.72)};img.onerror=no;img.src=URL.createObjectURL(file)})}
 
 /* ---------- submit ---------- */
 async function submit(){
-  if(saving)return;for(let i=0;i<4;i++){const m=check(i);if(m.length){step=i;render();$('#er').innerHTML=`<div class="err"><b>Step ${i+1} mein baaki:</b><br>• ${m.map(esc).join('<br>• ')}</div>`;return}}
+  if(saving)return;for(let i=0;i<4;i++){const m=check(i);if(m.length){step=i;render();$('#er').innerHTML=`<div class="err"><b>Pending in Step ${i+1}:</b><br>• ${m.map(esc).join('<br>• ')}</div>`;return}}
   saving=true;const btn=document.querySelector('.bar .p');btn.disabled=true;
   try{
     const paths=[];
-    /* photos Supabase mein nahi jaati: save ke baad seedha Google Drive mein (driveUpload) */
-    btn.textContent='Save ho raha hai…';
+    /* photos do not go to Supabase: after save they go straight to Google Drive (driveUpload) */
+    btn.textContent='Saving…';
     if(zOn()&&D.loc_other&&D.locality&&!areaOf(D.locality)){const {data:ar,error:ae}=await sb.rpc('area_request',{t:D.locality,z:D.zone_id});if(ae)throw ae;D.locality=ar.name}
     const p={};MAIN.forEach(k=>{if(D[k]!=null&&D[k]!=='')p[k]=D[k]});
     p.owner_phone=ph10(D.owner_phone);if(D.owner_phone2)p.owner_phone2=ph10(D.owner_phone2);
@@ -409,7 +409,7 @@ async function submit(){
     det.filled_by=ME.name||'';det.filled_at=new Date().toISOString();p.details=det;
     const {data:id,error}=await sb.rpc('onboard_property',{p});if(error)throw error;
     DONE={id,p,ph:{total:PH.length,done:0,fail:0,folder:''}};clearDraft();render();scrollTo(0,0);if(PH.length&&DRIVE_URL)driveUpload();
-  }catch(e){const m=String(e.message||e);toast(/duplicate/.test(m)?'Yeh property pehle se hai: '+m.replace(/.*duplicate:\s*/,''):'Save nahi hua: '+m,1);btn.disabled=false;btn.textContent='✅ Save karo'}
+  }catch(e){const m=String(e.message||e);toast(/duplicate/.test(m)?'This property already exists: '+m.replace(/.*duplicate:\s*/,''):'Not saved: '+m,1);btn.disabled=false;btn.textContent='✅ Save'}
   saving=false;
 }
 
@@ -457,19 +457,19 @@ function desc(p){const d=p.details||{};return [`${p.bhk} ${p.ptype=='Flat'?'apar
  d.amenities&&d.amenities.length?`Amenities: ${d.amenities.join(', ')}.`:'',d.usp||'',p.landmark?`Near ${p.landmark}.`:''].filter(Boolean).join(' ')}
 function showDone(){
   const {id,p}=DONE;const ow=ph10(p.owner_phone);
-  $('#app').innerHTML=`<div class="card" style="text-align:center;border:2px solid #15803d"><div style="font-size:42px">✅</div><div style="font-size:21px;font-weight:800">Property save ho gayi</div><div class="big" style="font-size:30px;font-weight:800;color:var(--pr)">${esc(id)}</div><div class="mu">${esc(p.owner_name)} · ${esc(p.project)} ${esc(p.flat_no||'')}</div></div>
-  ${DONE.ph&&DONE.ph.total?`<div class="card"><b>📷 Photos → Google Drive</b><div class="mu">${DONE.ph.done}/${DONE.ph.total} upload hui${DONE.ph.done<DONE.ph.total&&!DONE.ph.fail?' · chal raha hai… page band mat karna':''}</div>${DONE.ph.fail?`<div class="err">Kuch photos upload nahi hui (${esc(DONE.ph.err||'')}). Net check karke dobara try karo.</div><button class="p" onclick="driveUpload()">🔁 Dobara upload karo</button>`:''}${DONE.ph.done==DONE.ph.total?'<div class="ok">✅ Saari photos Drive mein '+esc(DONE.id)+' folder mein save</div>':''}</div>`:''}
-  <div class="card"><b>1. Owner ko summary bhejo</b><div class="mu">WhatsApp khulega, message taiyaar hoga, aapko bas Send dabana hai.</div>
+  $('#app').innerHTML=`<div class="card" style="text-align:center;border:2px solid #15803d"><div style="font-size:42px">✅</div><div style="font-size:21px;font-weight:800">Property saved</div><div class="big" style="font-size:30px;font-weight:800;color:var(--pr)">${esc(id)}</div><div class="mu">${esc(p.owner_name)} · ${esc(p.project)} ${esc(p.flat_no||'')}</div></div>
+  ${DONE.ph&&DONE.ph.total?`<div class="card"><b>📷 Photos → Google Drive</b><div class="mu">${DONE.ph.done}/${DONE.ph.total} upload hui${DONE.ph.done<DONE.ph.total&&!DONE.ph.fail?' · in progress… do not close the page':''}</div>${DONE.ph.fail?`<div class="err">Some photos did not upload (${esc(DONE.ph.err||'')}). Check your internet and try again.</div><button class="p" onclick="driveUpload()">🔁 Upload again</button>`:''}${DONE.ph.done==DONE.ph.total?'<div class="ok">✅ All photos saved in Drive '+esc(DONE.id)+' folder</div>':''}</div>`:''}
+  <div class="card"><b>1. Send summary to owner</b><div class="mu">WhatsApp will open with the message ready; you just tap Send.</div>
   <div class="acts"><a class="btn g" style="color:#fff" target="_blank" href="https://wa.me/91${ow}?text=${encodeURIComponent(summary(id,p))}">📲 WhatsApp ${esc(p.owner_name)}</a></div></div>
-  <div class="card"><b>2. Portal par daalne ki details</b><div class="mu">Office mein portal ka form bharte waqt yahan se copy karo.</div><div class="acts"><a class="btn" href="?copy=${encodeURIComponent(id)}">📋 Portal copy screen</a></div></div>
-  <div class="acts"><button onclick="DONE=null;D={};PH=[];LEAD=null;step=0;history.replaceState(null,'',location.pathname);FIELDS.forEach(f=>{if(f.def)D[f.k]=f.def;if(f.defFn)D[f.k]=f.defFn()});render()">➕ Nayi property</button></div>`;
+  <div class="card"><b>2. Details for the portal listing</b><div class="mu">Copy from here while filling the portal form in the office.</div><div class="acts"><a class="btn" href="?copy=${encodeURIComponent(id)}">📋 Portal copy screen</a></div></div>
+  <div class="acts"><button onclick="DONE=null;D={};PH=[];LEAD=null;step=0;history.replaceState(null,'',location.pathname);FIELDS.forEach(f=>{if(f.def)D[f.k]=f.def;if(f.defFn)D[f.k]=f.defFn()});render()">➕ New property</button></div>`;
 }
 
 /* ---------- portal copy screen ---------- */
 let CP=null,CPP='99acres';
 async function showCopy(id){
   const {data:p,error}=await sb.from('properties').select('*').eq('id',id).single();
-  if(error||!p){$('#app').innerHTML=`<div class="err">Property ${esc(id)} nahi mili (ya sirf admin dekh sakta hai).</div>`;return}
+  if(error||!p){$('#app').innerHTML=`<div class="err">Property ${esc(id)} not found (or only admin can see).</div>`;return}
   CP=p;renderCopy();
 }
 function renderCopy(){
@@ -484,9 +484,9 @@ function renderCopy(){
   <div class="chips" style="margin-top:10px">${Object.keys(L).map(k=>`<button class="${CPP==k?'on':''}" onclick="CPP='${k}';renderCopy()">${k}</button>`).join('')}</div>
   <div class="card">${rows.map(r=>`<div class="cp"><span>${esc(r[0])}</span><b>${esc(r[1])}</b><button class="sm" onclick="cp(${esc(JSON.stringify(String(r[1])))})">Copy</button></div>`).join('')}</div>
   <div class="card"><b>Description</b><div style="margin:6px 0;font-size:14px">${esc(ds)}</div><button class="p" onclick="cp(${esc(JSON.stringify(ds))})">📋 Description copy</button></div>
-  <div class="mu" style="margin:2px">Photos: ${(p.photos||[]).length} · ${p.details&&p.details.photo_mode=='Baad mein professional shoot'?'professional shoot baaki':''}</div>`;
+  <div class="mu" style="margin:2px">Photos: ${(p.photos||[]).length} · ${p.details&&p.details.photo_mode=='Professional shoot later'?'professional shoot pending':''}</div>`;
 }
-function cp(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Copied ✅')).catch(()=>toast('Copy nahi hua, haath se select karo',1))}
+function cp(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Copied ✅')).catch(()=>toast('Could not copy, please select manually',1))}
 
 sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLogin());
 </script>

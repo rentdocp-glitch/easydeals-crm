@@ -462,8 +462,8 @@ async function saveEdit(id){
   const {data,error}=await sb.from('leads').update(upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
   if(!data||!data.length)return toast('Could not save (no permission)',1);
-  if(hand){const r=await sb.rpc('lead_handover',{lid:id,to_id:ap});if(r.error){toast('Details save ho gayi, par lead '+(P[ap].name||'')+' ko nahi gayi. Admin se transfer karwao.',1);openId=null;openK=null;return render()}
-    for(const k in VC)delete VC[k];openId=null;openK=null;toast('✅ Lead '+(P[ap].name||'')+' ko de di');return render()}
+  if(hand){const r=await sb.rpc('lead_handover',{lid:id,to_id:ap});if(r.error){toast('Details saved, but the lead '+(P[ap].name||'')+' was not transferred. Ask admin to transfer it.',1);openId=null;openK=null;return render()}
+    for(const k in VC)delete VC[k];openId=null;openK=null;toast('✅ Lead '+(P[ap].name||'')+' was given to');return render()}
   openId=null;openK=null;toast('Lead updated ✅');render();
 }
 function delForm(l){
@@ -573,24 +573,24 @@ function zonePicker(px,loc){
 function zpInner(px){
   const s=ZP[px],areas=s.z?zAreas(s.z):[];
   return `<label>Zone</label><div class="zch">${ZA.zones.filter(z=>z.active||z.id==s.z).map(z=>`<button type="button" class="${s.z==z.id?'on':''}" onclick="zpZone('${px}',${z.id})">${esc(z.name)}</button>`).join('')}</div>
-  ${s.z?`<label>Area <span class="mu">(sirf ${esc(zName(s.z))} ke)</span></label><select id="zpa_${px}" onchange="zpArea('${px}',this.value)"><option value="">— Area chuno —</option>${areas.map(a=>`<option value="${a.id}" ${s.a==a.id&&!s.other?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="other" ${s.other?'selected':''}>➕ Other (list mein nahi hai)</option></select>`:(s.orig?`<div class="mu" style="margin:4px 0 6px">Abhi likha hai: <b>${esc(s.orig)}</b> · zone chuno</div>`:'')}
-  ${s.z&&s.other?`<label>Area ka asli naam likho</label><input id="zpo_${px}" value="${esc(s.other===true&&s.orig&&!areaOf(s.orig)?s.orig:'')}" placeholder="Jaise: Pimple Gurav" oninput="zpSug('${px}')"><div id="zps_${px}"></div><div class="mu">Naya area admin ke approval ke liye jayega. Lead abhi save ho jayegi.</div>`:''}`;
+  ${s.z?`<label>Area <span class="mu">(only for ${esc(zName(s.z))})</span></label><select id="zpa_${px}" onchange="zpArea('${px}',this.value)"><option value="">— Select area —</option>${areas.map(a=>`<option value="${a.id}" ${s.a==a.id&&!s.other?'selected':''}>${esc(a.name)}</option>`).join('')}<option value="other" ${s.other?'selected':''}>➕ Other (is not in the list)</option></select>`:(s.orig?`<div class="mu" style="margin:4px 0 6px">Currently written: <b>${esc(s.orig)}</b> · select zone</div>`:'')}
+  ${s.z&&s.other?`<label>Enter the actual area name</label><input id="zpo_${px}" value="${esc(s.other===true&&s.orig&&!areaOf(s.orig)?s.orig:'')}" placeholder="e.g. Pimple Gurav" oninput="zpSug('${px}')"><div id="zps_${px}"></div><div class="mu">The new area will go to admin for approval. The lead will be saved now.</div>`:''}`;
 }
 function zpRe(px){const e=$('#zp_'+px);if(e)e.innerHTML=zpInner(px);if(ZP[px].other&&ZP[px].z)zpSug(px)}
 function zpZone(px,z){const s=ZP[px];s.touched=true;if(s.z!=z){s.z=z;s.a=null;s.other=s.orig&&!areaOf(s.orig)?true:false}zpRe(px)}
 function zpArea(px,v){const s=ZP[px];s.touched=true;if(v=='other'){s.other=true;s.a=null}else{s.other=false;s.a=v?+v:null}zpRe(px)}
 function zpSug(px){const s=ZP[px],i=$('#zpo_'+px),box=$('#zps_'+px);if(!i||!box)return;s.pick=null;const t=i.value.trim();if(t.length<3){box.innerHTML='';return}
   const ex=areaOf(t);const b=ex?{a:ex,s:1}:zBest(t);
-  if(b&&b.s>=0.6)box.innerHTML=`<div class="zsug">🤔 Kya aapka matlab <b>${esc(b.a.name)}</b> (${esc(zName(b.a.zone_id))}) hai?<div class="acts" style="margin-top:6px"><button type="button" class="p" onclick="zpUse('${px}',${b.a.id})">Haan, ${esc(b.a.name)}</button><button type="button" onclick="this.closest('.zsug').remove()">Nahi, naya area</button></div></div>`;
+  if(b&&b.s>=0.6)box.innerHTML=`<div class="zsug">🤔 Did you mean <b>${esc(b.a.name)}</b> (${esc(zName(b.a.zone_id))})?<div class="acts" style="margin-top:6px"><button type="button" class="p" onclick="zpUse('${px}',${b.a.id})">Yes, ${esc(b.a.name)}</button><button type="button" onclick="this.closest('.zsug').remove()">No, new area</button></div></div>`;
   else box.innerHTML=''}
 function zpUse(px,id){const a=ZA.areas.find(x=>x.id==id),s=ZP[px];s.z=a.zone_id;s.a=a.id;s.other=false;s.touched=true;zpRe(px)}
 /* -> {locality, area_id} | {keep:true} | {err} */
 async function zpVal(px,required){
   const s=ZP[px];if(!s)return{keep:true};
   if(!s.touched&&!required)return{keep:true};
-  if(!s.z)return required?{err:'Zone chuno'}:{keep:true};
-  if(!s.other){if(!s.a)return{err:'Area chuno (ya Other)'};const a=ZA.areas.find(x=>x.id==s.a);return{locality:a.name,area_id:a.id}}
-  const t=(($('#zpo_'+px)||{}).value||'').trim();if(t.length<3)return{err:'Other mein area ka naam likho'};
+  if(!s.z)return required?{err:'Select zone'}:{keep:true};
+  if(!s.other){if(!s.a)return{err:'Select area (or Other)'};const a=ZA.areas.find(x=>x.id==s.a);return{locality:a.name,area_id:a.id}}
+  const t=(($('#zpo_'+px)||{}).value||'').trim();if(t.length<3)return{err:'Enter the area name in Other'};
   const ex=areaOf(t);if(ex)return{locality:ex.name,area_id:ex.id};
   const {data,error}=await sb.rpc('area_request',{t,z:s.z});if(error)return{err:error.message};
   ZA.t=0;return data.status=='approved'?{locality:data.name,area_id:data.id}:{locality:data.name,area_id:null,pending:true};
@@ -599,54 +599,54 @@ async function zpVal(px,required){
 /* ---- admin: Manage Zones & Areas ---- */
 async function zAct(fn,args,msg){const {data,error}=await sb.rpc(fn,args);if(error)return toast(error.message,1);toast(msg+(data&&data.leads!=null?` · ${data.leads} leads${data.properties?', '+data.properties+' properties':''} jude`:''));await loadZA(true);for(const k in VC)if(k.includes('|zones|'))delete VC[k];render()}
 const zSel=(id,cur,ph)=>`<select id="${id}"><option value="">${ph||'— Zone —'}</option>${ZA.zones.filter(z=>z.active).map(z=>`<option value="${z.id}" ${cur==z.id?'selected':''}>${esc(z.name)}</option>`).join('')}</select>`;
-const aSel=(id,ex)=>`<select id="${id}"><option value="">— Area chuno —</option>${ZA.zones.map(z=>`<optgroup label="${esc(z.name)}">${zAreas(z.id).filter(a=>a.id!=ex).map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
+const aSel=(id,ex)=>`<select id="${id}"><option value="">— Select area —</option>${ZA.zones.map(z=>`<optgroup label="${esc(z.name)}">${zAreas(z.id).filter(a=>a.id!=ex).map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
 const zv=id=>{const e=$('#'+id);return e?e.value:''};
 function zGo(t){ZT=t;for(const k in VC)if(k.includes('|zones|'))delete VC[k];render()}
 const zonesView=async()=>{
   await loadZA(true);
-  if(!ZA.ok)return `<div class="errc"><div class="ei">⚠️</div><div><b>Zones abhi set nahi hue</b><div class="mu">Supabase mein Step 6 ki SQL chalani hai.</div></div></div>`;
+  if(!ZA.ok)return `<div class="errc"><div class="ei">⚠️</div><div><b>Zones are not set up yet</b><div class="mu">Run the Step 6 SQL in Supabase.</div></div></div>`;
   const pend=ZA.areas.filter(a=>a.status=='pending'),appr=ZA.areas.filter(a=>a.status=='approved');
   const [lc,un]=await Promise.all([pageAll(()=>sb.from('leads').select('area_id,locality')),sb.rpc('area_unclassified')]);
   const cnt={},cntT={};lc.forEach(l=>{if(l.area_id)cnt[l.area_id]=(cnt[l.area_id]||0)+1;else{const k=edNorm(l.locality);cntT[k]=(cntT[k]||0)+1}});
   const U=(un.data||[]);
   const tabs=[['pending',`⏳ Pending ${pend.length}`],['approved',`✅ Approved ${appr.length}`],['unc',`❓ Unclassified ${U.reduce((s,r)=>s+(+r.n),0)}`],['zones','🗺 Zones'],['hist','📜 History']];
-  let h=`<div class="card" style="padding:12px"><b style="font-size:17px">🗺 Manage Zones & Areas</b><div class="mu">Naya area yahan approve karte hi sabke dropdown aur filter mein aa jaata hai.</div>
-  <div class="zteam">Team ke liye Zone → Area form: <b>${ZA.team?'CHALU ✅':'BAND (sirf admin test kar raha hai)'}</b> <button onclick="zAct('zone_admin',{act:'team_ui',zid:null,txt:'${ZA.team?'off':'on'}'},'${ZA.team?'Team ke liye band':'Team ke liye chalu'}')">${ZA.team?'Band karo':'Team ke liye chalu karo'}</button></div></div>
+  let h=`<div class="card" style="padding:12px"><b style="font-size:17px">🗺 Manage Zones & Areas</b><div class="mu">Once a new area is approved here, it appears in everyones dropdown and filter.</div>
+  <div class="zteam">Zone → Area form for team: <b>${ZA.team?'ON ✅':'OFF (only admin is testing)'}</b> <button onclick="zAct('zone_admin',{act:'team_ui',zid:null,txt:'${ZA.team?'off':'on'}'},'${ZA.team?'Turn off for team':'Turn on for team'}')">${ZA.team?'Deactivate':'Turn on for team'}</button></div></div>
   <div class="chips" style="overflow-x:auto;flex-wrap:nowrap">${tabs.map(t=>`<button class="${ZT==t[0]?'on':''}" onclick="zGo('${t[0]}')" style="white-space:nowrap">${t[1]}</button>`).join('')}</div>`;
   if(ZT=='pending'){
     h+=pend.length?pend.sort((a,b)=>(cntT[b.norm]||0)-(cntT[a.norm]||0)).map(a=>{const b=zBest(a.name,a.id);const dup=b&&b.s>=0.6;
       return `<div class="card"><div class="row"><b>${esc(a.name)}</b><span class="zt">${dup?'Duplicate?':'Pending'}</span></div>
-      <div class="mu">${a.requested_by&&P[a.requested_by]?esc(P[a.requested_by].name||'')+' ne joda':esc(a.note||'')} · ${cntT[a.norm]||0} leads · Sujhaya zone: <b>${esc(zName(a.suggested_zone)||'— (aap chuno)')}</b></div>
-      ${dup?`<div class="zsug" style="margin-top:6px">"${esc(b.a.name)}" (${esc(zName(b.a.zone_id))}) se ${Math.round(b.s*100)}% milta hai<div class="acts" style="margin-top:6px"><button class="p" onclick="zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:${b.a.id},txt:null},'Merge ho gaya')">🔗 ${esc(b.a.name)} mein merge</button></div></div>`:''}
-      <div class="f2" style="margin-top:8px">${zSel('zz_'+a.id,a.suggested_zone)}<button class="g" onclick="const z=zv('zz_${a.id}');if(!z)return toast('Zone chuno',1);zAct('area_admin',{act:'approve',aid:${a.id},z:+z,target:null,txt:null},'Approve ho gaya ✅')">✅ Approve</button></div>
-      <div class="f2" style="margin-top:6px">${aSel('zm_'+a.id,a.id)}<button onclick="const t=zv('zm_${a.id}');if(!t)return toast('Merge ke liye area chuno',1);zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:+t,txt:null},'Merge ho gaya')">🔗 Merge</button></div>
-      <button class="r" style="margin-top:6px" onclick="zAct('area_admin',{act:'reject',aid:${a.id},z:null,target:null,txt:null},'Reject kiya')">✗ Reject</button></div>`}).join(''):empty('Koi pending area nahi 🎉');
+      <div class="mu">${a.requested_by&&P[a.requested_by]?esc(P[a.requested_by].name||'')+' added it':esc(a.note||'')} · ${cntT[a.norm]||0} leads · Sujhaya zone: <b>${esc(zName(a.suggested_zone)||'— (you select)')}</b></div>
+      ${dup?`<div class="zsug" style="margin-top:6px">"${esc(b.a.name)}" (${esc(zName(b.a.zone_id))}) matches ${Math.round(b.s*100)}%<div class="acts" style="margin-top:6px"><button class="p" onclick="zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:${b.a.id},txt:null},'Merged')">🔗 Merge into ${esc(b.a.name)}</button></div></div>`:''}
+      <div class="f2" style="margin-top:8px">${zSel('zz_'+a.id,a.suggested_zone)}<button class="g" onclick="const z=zv('zz_${a.id}');if(!z)return toast('Select zone',1);zAct('area_admin',{act:'approve',aid:${a.id},z:+z,target:null,txt:null},'Approved ✅')">✅ Approve</button></div>
+      <div class="f2" style="margin-top:6px">${aSel('zm_'+a.id,a.id)}<button onclick="const t=zv('zm_${a.id}');if(!t)return toast('Select an area to merge into',1);zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:+t,txt:null},'Merged')">🔗 Merge</button></div>
+      <button class="r" style="margin-top:6px" onclick="zAct('area_admin',{act:'reject',aid:${a.id},z:null,target:null,txt:null},'Rejected')">✗ Reject</button></div>`}).join(''):empty('No pending areas 🎉');
   }else if(ZT=='approved'){
-    h+=ZA.zones.map(z=>{const L=zAreas(z.id);return `<div class="card"><b>${esc(z.name)}</b> <span class="mu">${L.length} area · ${L.reduce((s,a)=>s+(cnt[a.id]||0),0)} leads${z.active?'':' · BAND'}</span>
+    h+=ZA.zones.map(z=>{const L=zAreas(z.id);return `<div class="card"><b>${esc(z.name)}</b> <span class="mu">${L.length} area · ${L.reduce((s,a)=>s+(cnt[a.id]||0),0)} leads${z.active?'':' · OFFD'}</span>
       ${L.map(a=>`<div class="zrow" onclick="ZX.o=ZX.o==${a.id}?0:${a.id};zGo('approved')"><span>${esc(a.name)}${(a.aliases||[]).length?` <span class="mu">(${a.aliases.length} spelling)</span>`:''}</span><span class="mu">${cnt[a.id]||0}</span></div>
       ${ZX.o==a.id?`<div class="form" style="margin:4px 0 8px"><div class="mu">Spellings: ${esc((a.aliases||[]).join(', ')||'—')}</div>
-       <div class="f2">${zSel('zr_'+a.id,a.zone_id)}<button onclick="zAct('area_admin',{act:'rezone',aid:${a.id},z:+zv('zr_${a.id}'),target:null,txt:null},'Zone badla')">Zone badlo</button></div>
-       <div class="f2"><input id="zn_${a.id}" placeholder="Naya naam"><button onclick="const t=zv('zn_${a.id}').trim();if(t.length<3)return toast('Naam likho',1);zAct('area_admin',{act:'rename',aid:${a.id},z:null,target:null,txt:t},'Naam badla')">Naam badlo</button></div>
-       <div class="f2"><input id="zl_${a.id}" placeholder="Doosri spelling (jaise Hinjwadi)"><button onclick="const t=zv('zl_${a.id}').trim();if(t.length<3)return toast('Spelling likho',1);zAct('area_admin',{act:'alias',aid:${a.id},z:null,target:null,txt:t},'Spelling judi')">+ Spelling</button></div>
-       <div class="f2">${aSel('zg_'+a.id,a.id)}<button onclick="const t=zv('zg_${a.id}');if(!t)return toast('Area chuno',1);zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:+t,txt:null},'Merge ho gaya')">🔗 Merge</button></div>
-       <button class="r" onclick="zAct('area_admin',{act:'deactivate',aid:${a.id},z:null,target:null,txt:null},'Area band kiya')">Area band karo</button></div>`:''}`).join('')}</div>`}).join('')
-      +`<div class="card"><b>➕ Naya area jodo</b><div class="f2" style="margin-top:6px"><input id="zna" placeholder="Area ka naam">${zSel('znz')}</div><button class="p" style="margin-top:6px" onclick="const t=zv('zna').trim(),z=zv('znz');if(t.length<3||!z)return toast('Naam aur zone dono chahiye',1);const b=zBest(t);if(b&&b.s>=0.85&&!ZX.f){ZX.f=1;return toast('Milta-julta area pehle se hai: '+b.a.name+' · phir bhi chahiye to dobara dabao',1)}ZX.f=0;zAct('area_admin',{act:'create',aid:null,z:+z,target:null,txt:t},'Area jud gaya ✅')">Jodo</button></div>`;
+       <div class="f2">${zSel('zr_'+a.id,a.zone_id)}<button onclick="zAct('area_admin',{act:'rezone',aid:${a.id},z:+zv('zr_${a.id}'),target:null,txt:null},'Zone changed')">Change zone</button></div>
+       <div class="f2"><input id="zn_${a.id}" placeholder="New name"><button onclick="const t=zv('zn_${a.id}').trim();if(t.length<3)return toast('Enter name',1);zAct('area_admin',{act:'rename',aid:${a.id},z:null,target:null,txt:t},'Name changed')">Change name</button></div>
+       <div class="f2"><input id="zl_${a.id}" placeholder="Doosri spelling (jaise Hinjwadi)"><button onclick="const t=zv('zl_${a.id}').trim();if(t.length<3)return toast('Enter spelling',1);zAct('area_admin',{act:'alias',aid:${a.id},z:null,target:null,txt:t},'Spelling added')">+ Spelling</button></div>
+       <div class="f2">${aSel('zg_'+a.id,a.id)}<button onclick="const t=zv('zg_${a.id}');if(!t)return toast('Select area',1);zAct('area_admin',{act:'merge',aid:${a.id},z:null,target:+t,txt:null},'Merged')">🔗 Merge</button></div>
+       <button class="r" onclick="zAct('area_admin',{act:'deactivate',aid:${a.id},z:null,target:null,txt:null},'Area deactivated')">Deactivate area</button></div>`:''}`).join('')}</div>`}).join('')
+      +`<div class="card"><b>➕ Add new area</b><div class="f2" style="margin-top:6px"><input id="zna" placeholder="Area name">${zSel('znz')}</div><button class="p" style="margin-top:6px" onclick="const t=zv('zna').trim(),z=zv('znz');if(t.length<3||!z)return toast('Both name and zone are required',1);const b=zBest(t);if(b&&b.s>=0.85&&!ZX.f){ZX.f=1;return toast('A similar area already exists: '+b.a.name+' · to create anyway, tap again',1)}ZX.f=0;zAct('area_admin',{act:'create',aid:null,z:+z,target:null,txt:t},'Area linked ✅')">Add</button></div>`;
   }else if(ZT=='unc'){
-    h+=`<div class="mu" style="margin:0 2px 8px">In leads/properties ka area kisi zone se juda nahi hai. Sahi area chuno, aage se yeh spelling apne aap judegi.</div>`+
+    h+=`<div class="mu" style="margin:0 2px 8px">These leads/properties have no area linked to a zone. Select the right area and this spelling will link automatically from now on.</div>`+
     (U.length?U.map((r,i)=>{const b=r.locality!='(khaali)'?zBest(r.locality):null,pa=pend.find(a=>a.norm==edNorm(r.locality)||a.norm==edNorm(String(r.locality).split('(')[0].split('/')[0]));return `<div class="card"><div class="row"><b>${esc(r.locality)}</b><span class="mu">${r.n} ${r.src=='leads'?'leads':'properties'}</span></div>
-      ${r.locality=='(khaali)'?'<div class="mu">Area likha hi nahi hai. Lead kholkar bharna hoga.</div>':pa?`<div class="zsug">⏳ "${esc(pa.name)}" Pending list mein hai${pa.suggested_zone?' (sujhaya zone: '+esc(zName(pa.suggested_zone))+')':''}. <button onclick="zGo('pending')">Pending mein approve karo</button></div>`:`${b&&b.s>=0.7?`<div class="mu">Shayad: <b>${esc(b.a.name)}</b> (${Math.round(b.s*100)}%)</div>`:''}
-      <div class="f2" style="margin-top:6px">${aSel('zu_'+i)}<button class="p" onclick="const t=zv('zu_${i}');if(!t)return toast('Area chuno',1);zAct('area_assign_text',{loc:${esc(JSON.stringify(r.locality))},aid:+t},'Jod diya')">Jodo</button></div>
-      <div class="f2" style="margin-top:6px">${zSel('zc_'+i,null,'— ya naya area, zone —')}<button onclick="const z=zv('zc_${i}');if(!z)return toast('Zone chuno',1);zAct('area_admin',{act:'create',aid:null,z:+z,target:null,txt:${esc(JSON.stringify(r.locality))}},'Naya area bana')">Naya area banao</button></div>`}</div>`}).join(''):empty('Sab classified hai 🎉'));
+      ${r.locality=='(khaali)'?'<div class="mu">No area is written. Open the lead and fill it.</div>':pa?`<div class="zsug">⏳ "${esc(pa.name)}" is in the Pending list${pa.suggested_zone?' (sujhaya zone: '+esc(zName(pa.suggested_zone))+')':''}. <button onclick="zGo('pending')">Approve in Pending</button></div>`:`${b&&b.s>=0.7?`<div class="mu">Shayad: <b>${esc(b.a.name)}</b> (${Math.round(b.s*100)}%)</div>`:''}
+      <div class="f2" style="margin-top:6px">${aSel('zu_'+i)}<button class="p" onclick="const t=zv('zu_${i}');if(!t)return toast('Select area',1);zAct('area_assign_text',{loc:${esc(JSON.stringify(r.locality))},aid:+t},'Jod diya')">Add</button></div>
+      <div class="f2" style="margin-top:6px">${zSel('zc_'+i,null,'— or new area, zone —')}<button onclick="const z=zv('zc_${i}');if(!z)return toast('Select zone',1);zAct('area_admin',{act:'create',aid:null,z:+z,target:null,txt:${esc(JSON.stringify(r.locality))}},'New area created')">Create new area</button></div>`}</div>`}).join(''):empty('Everything is classified 🎉'));
   }else if(ZT=='zones'){
-    h+=ZA.zones.map(z=>`<div class="card"><div class="row"><b>${esc(z.name)}</b><span class="mu">${zAreas(z.id).length} area${z.active?'':' · BAND'}</span></div>
-      <div class="f2" style="margin-top:6px"><input id="zrn_${z.id}" placeholder="Naya naam"><button onclick="const t=zv('zrn_${z.id}').trim();if(!t)return toast('Naam likho',1);zAct('zone_admin',{act:'rename',zid:${z.id},txt:t},'Zone ka naam badla')">Naam badlo</button></div>
-      <button style="margin-top:6px" onclick="zAct('zone_admin',{act:'toggle',zid:${z.id},txt:null},'${z.active?'Zone band':'Zone chalu'}')">${z.active?'Band karo':'Chalu karo'}</button></div>`).join('')+
-      `<div class="card"><b>➕ Naya zone</b><div class="f2" style="margin-top:6px"><input id="znz2" placeholder="Zone ka naam"><button class="p" onclick="const t=zv('znz2').trim();if(!t)return toast('Naam likho',1);zAct('zone_admin',{act:'create',zid:null,txt:t},'Zone jud gaya')">Jodo</button></div></div>`;
+    h+=ZA.zones.map(z=>`<div class="card"><div class="row"><b>${esc(z.name)}</b><span class="mu">${zAreas(z.id).length} area${z.active?'':' · OFFD'}</span></div>
+      <div class="f2" style="margin-top:6px"><input id="zrn_${z.id}" placeholder="New name"><button onclick="const t=zv('zrn_${z.id}').trim();if(!t)return toast('Enter name',1);zAct('zone_admin',{act:'rename',zid:${z.id},txt:t},'Zone renamed')">Change name</button></div>
+      <button style="margin-top:6px" onclick="zAct('zone_admin',{act:'toggle',zid:${z.id},txt:null},'${z.active?'Zone deactivated':'Zone activated'}')">${z.active?'Deactivate':'Activate'}</button></div>`).join('')+
+      `<div class="card"><b>➕ New zone</b><div class="f2" style="margin-top:6px"><input id="znz2" placeholder="Zone name"><button class="p" onclick="const t=zv('znz2').trim();if(!t)return toast('Enter name',1);zAct('zone_admin',{act:'create',zid:null,txt:t},'Zone linked')">Add</button></div></div>`;
   }else{
     const {data}=await sb.from('area_audit').select('*').order('at',{ascending:false}).limit(60);
     const an=id=>(ZA.areas.find(a=>a.id==id)||{}).name||'';
-    const AL={setup:'Setup',request:'Team ne Other mein joda',approve:'Approve',reject:'Reject',rezone:'Zone badla',rename:'Naam badla',alias:'Spelling judi',deactivate:'Band kiya',merge:'Merge',create:'Naya area',assign:'Unclassified joda',zone_create:'Naya zone',zone_rename:'Zone naam',zone_toggle:'Zone on/off',zone_team_ui:'Team switch'};
-    h+=`<div class="card">${(data||[]).map(x=>{const d=x.detail||{};return `<div class="zrow" style="cursor:default"><span><b>${esc(AL[x.action]||x.action)}</b> · ${esc(an(x.area_id)||d.name||d.text||'')}${d.target?' → '+esc(an(d.target)):''}${d.zone&&x.action!='setup'&&!String(x.action).startsWith('zone')?' · '+esc(zName(d.zone)):''}${d.leads?' · '+d.leads+' leads':''}<br><span class="mu">${new Date(x.at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} · ${esc((P[x.by_id]||{}).name||'')}</span></span></div>`}).join('')||'<div class="mu">Abhi koi history nahi.</div>'}</div>`;
+    const AL={setup:'Setup',request:'Added by team in Other',approve:'Approve',reject:'Reject',rezone:'Zone changed',rename:'Name changed',alias:'Spelling added',deactivate:'Deactivated',merge:'Merge',create:'New area',assign:'Unclassified linked',zone_create:'New zone',zone_rename:'Zone name',zone_toggle:'Zone on/off',zone_team_ui:'Team switch'};
+    h+=`<div class="card">${(data||[]).map(x=>{const d=x.detail||{};return `<div class="zrow" style="cursor:default"><span><b>${esc(AL[x.action]||x.action)}</b> · ${esc(an(x.area_id)||d.name||d.text||'')}${d.target?' → '+esc(an(d.target)):''}${d.zone&&x.action!='setup'&&!String(x.action).startsWith('zone')?' · '+esc(zName(d.zone)):''}${d.leads?' · '+d.leads+' leads':''}<br><span class="mu">${new Date(x.at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} · ${esc((P[x.by_id]||{}).name||'')}</span></span></div>`}).join('')||'<div class="mu">No history yet.</div>'}</div>`;
   }
   return h;
 };
@@ -779,7 +779,7 @@ async function lookupAny(){
 }
 VIEW['telecaller:lk']=VIEW['fe:lk']=()=>`<div class="card"><b>🔎 Number Lookup</b><div class="mu" style="margin-bottom:8px">Customer called? Enter the number to see whether it is in our data and who has it.</div><div class="f2" style="grid-template-columns:1fr auto"><input id="lkn" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookupAny()"><button class="p" onclick="lookupAny()">Look up</button></div></div><div id="lkr"></div>`;
 
-/* ---------- Buyer Leads: sirf admin ne jo di ho ---------- */
+/* ---------- Buyer Leads: only those assigned by admin ---------- */
 const BUY_ST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Not Interested','Deal Closed'];
 let BUYL=[],BUYP={},buyOpen=null,buyF='all';
 const buyToday=()=>new Date().toLocaleDateString('en-CA');
@@ -864,15 +864,15 @@ function gxChips(ns){
   if(fZn.length&&zUI())fZn.forEach((v,i)=>add('Zone: '+zName(v),'zn',i));
   fLoc.forEach((v,i)=>add(v,'loc',i));fBhk.forEach((v,i)=>add(v,'bhk',i));
   if(!ns)fSt.forEach((v,i)=>add(ST[v]||v,'st',i));
-  if(GX.np)add('Price nahi hai','np');
+  if(GX.np)add('No price','np');
   else if(GX.pmin!==''||GX.pmax!=='')add('Price '+(GX.pmin!==''?GX.pmin:'0')+'–'+(GX.pmax!==''?GX.pmax:'∞')+' L','price');
   if(GX.d1||GX.d2)add('Added: '+(GX.d1||'…')+' → '+(GX.d2||'…'),'date');
   if(ME.role==='admin'){GX.tc.forEach((v,i)=>add('TC: '+((P[v]||{}).name||v),'tc',i));GX.fe.forEach((v,i)=>add('FE: '+((P[v]||{}).name||v),'fe',i))}
-  return c.length?`<div style="margin:0 2px 8px">${c.join('')}<span class="tag" style="cursor:pointer;display:inline-block;margin:0 6px 6px 0" onclick="gxAll()">Sab hatao</span></div>`:''}
+  return c.length?`<div style="margin:0 2px 8px">${c.join('')}<span class="tag" style="cursor:pointer;display:inline-block;margin:0 6px 6px 0" onclick="gxAll()">Clear all</span></div>`:''}
 function gxPanel(ns){
   if(!showF)return '';
   const ppl=r=>Object.entries(P).filter(([id,p])=>p&&p.role===r).map(([id,p])=>[id,p.name||id]);
-  return `<div class="card" style="padding:10px;margin-bottom:8px"><b>💰 Price (Lakh me, 1 Cr = 100)</b><div class="f2" style="margin:6px 0"><input type="number" inputmode="decimal" placeholder="Min" value="${esc(GX.pmin)}" onchange="gxSet('pmin',this.value)"><input type="number" inputmode="decimal" placeholder="Max" value="${esc(GX.pmax)}" onchange="gxSet('pmax',this.value)"></div><label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" ${GX.np?'checked':''} onchange="gxSet('np',this.checked)" style="width:auto"> Price nahi hai wale</label><b>📅 Data kab add hua</b><div class="f2" style="margin:6px 0"><input type="date" value="${esc(GX.d1)}" onchange="gxSet('d1',this.value)"><input type="date" value="${esc(GX.d2)}" onchange="gxSet('d2',this.value)"></div>${ME.role==='admin'?`<div class="f2" style="margin-top:8px;position:relative;z-index:40">${msBox('tc',ppl('telecaller'))}${msBox('fe',ppl('fe'))}</div>`:''}<div class="msa" style="margin-top:10px"><button type="button" onclick="gxAll()">Sab hatao</button><button type="button" class="p" onclick="showF=false;render()">Done</button></div></div>`}
+  return `<div class="card" style="padding:10px;margin-bottom:8px"><b>💰 Price (Lakh me, 1 Cr = 100)</b><div class="f2" style="margin:6px 0"><input type="number" inputmode="decimal" placeholder="Min" value="${esc(GX.pmin)}" onchange="gxSet('pmin',this.value)"><input type="number" inputmode="decimal" placeholder="Max" value="${esc(GX.pmax)}" onchange="gxSet('pmax',this.value)"></div><label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" ${GX.np?'checked':''} onchange="gxSet('np',this.checked)" style="width:auto"> Without price</label><b>📅 When data was added</b><div class="f2" style="margin:6px 0"><input type="date" value="${esc(GX.d1)}" onchange="gxSet('d1',this.value)"><input type="date" value="${esc(GX.d2)}" onchange="gxSet('d2',this.value)"></div>${ME.role==='admin'?`<div class="f2" style="margin-top:8px;position:relative;z-index:40">${msBox('tc',ppl('telecaller'))}${msBox('fe',ppl('fe'))}</div>`:''}<div class="msa" style="margin-top:10px"><button type="button" onclick="gxAll()">Clear all</button><button type="button" class="p" onclick="showF=false;render()">Done</button></div></div>`}
 function gxHead(ns,withSearch){return (withSearch?searchBar('Name, number, society or area',1):`<div class="card" style="padding:10px"><button style="min-height:46px;width:100%" onclick="showF=!showF;render()">⚙️ Filters${fCount()?' ('+fCount()+')':''}</button></div>`)+filterBar(ns)}
 // Field Exec
 let DCM={},DCT=0,AF={f:null,t:null,od:false,html:''};
@@ -881,17 +881,17 @@ const nrm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 async function dcLoad(){DCT=Date.now();try{const rows=await pageAll(()=>sb.from('leads').select('id,phone,name,property,locality,bhk,tc_id,fe_id').eq('status','deal_closed'));const ed={};window.DCED=ed;try{const r=await sb.from('properties').select('lead_id,ed_id');(r.data||[]).forEach(x=>{if(x.lead_id)ed[x.lead_id]=x.ed_id})}catch(e){}const m={};(rows||[]).forEach(x=>{const k=dph(x.phone);if(k.length<10)return;x.ed=ed[x.id]||'';(m[k]=m[k]||[]).push(x)});DCM=m}catch(e){}}
 function dealBtn(l){if(l.status!=='deal_closed')return '';const ed=(window.DCED||{})[l.id];if(ed)return '<div style="background:#e6f7ec;color:#166534;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px">✅ Details filled · '+esc(ed)+'</div>';return '<div style="background:#fff7e0;color:#92400e;border-radius:8px;padding:8px 10px;margin:8px 0 6px;font-size:13px">Property details are pending. Please fill in the owner details.</div><a href="onboard.html?lead='+encodeURIComponent(l.id)+'" style="display:block;text-align:center;background:#1f4e78;color:#fff;border-radius:8px;padding:10px;font-size:14px;text-decoration:none;margin-bottom:6px">📝 Fill property details</a>'}
 function dcBanner(l){if(l.status==='deal_closed')return '';const a=(DCM[dph(l.phone)]||[]).filter(x=>x.id!==l.id);if(!a.length)return '';const sp=nrm(l.property);const same=sp?a.find(x=>nrm(x.property)===sp):null;const x=same||a[0];const who=[x.fe_id&&P[x.fe_id]?P[x.fe_id].name:'',x.tc_id&&P[x.tc_id]?P[x.tc_id].name:''].filter(Boolean)[0]||'';const nm=(x.ed?esc(x.ed)+' · ':'')+esc([x.property,x.locality].filter(Boolean).join(', ')||'-')+(x.bhk?' · '+esc(x.bhk):'');
-if(same)return '<div style="background:#e6f7ec;border:2px solid #1f9d55;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#0f5a28">✅ <b>PEHLE SE DEAL CLOSED</b><br>'+nm+(who?'<br><span style="opacity:.8">Closed by '+esc(who)+'</span>':'')+'<br><b>⚠️ Same property hai, dobara call mat karo</b></div>';
-return '<div style="background:#fff8e6;border:2px solid #e0a100;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#7a5200">ℹ️ <b>Is number pe Deal Closed hai</b> (alag property)<br>'+nm+'<br>Pehle check karo, phir call karo</div>'}
+if(same)return '<div style="background:#e6f7ec;border:2px solid #1f9d55;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#0f5a28">✅ <b>ALREADY DEAL CLOSED</b><br>'+nm+(who?'<br><span style="opacity:.8">Closed by '+esc(who)+'</span>':'')+'<br><b>⚠️ Same property, do not call again</b></div>';
+return '<div style="background:#fff8e6;border:2px solid #e0a100;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#7a5200">ℹ️ <b>This number has a Deal Closed</b> (alag property)<br>'+nm+'<br>Check first, then call</div>'}
 function mSet(k,v){if(k==='f'){AF.f=v;if(AF.t&&AF.t<v)AF.t=v;AF.od=false}else if(k==='t'){AF.t=v;if(AF.f&&AF.f>v)AF.f=v;AF.od=false}else if(k==='od'){AF.od=!!v}else{AF.f=AF.t=isoToday();AF.od=false}render()}
-async function mSearch(v){v=(v||'').trim();const box=$('#mlist');if(!box)return;if(v.length<3){box.innerHTML=AF.html;return}const dg=v.replace(/\D/g,'');let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=(dg.length>=4&&dg.length===v.replace(/[\s+-]/g,'').length)?q.ilike('phone','%'+dg+'%'):q.ilike('name','%'+v.replace(/[%,]/g,'')+'%');const r=await q.order('meeting_date',{ascending:true}).limit(50);const data=r.data||[];const hs=await histMap(data.map(l=>l.id));box.innerHTML='<div class="mu" style="margin:6px 0">🔍 '+data.length+' mile (sabhi meetings me)</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Kuch nahi mila'))}
+async function mSearch(v){v=(v||'').trim();const box=$('#mlist');if(!box)return;if(v.length<3){box.innerHTML=AF.html;return}const dg=v.replace(/\D/g,'');let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=(dg.length>=4&&dg.length===v.replace(/[\s+-]/g,'').length)?q.ilike('phone','%'+dg+'%'):q.ilike('name','%'+v.replace(/[%,]/g,'')+'%');const r=await q.order('meeting_date',{ascending:true}).limit(50);const data=r.data||[];const hs=await histMap(data.map(l=>l.id));box.innerHTML='<div class="mu" style="margin:6px 0">🔍 '+data.length+' mile (sabhi meetings me)</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing found'))}
 const feList=async sts=>{
   await loadFilt();let qy=sb.from('leads').select('*').eq('fe_id',ME.id).in('status',sts).order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(200);qy=applyF(qy,1);const {data,error}=await qy;
   if(error)throw error;
   const hs=await histMap(data.map(l=>l.id));
   return gxHead(1,0)+addLeadCard()+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing here.'));
 };
-VIEW['fe:asg']=async()=>{const td=isoToday();if(!AF.f)AF.f=td;if(!AF.t)AF.t=AF.f;let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=AF.od?q.lt('meeting_date',td):q.gte('meeting_date',AF.f).lte('meeting_date',AF.t);const {data,error}=await q.order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(300);if(error)throw error;const oc=await sb.from('leads').select('id',{count:'exact',head:true}).eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',td);const odN=oc.count||0;const hs=await histMap(data.map(l=>l.id));const lab=AF.od?'⚠️ Overdue meetings':(AF.f===AF.t?dshort(AF.f):dshort(AF.f)+' – '+dshort(AF.t));AF.html='<div class="mu" style="margin:6px 0">'+lab+' · '+data.length+' meetings</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Is date me koi meeting nahi.'));return '<div class="card" style="padding:10px"><input id="msq" placeholder="🔍 Naam ya mobile number se search" oninput="clearTimeout(window._mt);window._mt=setTimeout(()=>mSearch(this.value),350)" style="width:100%;margin-bottom:8px"><div style="display:flex;gap:8px"><div style="flex:1"><div class="mu">Kis date se</div><input type="date" value="'+AF.f+'" onchange="mSet(\'f\',this.value)"></div><div style="flex:1"><div class="mu">Kis date tak</div><input type="date" value="'+AF.t+'" onchange="mSet(\'t\',this.value)"></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="'+(AF.od?'':'p')+'" onclick="mSet(\'od\',0)">📅 Date range</button><button class="'+(AF.od?'p':'')+'" onclick="mSet(\'od\',1)">⚠️ Overdue '+odN+'</button><button onclick="mSet(\'today\')">Aaj</button></div></div><div id="mlist">'+AF.html+'</div>'};
+VIEW['fe:asg']=async()=>{const td=isoToday();if(!AF.f)AF.f=td;if(!AF.t)AF.t=AF.f;let q=sb.from('leads').select('*').eq('fe_id',ME.id).eq('status','meeting_assigned');q=AF.od?q.lt('meeting_date',td):q.gte('meeting_date',AF.f).lte('meeting_date',AF.t);const {data,error}=await q.order('meeting_date',{ascending:true}).order('meeting_time',{ascending:true,nullsFirst:false}).limit(300);if(error)throw error;const oc=await sb.from('leads').select('id',{count:'exact',head:true}).eq('fe_id',ME.id).eq('status','meeting_assigned').lt('meeting_date',td);const odN=oc.count||0;const hs=await histMap(data.map(l=>l.id));const lab=AF.od?'⚠️ Overdue meetings':(AF.f===AF.t?dshort(AF.f):dshort(AF.f)+' – '+dshort(AF.t));AF.html='<div class="mu" style="margin:6px 0">'+lab+' · '+data.length+' meetings</div>'+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No meeting on this date.'));return '<div class="card" style="padding:10px"><input id="msq" placeholder="🔍 Search by name or mobile number" oninput="clearTimeout(window._mt);window._mt=setTimeout(()=>mSearch(this.value),350)" style="width:100%;margin-bottom:8px"><div style="display:flex;gap:8px"><div style="flex:1"><div class="mu">From which date</div><input type="date" value="'+AF.f+'" onchange="mSet(\'f\',this.value)"></div><div style="flex:1"><div class="mu">Kis date tak</div><input type="date" value="'+AF.t+'" onchange="mSet(\'t\',this.value)"></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="'+(AF.od?'':'p')+'" onclick="mSet(\'od\',0)">📅 Date range</button><button class="'+(AF.od?'p':'')+'" onclick="mSet(\'od\',1)">⚠️ Overdue '+odN+'</button><button onclick="mSet(\'today\')">Today</button></div></div><div id="mlist">'+AF.html+'</div>'};
 VIEW['fe:fu']=()=>feList(['followup','callback','ringing','new']);
 VIEW['fe:done']=()=>feList(['meeting_done','online_meet_done']);
 VIEW['fe:deal']=()=>feList(['deal_closed']);
@@ -1023,7 +1023,7 @@ async function doImport(){
   }
   for(let i=0;i<rows.length;i+=500){
     const {error}=await sb.from('leads').insert(rows.slice(i,i+500));
-    if(error){impMsg('err','❌ Import fail hua: '+esc(error.message));return}
+    if(error){impMsg('err','❌ Import failed: '+esc(error.message));return}
   }
   FILT.t=0;
   impSummary(rows.length,dup,bad,skipped,splitTxt||(tp?(tp.name||'user'):''));
@@ -1063,7 +1063,7 @@ VIEW['admin:team']=async()=>{
   const SC={new:'#e8eefc|#1f4e9c',callback:'#fff1d6|#8a5a00',ringing:'#eef0f3|#4a5361',followup:'#e3f3ff|#0b5a8a',meeting_assigned:'#e9e2fb|#5b3aa8',meeting_done:'#e0f5e6|#1b6b34',online_meet_done:'#e0f5e6|#1b6b34',not_interested:'#fde4e4|#9b1c1c',deal_closed:'#cdeed6|#0f5a28',not_available:'#f1e6dc|#7a4a1f'};
   const card=(title,sub,rows,uid)=>{const c={};rows.forEach(l=>c[l.status]=(c[l.status]||0)+1);
     const chips=Object.keys(ST).filter(k=>c[k]).map(k=>{const [bg,fg]=SC[k].split('|');return `<span style="background:${bg};color:${fg};padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600">${ST[k]} ${c[k]}</span>`}).join(' ');
-    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px">${uid!='__pool'?`<button onclick="openDaily('${uid}')">📋 Daily work report</button>`:''}<button onclick="openXfer('${uid}')">🔁 ${uid=='__pool'?'Pool se leads do':'Leads transfer / nikalo'}</button></div>`:''}</div>`};
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px">${uid!='__pool'?`<button onclick="openDaily('${uid}')">📋 Daily work report</button>`:''}<button onclick="openXfer('${uid}')">🔁 ${uid=='__pool'?'Take leads from pool':'Transfer leads'}</button></div>`:''}</div>`};
   const grp=(role,label,key)=>data.filter(p=>p.role==role).map(p=>card('👤 '+esc(p.name||'-'),label,all.filter(l=>l[key]==p.id),p.id)).join('');
   const un=all.filter(l=>!l.tc_id&&!l.fe_id);
   const work=`<h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un,'__pool'):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
@@ -1081,40 +1081,40 @@ async function xPick(){let L=await pageAll(()=>{let q=xBase('id,status,zone_id,c
 function xSet(k,v){XF[k]=v;XF.sure=false;render()}
 function xTog(k,v){const a=XF[k],i=a.indexOf(v);i<0?a.push(v):a.splice(i,1);XF.sure=false;render()}
 VIEW['admin:xfer']=async()=>{
-  const src=XF.from=='__pool'?{name:'Pool (kisi ke paas nahi)',role:'telecaller'}:P[XF.from]||{};const key=xKey(),role=src.role=='fe'?'fe':'telecaller';
+  const src=XF.from=='__pool'?{name:'Pool (with nobody)',role:'telecaller'}:P[XF.from]||{};const key=xKey(),role=src.role=='fe'?'fe':'telecaller';
   const allL=await pageAll(()=>xBase('status,zone_id'));const c={};allL.forEach(l=>c[l.status]=(c[l.status]||0)+1);
   const sel=await xPick();
   const others=Object.values(P).filter(p=>p.role==role&&p.id!=XF.from);
-  const tgt=XF.to=='__pool'?'Pool (nikal lo, kisi ko nahi)':XF.to=='__split'?`Baaki ${role=='fe'?'Field Execs':'Telecallers'} mein barabar (${others.length})`:XF.to?(P[XF.to]||{}).name:'';
+  const tgt=XF.to=='__pool'?'Pool (take out, to nobody)':XF.to=='__split'?`Split equally among other ${role=='fe'?'Field Execs':'Telecallers'} (${others.length})`:XF.to?(P[XF.to]||{}).name:'';
   const zb=zUI()&&ZA.zones.length?`<div class="sec" style="margin-top:10px">Zone (optional)</div><div class="chips" style="flex-wrap:wrap">${ZA.zones.map(z=>{const n=allL.filter(l=>l.zone_id==z.id).length;return n?`<button class="${XF.zn.includes(String(z.id))?'on':''}" onclick="xTog('zn','${z.id}')">${esc(z.name)} ${n}</button>`:''}).join('')}</div>`:'';
   return `<button onclick="go('team')" style="margin-bottom:10px">← Team</button>
-  ${XF.last?`<div class="card" style="background:#e6f7ec;border-color:#9fd9b3"><b>✅ ${XF.last.ids.length} leads ${esc(XF.last.label)}</b><div class="acts" style="margin-top:6px"><button onclick="xUndo()">↩ Undo (wapas pehle jaisa)</button></div></div>`:''}
-  <div class="card"><b style="font-size:17px">🔁 ${esc(src.name||'')} ki leads</b><div class="mu">${XF.from=='__pool'?'Jo leads kisi ke paas nahi hain':ROLE[src.role]+' · kul '+allL.length+' leads'}</div>
+  ${XF.last?`<div class="card" style="background:#e6f7ec;border-color:#9fd9b3"><b>✅ ${XF.last.ids.length} leads ${esc(XF.last.label)}</b><div class="acts" style="margin-top:6px"><button onclick="xUndo()">↩ Undo (back to how it was)</button></div></div>`:''}
+  <div class="card"><b style="font-size:17px">🔁 ${esc(src.name||'')}'s leads</b><div class="mu">${XF.from=='__pool'?'Leads that are with nobody':ROLE[src.role]+' · kul '+allL.length+' leads'}</div>
   <div class="sec" style="margin-top:10px">1. Kaunsi leads? (status)</div>
-  <div class="chips" style="flex-wrap:wrap">${Object.keys(ST).filter(k=>c[k]).map(k=>`<button class="${XF.st.includes(k)?'on':''}" onclick="xTog('st','${k}')">${ST[k]} ${c[k]}</button>`).join('')||'<span class="mu">Koi lead nahi</span>'}</div>
-  <div class="mu">Deal Closed, Meeting aur Not Interested pehle se nahi chune hote. Chahiye to tap karo.</div>${zb}
-  <div class="sec" style="margin-top:10px">2. Kitni?</div>
-  <div class="f2"><input type="number" inputmode="numeric" placeholder="Sab (khaali chhodo)" value="${esc(XF.n)}" onchange="xSet('n',this.value)"><div class="mu" style="align-self:center">Purani leads pehle jaati hain</div></div>
-  <div class="sec" style="margin-top:10px">3. Kisko dena hai?</div>
-  <select onchange="xSet('to',this.value)"><option value="">— Chuno —</option>${others.map(p=>`<option value="${p.id}" ${XF.to==p.id?'selected':''}>👤 ${esc(p.name||'')}</option>`).join('')}${others.length>1?`<option value="__split" ${XF.to=='__split'?'selected':''}>⚖️ Baaki sab mein barabar baanto</option>`:''}${XF.from!='__pool'?`<option value="__pool" ${XF.to=='__pool'?'selected':''}>📭 Nikal lo (Pool mein daalo)</option>`:''}</select>
-  <div class="card" style="margin:12px 0 0;background:#f6f8fb"><b>${sel.length} leads</b> chuni gayi${tgt?` → <b>${esc(tgt)}</b>`:''}
-  ${role=='fe'&&XF.to=='__pool'&&sel.some(l=>l.status=='meeting_assigned')?'<div class="er" style="margin-top:6px">⚠️ Isme Meeting Assigned leads hain. Pool mein daalne se unki meeting kisi FE ke paas nahi rahegi.</div>':''}
-  <div class="acts" style="margin-top:8px"><button class="${XF.sure?'r':'p'}" ${!sel.length||!XF.to?'disabled':''} onclick="xGo()">${XF.sure?`Pakka? Haan, ${sel.length} leads transfer karo`:'Transfer karo'}</button></div></div></div>`;
+  <div class="chips" style="flex-wrap:wrap">${Object.keys(ST).filter(k=>c[k]).map(k=>`<button class="${XF.st.includes(k)?'on':''}" onclick="xTog('st','${k}')">${ST[k]} ${c[k]}</button>`).join('')||'<span class="mu">No leads</span>'}</div>
+  <div class="mu">Deal Closed, Meeting and Not Interested are not pre-selected. Tap to include them.</div>${zb}
+  <div class="sec" style="margin-top:10px">2. How many?</div>
+  <div class="f2"><input type="number" inputmode="numeric" placeholder="All (leave blank)" value="${esc(XF.n)}" onchange="xSet('n',this.value)"><div class="mu" style="align-self:center">Older leads go first</div></div>
+  <div class="sec" style="margin-top:10px">3. Assign to whom?</div>
+  <select onchange="xSet('to',this.value)"><option value="">— Select —</option>${others.map(p=>`<option value="${p.id}" ${XF.to==p.id?'selected':''}>👤 ${esc(p.name||'')}</option>`).join('')}${others.length>1?`<option value="__split" ${XF.to=='__split'?'selected':''}>⚖️ Split equally among the rest</option>`:''}${XF.from!='__pool'?`<option value="__pool" ${XF.to=='__pool'?'selected':''}>📭 Take out (Move to pool)</option>`:''}</select>
+  <div class="card" style="margin:12px 0 0;background:#f6f8fb"><b>${sel.length} leads</b> selected${tgt?` → <b>${esc(tgt)}</b>`:''}
+  ${role=='fe'&&XF.to=='__pool'&&sel.some(l=>l.status=='meeting_assigned')?'<div class="er" style="margin-top:6px">⚠️ This includes Meeting Assigned leads. If moved to the pool, their meeting will no longer be with any FE.</div>':''}
+  <div class="acts" style="margin-top:8px"><button class="${XF.sure?'r':'p'}" ${!sel.length||!XF.to?'disabled':''} onclick="xGo()">${XF.sure?`Pakka? Yes, ${sel.length} leads transfer`:'Transfer'}</button></div></div></div>`;
 };
 async function xGo(){
   if(!XF.sure){XF.sure=true;render();return}
-  const key=xKey()||'tc_id',src=XF.from;const L=await xPick();if(!L.length)return toast('Koi lead nahi chuni',1);
+  const key=xKey()||'tc_id',src=XF.from;const L=await xPick();if(!L.length)return toast('No leads selected',1);
   const role=XF.from!='__pool'&&(P[XF.from]||{}).role=='fe'?'fe':'telecaller';
   const others=Object.values(P).filter(p=>p.role==role&&p.id!=XF.from);
   const plan={};L.forEach((l,i)=>{const t=XF.to=='__split'?others[i%others.length].id:XF.to=='__pool'?null:XF.to;(plan[t]=plan[t]||[]).push(l.id)});
-  toast('Transfer ho raha hai…');
+  toast('Transferring…');
   for(const [t,ids] of Object.entries(plan)){for(let i=0;i<ids.length;i+=150){const {error}=await sb.from('leads').update({[key]:t=='null'?null:t}).in('id',ids.slice(i,i+150));if(error){toast(error.message,1);XF.sure=false;return render()}}}
-  const label=XF.to=='__pool'?'Pool mein daali':XF.to=='__split'?'baaki team mein baanti':'→ '+((P[XF.to]||{}).name||'');
+  const label=XF.to=='__pool'?'Moved to pool':XF.to=='__split'?'split among the rest of the team':'→ '+((P[XF.to]||{}).name||'');
   XF={from:src,st:XF.st,zn:XF.zn,n:'',to:'',sure:false,last:{ids:L.map(l=>l.id),key,prev:src=='__pool'?null:src,label}};
   for(const k in VC)delete VC[k];FILT.t=0;toast(`✅ ${L.length} leads ${label}`);render();
 }
 async function xUndo(){const u=XF.last;if(!u)return;for(let i=0;i<u.ids.length;i+=150){const {error}=await sb.from('leads').update({[u.key]:u.prev}).in('id',u.ids.slice(i,i+150));if(error)return toast(error.message,1)}
-  XF.last=null;for(const k in VC)delete VC[k];toast('↩ Wapas pehle jaisa');render()}
+  XF.last=null;for(const k in VC)delete VC[k];toast('↩ Back to how it was');render()}
 
 /* ---------- live search suggestions (number or name, while typing) ---------- */
 let SUG={t:null,n:0};
@@ -1129,10 +1129,10 @@ async function sugRun(t){
   const hl=(s,x)=>{s=String(s||'');if(!x)return esc(s);const i=s.toLowerCase().indexOf(x.toLowerCase());return i<0?esc(s):esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+x.length))+'</mark>'+esc(s.slice(i+x.length))};
   const isNum=d.length>=4&&d.length>=w.replace(/\s/g,'').length-2;
   box.innerHTML=(data&&data.length)?`<div class="sugl">${data.map(l=>`<div class="sugi" onclick="sugPick(${esc(JSON.stringify(ph10(l.phone)||l.name||''))})"><div><b>${isNum?esc(l.name||'-'):hl(l.name||'-',w)}</b> <span class="tag">${esc(ST[l.status]||l.status||'')}</span></div><div class="mu">${isNum?hl(l.phone,d):esc(l.phone||'')} · ${isNum?esc(l.property||''):hl(l.property||'',w)}${l.locality?' · '+esc(l.locality):''}${[l.tc_id&&P[l.tc_id]?'📞 '+P[l.tc_id].name:'',l.fe_id&&P[l.fe_id]?'🚶 '+P[l.fe_id].name:''].filter(Boolean).map(x=>' · '+esc(x)).join('')}</div></div>`).join('')}</div>`
-    :`<div class="mu" style="padding:6px 4px">Koi match nahi${isNum?'':' · spelling thodi badal ke dekho'}</div>`}
+    :`<div class="mu" style="padding:6px 4px">No match${isNum?'':' · try a slightly different spelling'}</div>`}
 function sugPick(v){$('#sq').value=v;$('#sqs').innerHTML='';doSearch()}
 
-/* ---------- FE: aaj kis kis ko call kiya ---------- */
+/* ---------- FE: who was called today ---------- */
 let cDate=null;
 VIEW['fe:fcalls']=async()=>{
   const t=isoToday(),d=cDate||t,a=new Date(d+'T00:00:00'),b=new Date(a);b.setDate(b.getDate()+1);
@@ -1146,12 +1146,12 @@ VIEW['fe:fcalls']=async()=>{
   for(let i=0;i<phs.length;i+=100){const {data}=await sb.from('leads').select('name,phone,property,status').in('phone',phs.slice(i,i+100));(data||[]).forEach(l=>{nm[ph10(l.phone)]=l})}
   const ids=[...new Set(rows.filter(r=>r.lid&&!nm[r.ph]).map(r=>r.lid))];if(ids.length){const {data}=await sb.from('leads').select('id,name,phone,property,status').in('id',ids);(data||[]).forEach(l=>{rows.filter(r=>r.lid==l.id).forEach(r=>nm[r.ph]=nm[r.ph]||l)})}
   const talk=rows.reduce((s,r)=>s+r.sec,0),conn=rows.filter(r=>r.sec>0).length,miss=rows.filter(r=>r.dir=='missed'||r.dir=='rejected').length;
-  const lab=d==t?'Aaj':d==shiftDate(t,-1)?'Kal':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  const lab=d==t?'Today':d==shiftDate(t,-1)?'Yesterday':new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
   const ic={out:'↗️',in:'↙️',missed:'❗',rejected:'⛔'};
   return `<div class="card" style="padding:10px"><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="cDate='${shiftDate(d,-1)}';render()" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="if(this.value){cDate=this.value;render()}" style="min-height:44px"><button onclick="cDate='${shiftDate(d,1)}';render()" style="min-height:44px">›</button><button class="${d==t?'p':''}" onclick="cDate=null;render()" style="min-height:44px">Today</button></div></div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr)">${tile(lab+' calls',rows.length)}${tile('Baat hui',conn,'',conn?'ok':'')}${tile('Talk time',talk>=60?Math.floor(talk/60)+' min':talk+' sec',talk>=60?(talk%60)+' sec':'')}</div>
   ${miss?`<div class="mu" style="margin:4px 2px 8px">❗ ${miss} missed / cut call</div>`:''}
-  <div class="card">${rows.map(r=>{const l=nm[r.ph];return `<div class="lr" onclick="numHist('${r.ph}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;align-items:center"><div style="min-width:0"><b>${ic[r.dir]||'📞'} ${esc(l?l.name||'Owner':(r.ttl||'Naya number'))}</b>${l?` <span class="tag">${esc(ST[l.status]||'')}</span>`:''}<div class="mu">${esc(l&&l.property?l.property+' · ':'')}${new Date(r.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}${r.man?' · timer se':''}</div></div><div style="text-align:right;white-space:nowrap"><a href="tel:${r.ph}" onclick="event.stopPropagation()">${esc(r.ph)}</a><div class="mu">${r.sec?fmt(r.sec):r.ev&&r.dir=='in'?'Incoming':r.dir=='in'||r.dir=='out'?'baat nahi hui':'—'}</div></div></div>`}).join('')||'<div class="mu" style="padding:8px">Is din koi call nahi mili. Calls tabhi dikhti hain jab phone mein EasyDeals CRM app (APK) chalu ho.</div>'}</div>`;
+  <div class="card">${rows.map(r=>{const l=nm[r.ph];return `<div class="lr" onclick="numHist('${r.ph}')" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;align-items:center"><div style="min-width:0"><b>${ic[r.dir]||'📞'} ${esc(l?l.name||'Owner':(r.ttl||'New number'))}</b>${l?` <span class="tag">${esc(ST[l.status]||'')}</span>`:''}<div class="mu">${esc(l&&l.property?l.property+' · ':'')}${new Date(r.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}${r.man?' · by timer':''}</div></div><div style="text-align:right;white-space:nowrap"><a href="tel:${r.ph}" onclick="event.stopPropagation()">${esc(r.ph)}</a><div class="mu">${r.sec?fmt(r.sec):r.ev&&r.dir=='in'?'Incoming':r.dir=='in'||r.dir=='out'?'not spoken yet':'—'}</div></div></div>`}).join('')||'<div class="mu" style="padding:8px">No calls found for this day. Calls show only when the EasyDeals CRM app is on the phone (APK) is on.</div>'}</div>`;
 };
 async function setRole(id,r){const {error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error)return toast(error.message,1);P[id].role=r;toast('Role updated ✅')}
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
@@ -1272,7 +1272,7 @@ VIEW['fe:fs']=async()=>{
   const qq=String(q||'').trim();
   let data=[];if(qq){const d=qq.replace(/\D/g,'');let qy=sb.from('leads').select('*').eq('fe_id',ME.id).limit(50);qy=d.length>=4?qy.ilike('phone','%'+d+'%'):qy.or(srch(qq.replace(/[,()%]/g,' ')));const r=await qy;if(r.error)throw r.error;data=r.data||[]}
   const hs=await histMap(data.map(l=>l.id));
-  return `<button onclick="q='';go('today')" style="margin-bottom:10px">← Today</button>`+searchBar('Owner ka naam ya number',0,1)+`<div class="mu" style="margin:0 2px 8px">${data.length} result · sirf aapki leads</div>`+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Kuch nahi mila'));
+  return `<button onclick="q='';go('today')" style="margin-bottom:10px">← Today</button>`+searchBar('Owner name or number',0,1)+`<div class="mu" style="margin:0 2px 8px">${data.length} results · only your leads</div>`+(data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('Nothing found'));
 };
 function mFlt(x){MF=x;render()}
 function mRg(on){MR.on=on;MF=null;if(on&&!MR.f){const t0=isoToday();MR.f=t0.slice(0,8)+'01';MR.t=t0}render()}
@@ -1302,7 +1302,7 @@ VIEW['fe:today']=async()=>{
   const fl=MF||((!rg&&d===t)?'pend':'all');
   const show=fl==='pend'?data.filter(l=>mPend.includes(l.status)):fl==='done'?data.filter(l=>mDone.includes(l.status)):data;
   const sel=x=>fl===x?'cursor:pointer;outline:2px solid #2563eb;border-radius:14px':'cursor:pointer';
-  return searchBar('Owner ka naam ya number',0,1)+`<div class="card" style="padding:10px"><div style="display:flex;gap:6px;margin-bottom:8px"><button class="${rg?'':'p'}" onclick="mRg(false)" style="flex:1;min-height:40px">Single day</button><button class="${rg?'p':''}" onclick="mRg(true)" style="flex:1;min-height:40px">Date range</button></div>${rg?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="mu">From</div><input type="date" value="${MR.f}" onchange="mSetR('f',this.value)" style="min-height:44px;width:100%"></div><div><div class="mu">To</div><input type="date" value="${MR.t}" onchange="mSetR('t',this.value)" style="min-height:44px;width:100%"></div></div>`:`<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d===t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div>`}</div>
+  return searchBar('Owner name or number',0,1)+`<div class="card" style="padding:10px"><div style="display:flex;gap:6px;margin-bottom:8px"><button class="${rg?'':'p'}" onclick="mRg(false)" style="flex:1;min-height:40px">Single day</button><button class="${rg?'p':''}" onclick="mRg(true)" style="flex:1;min-height:40px">Date range</button></div>${rg?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="mu">From</div><input type="date" value="${MR.f}" onchange="mSetR('f',this.value)" style="min-height:44px;width:100%"></div><div><div class="mu">To</div><input type="date" value="${MR.t}" onchange="mSetR('t',this.value)" style="min-height:44px;width:100%"></div></div>`:`<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d===t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div>`}</div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr)"><div onclick="mFlt('all')" style="${sel('all')}">${tile(lab==='Today'?'Meetings':lab,data.length)}</div><div onclick="mFlt('done')" style="${sel('done')}">${tile('Done',done,'',done?'ok':'')}</div><div onclick="mFlt('pend')" style="${sel('pend')}">${tile('Pending',pen,'',pen?'wr':'')}</div></div>
   <div class="mu" style="margin:4px 2px">Showing ${{all:'all',done:'done',pend:'pending'}[fl]} leads (${show.length})</div>`+
   (late.length&&fl!=='done'?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l,hs[l.id]||[])).join(''):'')+
@@ -1317,7 +1317,7 @@ function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';
 function drawerBody(C){
   const list=TABS[ME.role]||[];
   return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+
-    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (sirf admin)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
+    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
@@ -1423,7 +1423,7 @@ function pitch(p,name){
   return L.join('\n');
 }
 /* ---------- WhatsApp templates (buyer lead) ---------- */
-const WT=[['details','🏡 Property details'],['noans','📵 Call nahi utha'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 Visit ke baad'],['similar','🏘 Aur options']];
+const WT=[['details','🏡 Property details'],['noans','📵 Call not answered'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 After visit'],['similar','🏘 More options']];
 const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
 let waB=null,waK=null,WS=new Set(),wqDays=7,wqOn=false,wqDone=0,WQS=new Set();
 const wqKey=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
@@ -1435,26 +1435,26 @@ function wqList(){
 }
 function wqShow(){
   const L=wqList(),b=L[0];
-  const days=`<div class="chips">${[[1,'Aaj+kal'],[7,'7 din'],[30,'30 din'],[0,'Sab']].map(d=>`<button class="${wqDays==d[0]?'on':''}" onclick="wqDays=${d[0]};wqShow()">${d[1]}</button>`).join('')}</div>`;
-  let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Wapas</button>
-  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 Nayi leads ko WhatsApp</div>
-  <div class="mu">Sirf "New" leads jinhe abhi tak koi WhatsApp nahi gaya. Har buyer ko uski property ki details jaati hain.</div>${days}
-  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> baaki${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} bheje ✅</span>`:''}</div></div>`;
-  if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>Sab ho gaya!</b><div class="mu">In dino ki saari nayi leads ko message chala gaya. Upar se din badal kar purani leads dekh sakte ho.</div></div>`;return}
+  const days=`<div class="chips">${[[1,'Today+yesterday'],[7,'7 days'],[30,'30 days'],[0,'All']].map(d=>`<button class="${wqDays==d[0]?'on':''}" onclick="wqDays=${d[0]};wqShow()">${d[1]}</button>`).join('')}</div>`;
+  let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Back</button>
+  <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 WhatsApp to new leads</div>
+  <div class="mu">Only "New" leads who have not been sent any WhatsApp yet. Each buyer gets the details of their property.</div>${days}
+  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> pending${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} sent ✅</span>`:''}</div></div>`;
+  if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>All done!</b><div class="mu">All new leads of these days have been messaged. Change the day above to see older leads.</div></div>`;return}
   const p=P(b.property_id);
   h+=`<div class="card"><div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
-  <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Property judi nahi</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
+  <div class="mu">${p?esc(p.id+' · '+(p.project||'')):'<b class="wr">Property not linked</b>'} · ${esc(b.source||'')} · ${dshort(b.lead_date)}</div>
   ${b.requirement?`<div class="mu">${esc(b.requirement)}</div>`:''}
-  ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">Is property ka Reel / Virtual tour link nahi juda. Message phir bhi jayega, par link jodne se achha banega.</div>':''}
+  ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">The Reel / Virtual tour link is not added for this property. The message will still go, but with the link added, it will be better.</div>':''}
   <textarea id="wtx" rows="13" style="margin-top:10px;font-size:13.5px">${esc(waText('details',b))}</textarea>
-  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 WhatsApp par bhejo → agla</a></div>
-  <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Abhi chhodo</button><button onclick="wqNo(${b.id})">🚫 Message nahi bhejna</button></div></div>`;
+  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 Send on WhatsApp → next</a></div>
+  <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Skip for now</button><button onclick="wqNo(${b.id})">🚫 Do not send message</button></div></div>`;
   $('#app').innerHTML=h;scrollTo(0,0)}
 function wqSend(a,id){const b=BL.find(x=>x.id==id);a.href='https://wa.me/91'+ph10(b.buyer_phone)+'?text='+encodeURIComponent($('#wtx').value);
-  WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp bheja: Property details (nayi lead)'}).then(()=>{delete hist[id]});
+  WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp sent: Property details (new lead)'}).then(()=>{delete hist[id]});
   setTimeout(wqShow,400);return true}
 function wqSkip(id){WQS.add(id);wqShow()}
-function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: message nahi bhejna'}).then(()=>{delete hist[id]});wqShow()}
+function wqNo(id){const b=BL.find(x=>x.id==id);WS.add(id);sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp skip: do not send message'}).then(()=>{delete hist[id]});wqShow()}
 function wqOpen(){wqOn=true;wqDone=0;wqShow()}
 const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/month':''}`};
 const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 Near '+p.landmark);return L};
