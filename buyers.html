@@ -303,6 +303,7 @@ async function reload(first){
     const {data:ow,error}=await sb.from('leads').select('*').eq('status','deal_closed');if(error)throw error;OW=ow||[];
     try{const {count}=await sb.from('leads').select('id',{count:'exact',head:true});OWN_N=count||0}catch(e){}
     try{const {data:ws}=await sb.from('buyer_history').select('buyer_id').like('note','💬 WhatsApp%').limit(5000);WS=new Set((ws||[]).map(x=>x.buyer_id))}catch(e){}
+    try{const {count}=await sb.from('buyer_history').select('id',{count:'exact',head:true}).like('note','💬 WhatsApp sent%').gte('at',dayStart());SENT_T=count||0}catch(e){}
     try{const since=new Date(Date.now()-7*864e5).toISOString();const {data:ce}=await sb.from('call_events').select('*').eq('missed',true).eq('called_back',false).in('bucket',['paid_owner','buyer']).gte('at',since).order('at',{ascending:false});CE=ce||[]}catch(e){CE=[]}
   }catch(e){$('#app').innerHTML=`<div class="errc"><div class="ei">⚠️</div><div><b>Data did not load</b><div class="mu">${esc(e.message||e)}</div><div class="mu">Has the Step 1 SQL been run in Supabase?</div><div class="acts"><button class="p" onclick="reload()">⟳ Try again</button></div></div></div>`;return}
   render();
@@ -701,6 +702,7 @@ function pitch(p,name){
 /* ---------- WhatsApp templates (buyer lead) ---------- */
 const WT=[['details','🏡 Property details'],['noans','📵 Call not answered'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 After visit'],['similar','🏘 More options']];
 const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
+const WQ_LIM=70;let SENT_T=0;const dayStart=()=>{const d=new Date();d.setHours(0,0,0,0);return d.toISOString()};
 let waB=null,waK=null,WS=new Set(),wqDays=7,wqOn=false,wqDone=0,WQS=new Set();
 const wqKey=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
 function wqList(){
@@ -715,7 +717,11 @@ function wqShow(){
   let h=`<button onclick="wqOn=false;WQS.clear();render()" style="margin-bottom:10px">← Back</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📨 WhatsApp to new leads</div>
   <div class="mu">Only "New" leads who have not been sent any WhatsApp yet. Each buyer gets the details of their property.</div>${days}
-  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> pending${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} sent ✅</span>`:''}</div></div>`;
+  <div style="font-size:15px;margin-top:6px"><b>${L.length}</b> pending${wqDone?` · <span style="color:var(--ok);font-weight:700">${wqDone} sent ✅</span>`:''}</div>
+  <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:8px"><span>Sent today</span><b>${SENT_T} / ${WQ_LIM}</b></div>
+  <div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-top:4px"><div style="width:${Math.min(100,Math.round(SENT_T*100/WQ_LIM))}%;height:100%;background:${SENT_T>=WQ_LIM?'#d97706':'#1f9d55'}"></div></div>
+  <div class="mu" style="margin-top:4px">About ${Math.ceil(L.length/WQ_LIM)} more day(s) at ${WQ_LIM} a day.</div>
+  ${SENT_T>=WQ_LIM?'<div class="warn" style="margin-top:8px">Daily limit reached. Sending more can get your WhatsApp number blocked. Continue tomorrow.</div>':''}</div>`;
   if(!b){$('#app').innerHTML=h+`<div class="card" style="text-align:center;padding:26px"><div style="font-size:40px">🎉</div><b>All done!</b><div class="mu">All new leads of these days have been messaged. Change the day above to see older leads.</div></div>`;return}
   const p=P(b.property_id);
   h+=`<div class="card"><div class="row"><div class="nm">${esc(b.buyer_name||'Buyer')}</div><span class="mu">${esc(b.code||'')}</span></div>
@@ -723,10 +729,10 @@ function wqShow(){
   ${b.requirement?`<div class="mu">${esc(b.requirement)}</div>`:''}
   ${p&&!p.reel_url&&!p.tour_url?'<div class="warn">The Reel / Virtual tour link is not added for this property. The message will still go, but with the link added, it will be better.</div>':''}
   <textarea id="wtx" rows="13" style="margin-top:10px;font-size:13.5px">${esc(waText('details',b))}</textarea>
-  <div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 Send on WhatsApp → next</a></div>
+  ${p?`<div class="acts"><a class="btn g" style="color:#fff;flex:1;text-align:center" target="_blank" href="#" onclick="return wqSend(this,${b.id})">📤 Send on WhatsApp → next</a></div>`:'<div class="warn">Property not linked. Link this buyer to a property before sending, so the wrong details do not go out.</div>'}
   <div class="acts"><button onclick="wqSkip(${b.id})">⏭ Skip for now</button><button onclick="wqNo(${b.id})">🚫 Do not send message</button></div></div>`;
   $('#app').innerHTML=h;scrollTo(0,0)}
-function wqSend(a,id){const b=BL.find(x=>x.id==id);a.href='https://wa.me/91'+ph10(b.buyer_phone)+'?text='+encodeURIComponent($('#wtx').value);
+function wqSend(a,id){if(SENT_T>=WQ_LIM&&!confirm('Daily limit of '+WQ_LIM+' reached. Sending more can get your number blocked. Send anyway?'))return false;const b=BL.find(x=>x.id==id);SENT_T++;a.href='https://wa.me/91'+ph10(b.buyer_phone)+'?text='+encodeURIComponent($('#wtx').value);
   WS.add(id);wqDone++;sb.from('buyer_history').insert({buyer_id:id,status:b.status,note:'💬 WhatsApp sent: Property details (new lead)'}).then(()=>{delete hist[id]});
   setTimeout(wqShow,400);return true}
 function wqSkip(id){WQS.add(id);wqShow()}
@@ -765,7 +771,7 @@ function waShow(){const b=waB,p=P(b.property_id),ph=ph10(b.buyer_phone),t=waText
   <textarea id="wtx" rows="15" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
   <div class="mu">You can edit anything here before sending.</div>
   <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ph?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="waSent();this.href='https://wa.me/91${ph}?text='+encodeURIComponent($('#wtx').value)">Send on WhatsApp</a>`:'<span class="er">Buyer mobile number is missing</span>'}</div></div>`;scrollTo(0,0)}
-function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;WS.add(b.id);sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp sent: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
+function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;WS.add(b.id);SENT_T++;sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp sent: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
 function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Back</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Message to send to buyer · ${esc(id)}</div><div class="mu">This same message goes automatically from the lead WhatsApp button. You can also copy it from here and send it to anyone.</div>
   <textarea id="ptx" rows="16" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
