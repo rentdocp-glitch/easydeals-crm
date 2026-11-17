@@ -360,6 +360,11 @@ function followLine(l){
   const dt=new Date(l.follow_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
   return `<div class="fol ${late?'late':today?'tod':''}">🔔 ${l.status=='callback'?'Call back':'Follow up'}: <b>${today?'Today':dt}</b>${ft?' · <b>'+fmtT(ft)+'</b>':''}${late?' · overdue':''}</div>`;
 }
+function statBy(l){
+  if(!l.status_by||!l.status_at)return '';
+  const n=P[l.status_by]?.name||'?',d=new Date(l.status_at);
+  return `<div class="mu cp">✏️ Status updated by <b>${esc(n)}</b> · ${dshort(d)}, ${tmS(d)}</div>`;
+}
 function leadCard(l,cs){
   LEADS[l.id]=l;
   const fe=l.fe_id&&P[l.fe_id]?.name,tc=l.tc_id&&P[l.tc_id]?.name;
@@ -370,6 +375,7 @@ function leadCard(l,cs){
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${followLine(l)}${meetLine(l)}
+  ${statBy(l)}
   ${noteBlock(l)}
   ${meta?`<div class="mu cp">${meta}</div>`:''}
   ${cs!==undefined?'<div class="hs cp">'+hist(cs)+'</div>':''}
@@ -516,7 +522,7 @@ async function addLead(){
   if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
   if(DUPOK!=phone){
     const d=await dupLookup(phone);
-    if(d.length){DUPOK=phone;$('#dupw').innerHTML=`<div class="card" style="background:#fff6e0;border-color:#f0d9a0;margin:6px 0"><b>⚠️ This number is already in the CRM</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Tap "Add anyway" only if this is a different property.</div></div>`;$('#svb').textContent='Add anyway';return}
+    if(d.length){$('#dupw').innerHTML=`<div class="card" style="background:#fdecec;border-color:#f3b4b4;margin:6px 0"><b>⛔ This number is already in the CRM. It cannot be added again.</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Search for this number and update that lead instead.</div></div>`;return toast('Number already in CRM',1)}
   }
   const pr=$('#ac').value.trim();
   let loc;if(zUI()){const z=await zpVal('a',true);if(z.err)return toast(z.err,1);const ad=(($('#aad')||{}).value||'').trim();loc={locality:z.locality,...(z.area_id?{area_id:z.area_id}:{}),...(ad?{address:ad}:{})}}else{const na=normArea($('#al').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
@@ -1021,9 +1027,9 @@ async function doImport(){
   }
   const sel=$('#impto')?$('#impto').value:'',split=sel=='__split',to=(split||sel=='none')?'':sel,tp=to&&P[to]?P[to]:null;
   const seen=new Set(),rows=[];let bad=0;
-  const ex=await pageAll(()=>sb.from('leads').select('phone,property,bhk,name,tc_id,fe_id'));const exMap={};
-  const key=(p,pr,b)=>p+'|'+String(pr||'').toLowerCase().trim()+'|'+String(b||'').toLowerCase().trim();
-  ex.forEach(e=>{const k=key(e.phone,e.property,e.bhk);seen.add(k);exMap[k]=e});
+  const ex=await pageAll(()=>sb.from('leads').select('phone,phone2,property,bhk,name,tc_id,fe_id'));const exMap={};
+  const key=(p)=>p;
+  ex.forEach(e=>{const k=key(e.phone,e.property,e.bhk);seen.add(k);exMap[k]=e;const k2=ph10(e.phone2);if(k2.length==10&&!exMap[k2]){seen.add(k2);exMap[k2]=e}});
   const skipped=[];
   let dup=0;
   for(const ln of body){
