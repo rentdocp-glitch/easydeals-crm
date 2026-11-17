@@ -219,7 +219,7 @@ a{color:var(--pr2)}
 .sugl{margin-top:8px;border:1px solid #e3e8f0;border-radius:12px;overflow:hidden;background:#fff}.sugi{padding:9px 11px;border-bottom:1px solid #eef1f6;cursor:pointer}.sugi:last-child{border-bottom:0}.sugi:active{background:#eef4ff}.sugi mark{background:#fde68a;padding:0 1px;border-radius:3px}
 </style>
 </head><body>
-<header id="hdr" style="display:none"><div class="hl"><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
+<header id="hdr" style="display:none"><div class="hl"><button id="bk" onclick="history.back()" aria-label="Back" style="display:none">←</button><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
 <main id="app"></main>
 <nav id="nav" style="display:none"></nav>
 <div id="ov" onclick="closeDrawer()"></div>
@@ -273,25 +273,43 @@ async function boot(user){
   await loadZA(true);
   render();
   clearInterval(poll);
-  poll=setInterval(()=>{if(!ME||document.hidden||openId||noteId||showAdd)return;const a=document.activeElement;if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))return;render()},45000);
+  poll=setInterval(()=>{if(!ME||document.hidden||openId||noteId||showAdd)return;const a=document.activeElement;if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))return;render()},120000);
 }
+
+
+/* ---------- Android / browser Back button ---------- */
+try{history.replaceState({tab:'__root'},'')}catch(e){}
+window.addEventListener('popstate',e=>{
+  if(!ME)return;
+  const st=e.state||{};
+  if(openId||openK||noteId||showAdd){ // close the open form first, stay on this tab
+    openId=null;openK=null;noteId=null;showAdd=false;clearInterval(tint);t0=null;
+    try{history.pushState({tab},'')}catch(x){}
+    render();return;
+  }
+  const list=TABS[ME.role]||TABS.telecaller,home=list[0][0];
+  const dest=st.tab&&st.tab!=='__root'?st.tab:home;
+  if(dest===tab)return;
+  window.__pop=true;try{go(dest)}finally{window.__pop=false}
+});
 
 /* ---------- shell ---------- */
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team'],['zones','🗺 Zones & Areas']],
-  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']],
-  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']]};
+  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']],
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']]};
 let MR={on:false,f:'',t:''},MF=null,MFk=null;
-function go(t){if(t=='today'){mDate=null;MR.on=false}tab=t;q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
+function go(t){if(t=='today'){mDate=null;MR.on=false}const chg=t!==tab;tab=t;if(chg&&!window.__pop){try{history.pushState({tab:t},'')}catch(e){}}q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
 async function render(){
   if(!ME)return; if(Date.now()-DCT>300000)await dcLoad();
   const list=TABS[ME.role]||TABS.telecaller;
-  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!(tab=='xfer'&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!((tab=='xfer'||tab=='dups'||tab=='xlog')&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
+  {const bk=$('#bk');if(bk)bk.style.display=(tab!=list[0][0]||openId||noteId||showAdd)?'inline-block':'none'}
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
   const ck=[ME.role,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP,JSON.stringify(GX)].join('|');
@@ -382,14 +400,15 @@ function leadCard(l,cs){
   ${cs!==undefined?phoneLine(l)+`<div class="mu cp"><a href="javascript:void(0)" onclick="numHist('${esc(l.phone)}')">📜 Full history (calls and messages)</a></div>`:''}
   ${actions(l)}</div>`;
 }
-function openForm(id,k){openId=id;openK=k;noteId=null;render()}
+async function openForm(id,k){if(k=='share')await shFetch(id);openId=id;openK=k;noteId=null;render()}
 function closeForm(){openId=null;openK=null;clearInterval(tint);t0=null;render()}
 function actions(l){
-  if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
+  if(openId==l.id)return openK=='call'?callForm(l):openK=='status'?statusForm(l):openK=='share'?shareForm(l):openK=='assign'?assignForm(l):openK=='edit'?editForm(l):openK=='del'?delForm(l):'';
   const b=[];
   b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
   b.push(`<a class="btn ic wi" title="WhatsApp" href="javascript:void(0)" onclick="waSheet('lead',${l.id})"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
   b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
+  if(ME.role!='admin')b.push(`<button class="ic" title="Transfer / Tag" onclick="openForm(${l.id},'share')">🔁</button>`);
   b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
   if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
   return `<div class="acts">${b.join('')}</div>`;
@@ -407,7 +426,7 @@ function statusUpd(l,st){
     const mtm=$('#mtm')&&$('#mtm').value;
     if(!fe||!dt||!mtm)return {err:'Select a Field Exec, the meeting date and time'};
     upd.fe_id=fe;upd.meeting_date=dt;upd.meeting_time=mtm;
-    if(ME.role=='telecaller')upd.tc_id=ME.id;
+    if(ME.role=='telecaller'&&(!l.tc_id||l.tc_id==ME.id))upd.tc_id=ME.id;
   }else if(ME.role=='telecaller'&&!l.tc_id)upd.tc_id=ME.id;
   if(st=='followup'||st=='callback'){
     const fd=$('#fd')&&$('#fd').value,ft=$('#ft')&&$('#ft').value;
@@ -492,8 +511,10 @@ const searchBar=(ph,withF,sg)=>`<div class="card" style="padding:10px"><div clas
 function doSearch(){q=$('#sq').value;openId=null;openK=null;if(ME.role=='fe'&&tab!='fs'){if(!q.trim())return;tab='fs'}render()}
 const getSeen=()=>{try{return JSON.parse(localStorage.getItem('seen_'+ME.id)||'[]')}catch(e){return[]}};
 const setSeen=a=>{try{localStorage.setItem('seen_'+ME.id,JSON.stringify(a))}catch(e){}};
+let DBN={t:0,d:null};
 async function dealBanner(){
-  const {data}=await sb.from('leads').select('id').eq('tc_id',ME.id).eq('status','deal_closed');
+  if(!DBN.d||Date.now()-DBN.t>120000){const r=await sb.from('leads').select('id').eq('tc_id',ME.id).eq('status','deal_closed');DBN={t:Date.now(),d:r.data||[]}}
+  const data=DBN.d;
   const seen=getSeen(),n=(data||[]).filter(l=>!seen.includes(l.id)).length;
   return n?`<div class="card alert" onclick="go('deal')">🎉 ${n} deal${n>1?'s':''} closed! Tap to view</div>`:'';
 }
@@ -1097,18 +1118,18 @@ VIEW['admin:team']=async()=>{
     return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px">${uid!='__pool'?`<button onclick="openDaily('${uid}')">📋 Daily work report</button>`:''}<button onclick="openXfer('${uid}')">🔁 ${uid=='__pool'?'Take leads from pool':'Transfer leads'}</button></div>`:''}</div>`};
   const grp=(role,label,key)=>data.filter(p=>p.role==role).map(p=>card('👤 '+esc(p.name||'-'),label,all.filter(l=>l[key]==p.id),p.id)).join('');
   const un=all.filter(l=>!l.tc_id&&!l.fe_id);
-  const work=`<h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un,'__pool'):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
+  const work=`<div class="acts" style="margin:0 0 10px"><button onclick="go('dups')">🔁 Duplicate numbers</button><button onclick="go('xlog')">📜 Transfer history</button></div><h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un,'__pool'):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
   return work+`<p class="mu">To add a new member: Supabase → Authentication → Add user. They will appear here automatically; then choose their role.</p>`+
   data.map(p=>`<div class="card"><div class="f2"><input value="${esc(p.name||'')}" onchange="setName('${p.id}',this.value)"><select ${p.id==ME.id?'disabled':''} onchange="setRole('${p.id}',this.value)">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${p.role==k?'selected':''}>${v}</option>`).join('')}</select></div></div>`).join('');
 };
 
 /* ---------- admin: bulk lead transfer / take back ---------- */
 const XDEF=['new','callback','ringing','followup','not_available'];
-let XF={from:'',st:[],zn:[],n:'',to:'',sure:false,last:null};
-function openXfer(id){XF={from:id,st:XDEF.slice(),zn:[],n:'',to:'',sure:false,last:XF.last};go('xfer')}
+let XF={from:'',st:[],zn:[],n:'',to:'',sure:false,last:null,nocall:false};
+function openXfer(id){XF={from:id,st:XDEF.slice(),zn:[],n:'',to:'',sure:false,last:XF.last,nocall:false};go('xfer')}
 const xKey=()=>XF.from=='__pool'?null:(P[XF.from]||{}).role=='fe'?'fe_id':'tc_id';
 function xBase(cols){let q=sb.from('leads').select(cols);if(XF.from=='__pool')q=q.is('tc_id',null).is('fe_id',null);else q=q.eq(xKey(),XF.from);return q}
-async function xPick(){let L=await pageAll(()=>{let q=xBase('id,status,zone_id,created_at').order('created_at',{ascending:true});if(XF.st.length)q=q.in('status',XF.st);if(XF.zn.length)q=q.in('zone_id',XF.zn);return q});const n=parseInt(XF.n);if(n>0)L=L.slice(0,n);return L}
+async function xPick(){let L=await pageAll(()=>{let q=xBase('id,status,zone_id,created_at').order('created_at',{ascending:true});if(XF.st.length)q=q.in('status',XF.st);if(XF.zn.length)q=q.in('zone_id',XF.zn);return q});if(XF.nocall&&L.length){const has=new Set();for(const t of ['calls','device_calls']){(await pageAll(()=>sb.from(t).select('lead_id'))).forEach(x=>has.add(x.lead_id))}L=L.filter(l=>!has.has(l.id))}const n=parseInt(XF.n);if(n>0)L=L.slice(0,n);return L}
 function xSet(k,v){XF[k]=v;XF.sure=false;render()}
 function xTog(k,v){const a=XF[k],i=a.indexOf(v);i<0?a.push(v):a.splice(i,1);XF.sure=false;render()}
 VIEW['admin:xfer']=async()=>{
@@ -1123,7 +1144,8 @@ VIEW['admin:xfer']=async()=>{
   <div class="card"><b style="font-size:17px">🔁 ${esc(src.name||'')}'s leads</b><div class="mu">${XF.from=='__pool'?'Leads that are with nobody':ROLE[src.role]+' · kul '+allL.length+' leads'}</div>
   <div class="sec" style="margin-top:10px">1. Kaunsi leads? (status)</div>
   <div class="chips" style="flex-wrap:wrap">${Object.keys(ST).filter(k=>c[k]).map(k=>`<button class="${XF.st.includes(k)?'on':''}" onclick="xTog('st','${k}')">${ST[k]} ${c[k]}</button>`).join('')||'<span class="mu">No leads</span>'}</div>
-  <div class="mu">Deal Closed, Meeting and Not Interested are not pre-selected. Tap to include them.</div>${zb}
+  <div class="mu">Deal Closed, Meeting and Not Interested are not pre-selected. Tap to include them.</div>
+  <label style="display:flex;gap:8px;align-items:center;margin:10px 0 0"><input type="checkbox" style="width:auto" ${XF.nocall?'checked':''} onchange="xSet('nocall',this.checked)"> <b>Only leads with no call made yet</b></label><div class="mu">Use this to take back data the employee has not worked on. The lead is never deleted, it only moves.</div>${zb}
   <div class="sec" style="margin-top:10px">2. How many?</div>
   <div class="f2"><input type="number" inputmode="numeric" placeholder="All (leave blank)" value="${esc(XF.n)}" onchange="xSet('n',this.value)"><div class="mu" style="align-self:center">Older leads go first</div></div>
   <div class="sec" style="margin-top:10px">3. Assign to whom?</div>
@@ -1146,6 +1168,72 @@ async function xGo(){
 }
 async function xUndo(){const u=XF.last;if(!u)return;for(let i=0;i<u.ids.length;i+=150){const {error}=await sb.from('leads').update({[u.key]:u.prev}).in('id',u.ids.slice(i,i+150));if(error)return toast(error.message,1)}
   XF.last=null;for(const k in VC)delete VC[k];toast('↩ Back to how it was');render()}
+
+
+/* ---------- transfer & tag (shared leads) ---------- */
+const SHC={};
+async function shFetch(id){const {data}=await sb.from('lead_shares').select('user_id').eq('lead_id',id);SHC[id]=(data||[]).map(x=>x.user_id)}
+function shareForm(l){
+  const ppl=Object.values(P).filter(p=>p.id!=ME.id&&(p.role=='telecaller'||p.role=='fe'));
+  const tg=SHC[l.id]||[],mine=l.tc_id==ME.id||l.fe_id==ME.id;
+  const grp=(r,t)=>{const a=ppl.filter(p=>p.role==r);return a.length?`<optgroup label="${t}">${a.map(p=>`<option value="${p.id}">${esc(p.name||p.id)}</option>`).join('')}</optgroup>`:''};
+  return `<div class="form"><b>🔁 Transfer / 🏷 Tag</b>
+  ${mine?`<label>Transfer this lead to</label><select id="xto"><option value="">— Select person —</option>${grp('telecaller','Telecallers')}${grp('fe','Field Executives')}</select>
+  <label>Note (optional)</label><input id="xnote" placeholder="Why are you transferring?">
+  <div class="mu">The lead leaves your list and goes to the new person. Calls and history stay with the lead.</div>
+  <div class="acts" style="margin-top:6px"><button class="p" onclick="doTransfer(${l.id})">🔁 Transfer</button></div>
+  <label style="margin-top:12px">Tag people (they can see and update this lead; it stays with you)</label>
+  <div id="xtg">${ppl.map(p=>`<label style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" value="${p.id}" ${tg.includes(p.id)?'checked':''} style="width:auto"> ${esc(p.name||p.id)} <span class="mu">${ROLE[p.role]||p.role}</span></label>`).join('')}</div>
+  <div class="acts" style="margin-top:6px"><button class="g" onclick="doTag(${l.id})">🏷 Save tags</button></div>`
+  :`<div class="mu">This lead is tagged to you. Only the owner can transfer or change tags.</div>`}
+  <div class="acts"><button onclick="closeForm()">Close</button></div></div>`;
+}
+async function doTransfer(id){
+  const to=$('#xto').value;if(!to)return toast('Select a person',1);
+  const nm=(P[to]||{}).name||'this person';
+  if(!confirm('Transfer this lead to '+nm+'? It will move out of your list.'))return;
+  const {error}=await sb.rpc('transfer_lead',{p_lead:id,p_to:to,p_note:($('#xnote').value||'').trim()||null});
+  if(error)return toast(error.message,1);
+  for(const k in VC)delete VC[k];openId=null;openK=null;toast('Transferred to '+nm+' ✅');render();
+}
+async function doTag(id){
+  const now=[...document.querySelectorAll('#xtg input:checked')].map(x=>x.value),old=SHC[id]||[];
+  for(const u of now.filter(x=>!old.includes(x))){const {error}=await sb.rpc('share_lead',{p_lead:id,p_user:u});if(error)return toast(error.message,1)}
+  for(const u of old.filter(x=>!now.includes(x))){const {error}=await sb.rpc('unshare_lead',{p_lead:id,p_user:u});if(error)return toast(error.message,1)}
+  SHC[id]=now;toast('Tags saved ✅');closeForm();
+}
+VIEW['telecaller:tag']=VIEW['fe:tag']=async()=>{
+  const {data:sh,error:e1}=await sb.from('lead_shares').select('lead_id,by_id,at').eq('user_id',ME.id);if(e1)throw e1;
+  const ids=(sh||[]).map(x=>x.lead_id);if(!ids.length)return empty('No one has tagged you on a lead yet.');
+  const {data,error}=await sb.from('leads').select('*').in('id',ids).order('created_at',{ascending:false}).limit(200);if(error)throw error;
+  const hs=await histMap(data.map(l=>l.id)),by={};(sh||[]).forEach(x=>by[x.lead_id]=x);
+  return '<div class="mu" style="margin:6px 0">🏷 Leads where you are tagged · '+data.length+'</div>'+data.map(l=>{const b=by[l.id];return `<div class="mu" style="margin:8px 4px 0">Tagged by <b>${esc((P[b&&b.by_id]||{}).name||'?')}</b>${l.tc_id&&P[l.tc_id]?' · Owner: '+esc(P[l.tc_id].name):''}</div>`+leadCard(l,hs[l.id]||[])}).join('');
+};
+
+
+/* ---------- admin: duplicate numbers + transfer history ---------- */
+VIEW['admin:dups']=async()=>{
+  const all=await pageAll(()=>sb.from('leads').select('id,name,phone,property,status,tc_id,fe_id').order('id'));
+  const m={};all.forEach(l=>{const p=ph10(l.phone);if(p.length==10)(m[p]=m[p]||[]).push(l)});
+  const g=Object.entries(m).filter(([p,a])=>a.length>1).sort((a,b)=>a[0]<b[0]?-1:1);
+  const who=l=>[l.tc_id&&P[l.tc_id]?'TC '+esc(P[l.tc_id].name):'',l.fe_id&&P[l.fe_id]?'FE '+esc(P[l.fe_id].name):''].filter(Boolean).join(' · ')||'not assigned';
+  return `<button onclick="go('team')" style="margin-bottom:10px">← Team</button><div class="card"><b>🔁 Duplicate numbers</b><div class="mu">${g.length} numbers are in the CRM more than once. Tap "Keep this" to keep that record. The other record's calls and notes move into it, then it is removed.</div></div>`+
+  (g.map(([p,a])=>`<div class="card"><b>${p}</b>${a.map(l=>`<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eef0f3"><b>${esc(l.name||'-')}</b> · ${esc(l.property||'no property')}<br><span class="mu">${tag(l.status)} ${who(l)} · #${l.id}</span>${a.filter(x=>x.id!=l.id).length==1?`<div class="acts" style="margin-top:6px"><button class="sm" onclick="doMerge(${l.id},${a.find(x=>x.id!=l.id).id},'${p}')">Keep this one</button></div>`:'<div class="mu">More than 2 records: merge two at a time from Data search.</div>'}</div>`).join('')}</div>`).join('')||empty('No duplicate numbers'));
+};
+async function doMerge(keep,drop,p){
+  if(!confirm('Keep record #'+keep+' and merge record #'+drop+' into it? Calls and notes move to the kept record. This cannot be undone.'))return;
+  const {error}=await sb.rpc('merge_leads',{p_keep:keep,p_drop:drop});
+  if(error)return toast(error.message,1);
+  for(const k in VC)delete VC[k];toast('Merged ✅');render();
+}
+VIEW['admin:xlog']=async()=>{
+  const {data,error}=await sb.from('lead_assignment_log').select('*').order('at',{ascending:false}).limit(200);if(error)throw error;
+  const ids=[...new Set((data||[]).map(x=>x.lead_id))],L={};
+  for(let i=0;i<ids.length;i+=150){const r=await sb.from('leads').select('id,name,phone').in('id',ids.slice(i,i+150));(r.data||[]).forEach(l=>L[l.id]=l)}
+  const nm=id=>id?(P[id]?.name||'?'):'nobody',K={tc:'Telecaller',fe:'Field Exec',tag:'Tagged',untag:'Tag removed',merge:'Merged'};
+  return `<button onclick="go('team')" style="margin-bottom:10px">← Team</button><div class="card"><b>📜 Transfer history</b><div class="mu">Latest ${(data||[]).length} changes. Who moved which lead, from whom, to whom.</div></div>`+
+  ((data||[]).map(x=>{const l=L[x.lead_id]||{},d=new Date(x.at);return `<div class="card"><b>${esc(l.name||'Lead #'+x.lead_id)}</b> <span class="mu">${esc(l.phone||'')}</span><br>${esc(K[x.kind]||x.kind)}: ${x.kind=='merge'?esc(x.note||''):x.kind=='tag'?'→ '+esc(nm(x.to_id)):x.kind=='untag'?esc(nm(x.from_id)):esc(nm(x.from_id))+' → '+esc(nm(x.to_id))}<br><span class="mu">By ${esc(nm(x.by_id))} · ${dshort(d)}, ${tmS(d)}${x.note&&x.kind!='merge'&&x.kind!='tag'&&x.kind!='untag'?' · '+esc(x.note):''}</span></div>`}).join('')||empty('No transfers recorded yet'));
+};
 
 /* ---------- live search suggestions (number or name, while typing) ---------- */
 let SUG={t:null,n:0};
