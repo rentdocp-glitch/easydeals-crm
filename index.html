@@ -760,14 +760,14 @@ VIEW['admin:zones']=(...a)=>zonesView(...a);
 // Telecaller
 VIEW['telecaller:call']=async()=>{
   const flp=loadFilt();
-  let qy=sb.from('leads').select('*').order('created_at',{ascending:true}).limit(50);
+  let qy=sb.from('leads').select('*').eq('tc_id',ME.id).order('created_at',{ascending:true}).limit(50);
   const qq=clean(q);
   if(qq)qy=qy.or(srch(qq));else if(!fSt.length)qy=qy.in('status',['new','callback','ringing','followup']);
   qy=applyF(qy);
   const {data,error}=await qy;if(error)throw error;
   const [hs]=await Promise.all([histMap(data.map(l=>l.id)),flp]);
   return searchBar('Name, number, society or area',1)+filterBar()+addLeadCard()+
-    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc.length||fBhk.length||fSt.length?'Nothing found.':'No leads to call.'));
+    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(qq||fLoc.length||fBhk.length||fSt.length?'Nothing found.':'No leads to call. Ask the admin to assign you more data.'));
 };
 async function lookupAny(){
   const n=ph10($('#lkn').value),box=$('#lkr');
