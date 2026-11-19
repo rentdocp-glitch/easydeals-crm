@@ -1094,8 +1094,8 @@ async function doImport(){
     tcs.sort((a,b)=>cnt[a.id]-cnt[b.id]);rows.forEach((r,i)=>{const t=tcs[i%tcs.length];r.tc_id=t.id;got[t.id]++});
     splitTxt=tcs.map(t=>(t.name||'?')+' '+got[t.id]).join(' · ');
   }
-  for(let i=0;i<rows.length;i+=500){
-    const {error}=await sb.from('leads').insert(rows.slice(i,i+500));
+  for(let i=0;i<rows.length;i+=150){
+    const {error}=await sb.from('leads').insert(rows.slice(i,i+150));
     if(error){impMsg('err','❌ Import failed: '+esc(error.message));return}
   }
   FILT.t=0;
