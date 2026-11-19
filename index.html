@@ -1112,9 +1112,9 @@ VIEW['admin:team']=async()=>{
   const {data}=await sb.from('profiles').select('*').order('role');
   data.forEach(p=>P[p.id]=p);
   const all=await pageAll(()=>sb.from('leads').select('tc_id,fe_id,status'));
-  const SC={new:'#e8eefc|#1f4e9c',callback:'#fff1d6|#8a5a00',ringing:'#eef0f3|#4a5361',followup:'#e3f3ff|#0b5a8a',meeting_assigned:'#e9e2fb|#5b3aa8',meeting_done:'#e0f5e6|#1b6b34',online_meet_done:'#e0f5e6|#1b6b34',not_interested:'#fde4e4|#9b1c1c',deal_closed:'#cdeed6|#0f5a28',not_available:'#f1e6dc|#7a4a1f'};
+  const SC={new:'#e8eefc|#1f4e9c',callback:'#fff1d6|#8a5a00',ringing:'#eef0f3|#4a5361',followup:'#e3f3ff|#0b5a8a',meeting_assigned:'#e9e2fb|#5b3aa8',meeting_done:'#e0f5e6|#1b6b34',online_meet_done:'#e0f5e6|#1b6b34',not_interested:'#fde4e4|#9b1c1c',deal_closed:'#cdeed6|#0f5a28',not_available:'#f1e6dc|#7a4a1f',prospect:'#fff3c4|#7a5b00'};
   const card=(title,sub,rows,uid)=>{const c={};rows.forEach(l=>c[l.status]=(c[l.status]||0)+1);
-    const chips=Object.keys(ST).filter(k=>c[k]).map(k=>{const [bg,fg]=SC[k].split('|');return `<span style="background:${bg};color:${fg};padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600">${ST[k]} ${c[k]}</span>`}).join(' ');
+    const chips=Object.keys(ST).filter(k=>c[k]).map(k=>{const [bg,fg]=(SC[k]||'#eef0f3|#4a5361').split('|');return `<span style="background:${bg};color:${fg};padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600">${ST[k]} ${c[k]}</span>`}).join(' ');
     return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px">${uid!='__pool'?`<button onclick="openDaily('${uid}')">📋 Daily work report</button>`:''}<button onclick="openXfer('${uid}')">🔁 ${uid=='__pool'?'Take leads from pool':'Transfer leads'}</button></div>`:''}</div>`};
   const grp=(role,label,key)=>data.filter(p=>p.role==role).map(p=>card('👤 '+esc(p.name||'-'),label,all.filter(l=>l[key]==p.id),p.id)).join('');
   const un=all.filter(l=>!l.tc_id&&!l.fe_id);
