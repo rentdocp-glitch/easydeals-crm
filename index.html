@@ -304,7 +304,7 @@ const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<
 async function render(){
   if(!ME)return; if(Date.now()-DCT>300000)await dcLoad();
   const list=TABS[ME.role]||TABS.telecaller;
-  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!((tab=='xfer'||tab=='dups'||tab=='xlog')&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
+  if(tab!='st'&&tab!='rep'&&tab!='daily'&&!((tab=='xfer'||tab=='dups'||tab=='xlog'||tab=='dreq')&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
@@ -389,7 +389,7 @@ function leadCard(l,cs){
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
   const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',''].filter(Boolean).join(' · ');
-  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${dealBtn(l)}
+  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${l.dup_of?`<div class="mu" style="margin:4px 0;padding:4px 8px;border-radius:8px;background:#fdecec;color:#b42318;font-weight:700">🔁 DUPLICATE of #${l.dup_of}${l.dup_reason?' · '+esc(l.dup_reason):''}</div>`:''}${dealBtn(l)}
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${followLine(l)}${meetLine(l)}
@@ -527,9 +527,8 @@ function addLeadCard(){
   <input id="ar" placeholder="Society / Property name">${zUI()?zonePicker('a','')+'<input id="aad" placeholder="Address / landmark (optional)">':'<input id="al" placeholder="Area (e.g. Baner)">'}
   <div class="f2"><input id="ab" placeholder="BHK (e.g. 2 BHK)"><input id="as" type="number" placeholder="Area (sqft)"></div>
   <input id="ac" placeholder="Price (e.g. 85 L or 1.2 Cr)"><textarea id="am" rows="2" placeholder="Notes (optional)"></textarea>
-  <div class="acts"><button class="p" id="svb" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div></div></div>`;
+  <div class="acts"><button class="p" id="svb" onclick="addLead()">Save</button><button onclick="showAdd=false;render()">Cancel</button></div><div id="myreq"></div></div></div>`+(setTimeout(dupMine,50),'');
 }
-let DUPOK='';
 const dupRows=d=>d.map(l=>`<div style="margin-top:6px"><b>${esc(l.name||'-')}</b> · ${esc([l.property,l.bhk].filter(Boolean).join(' · ')||'no property')}<br><span class="mu">${tag(l.status)} ${[l.tc_name?'Telecaller: '+esc(l.tc_name):'',l.fe_name?'FE: '+esc(l.fe_name):''].filter(Boolean).join(' · ')||'Not assigned'}</span></div>`).join('');
 async function dupLookup(ph){const {data}=await sb.rpc('lookup_number',{n:ph});return data||[]}
 async function dupCheck(v){
@@ -538,21 +537,43 @@ async function dupCheck(v){
   const d=await dupLookup(ph);if(ph10(($('#ap')||{}).value||'')!=ph)return;
   box.innerHTML=d.length?`<div class="card" style="background:#fff6e0;border-color:#f0d9a0;margin:6px 0"><b>⚠️ This number is already in the CRM</b>${dupRows(d)}</div>`:'';
 }
-async function addLead(){
+async function leadRow(){
   const phone=ph10($('#ap').value);
-  if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
-  if(DUPOK!=phone){
-    const d=await dupLookup(phone);
-    if(d.length){$('#dupw').innerHTML=`<div class="card" style="background:#fdecec;border-color:#f3b4b4;margin:6px 0"><b>⛔ This number is already in the CRM. It cannot be added again.</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Search for this number and update that lead instead.</div></div>`;return toast('Number already in CRM',1)}
-  }
+  if(phone.length!=10){toast('Enter a 10-digit mobile number',1);return null}
   const pr=$('#ac').value.trim();
-  let loc;if(zUI()){const z=await zpVal('a',true);if(z.err)return toast(z.err,1);const ad=(($('#aad')||{}).value||'').trim();loc={locality:z.locality,...(z.area_id?{area_id:z.area_id}:{}),...(ad?{address:ad}:{})}}else{const na=normArea($('#al').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
+  let loc;if(zUI()){const z=await zpVal('a',true);if(z.err){toast(z.err,1);return null}const ad=(($('#aad')||{}).value||'').trim();loc={locality:z.locality,...(z.area_id?{area_id:z.area_id}:{}),...(ad?{address:ad}:{})}}else{const na=normArea($('#al').value);loc={locality:na.area,...(na.address?{address:na.address}:{})}}
   const row={name:$('#an').value.trim(),phone,property:$('#ar').value.trim(),...loc,bhk:$('#ab').value.trim(),sqft:parseInt($('#as').value)||null,price:pr,price_l:parsePrice(pr),remarks:$('#am').value.trim()};
   if(ME.role=='fe')row.fe_id=ME.id;
   if(ME.role=='telecaller')row.tc_id=ME.id;
+  return row;
+}
+async function addLead(){
+  const phone=ph10($('#ap').value);
+  if(phone.length!=10)return toast('Enter a 10-digit mobile number',1);
+  const d=await dupLookup(phone);
+  if(d.length){$('#dupw').innerHTML=dupBox(d);return toast('Number already in CRM',1)}
+  const row=await leadRow();if(!row)return;
   const {error}=await sb.from('leads').insert(row);
+  if(error){if(/already in the CRM/i.test(error.message)){const d2=await dupLookup(phone);$('#dupw').innerHTML=dupBox(d2)}return toast(error.message,1)}
+  FILT.t=0;showAdd=false;toast('Lead added ✅');render();
+}
+const dupBox=d=>`<div class="card" style="background:#fdecec;border-color:#f3b4b4;margin:6px 0"><b>⛔ This number is already in the CRM. It cannot be added again.</b>${dupRows(d)}<div class="mu" style="margin-top:6px">Search for this number and update that lead. If this really is a different owner or a second property, ask the admin:</div><textarea id="dreason" rows="2" placeholder="Reason (e.g. 2nd flat of same owner, different owner on same number)" style="margin-top:6px"></textarea><div class="acts"><button class="p" id="drb" onclick="reqDup()">📨 Ask admin to allow duplicate</button></div></div>`;
+async function reqDup(){
+  const reason=(($('#dreason')||{}).value||'').trim();
+  if(!reason)return toast('Write the reason first',1);
+  const row=await leadRow();if(!row)return;
+  const b=$('#drb');if(b)b.disabled=true;
+  const {error}=await sb.rpc('request_dup',{p_row:row,p_reason:reason});
+  if(b)b.disabled=false;
   if(error)return toast(error.message,1);
-  FILT.t=0;showAdd=false;DUPOK='';toast('Lead added ✅');render();
+  showAdd=false;toast('Request sent to admin ✅');render();
+}
+async function dupMine(){
+  const box=$('#myreq');if(!box)return;
+  const {data}=await sb.from('dup_requests').select('phone10,status,decision_note,requested_at,row').eq('requested_by',ME.id).order('requested_at',{ascending:false}).limit(5);
+  if(!data||!data.length)return;
+  const I={pending:'⏳ Waiting for admin',approved:'✅ Allowed (lead added)',rejected:'❌ Rejected'};
+  box.innerHTML='<div class="mu" style="margin:8px 0 2px">Your duplicate requests</div>'+data.map(x=>`<div class="mu">${esc(x.phone10)} · ${esc((x.row||{}).name||'')} · ${I[x.status]||x.status}${x.decision_note?' · '+esc(x.decision_note):''}</div>`).join('');
 }
 async function loadFilt(){
   if(Date.now()-FILT.t<300000)return;
@@ -1118,7 +1139,8 @@ VIEW['admin:team']=async()=>{
     return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>${title}</b><span style="font-size:22px;font-weight:800;color:#1f4e79">${rows.length}</span></div><div class="mu" style="margin:2px 0 8px">${sub} · total leads</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips||'<span class="mu">No leads yet</span>'}</div>${uid?`<div class="acts" style="margin-top:10px">${uid!='__pool'?`<button onclick="openDaily('${uid}')">📋 Daily work report</button>`:''}<button onclick="openXfer('${uid}')">🔁 ${uid=='__pool'?'Take leads from pool':'Transfer leads'}</button></div>`:''}</div>`};
   const grp=(role,label,key)=>data.filter(p=>p.role==role).map(p=>card('👤 '+esc(p.name||'-'),label,all.filter(l=>l[key]==p.id),p.id)).join('');
   const un=all.filter(l=>!l.tc_id&&!l.fe_id);
-  const work=`<div class="acts" style="margin:0 0 10px"><button onclick="go('dups')">🔁 Duplicate numbers</button><button onclick="go('xlog')">📜 Transfer history</button></div><h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un,'__pool'):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
+  try{const r=await sb.from('dup_requests').select('id',{count:'exact',head:true}).eq('status','pending');DRC=r.count||0}catch(e){}
+  const work=`<div class="acts" style="margin:0 0 10px"><button onclick="go('dups')">🔁 Duplicate numbers</button><button onclick="go('xlog')">📜 Transfer history</button><button onclick="go('dreq')">🆕 Duplicate requests${DRC?' ('+DRC+')':''}</button></div><h3 style="margin:4px 0 8px">📊 Who has how many leads</h3>`+grp('telecaller','Telecaller','tc_id')+grp('fe','Field Executive','fe_id')+(un.length?card('📭 Not assigned to anyone','Pool',un,'__pool'):'')+`<h3 style="margin:16px 0 8px">⚙️ Team members</h3>`;
   return work+`<p class="mu">To add a new member: Supabase → Authentication → Add user. They will appear here automatically; then choose their role.</p>`+
   data.map(p=>`<div class="card"><div class="f2"><input value="${esc(p.name||'')}" onchange="setName('${p.id}',this.value)"><select ${p.id==ME.id?'disabled':''} onchange="setRole('${p.id}',this.value)">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}" ${p.role==k?'selected':''}>${v}</option>`).join('')}</select></div></div>`).join('');
 };
@@ -1212,9 +1234,26 @@ VIEW['telecaller:tag']=VIEW['fe:tag']=async()=>{
 
 
 /* ---------- admin: duplicate numbers + transfer history ---------- */
+let DRC=0;
+VIEW['admin:dreq']=async()=>{
+  const {data,error}=await sb.from('dup_requests').select('*').order('requested_at',{ascending:false}).limit(60);if(error)throw error;
+  const ids=[...new Set((data||[]).map(x=>x.orig_lead_id).filter(Boolean))],L={};
+  for(let i=0;i<ids.length;i+=150){const r=await sb.from('leads').select('id,name,property,status,tc_id,fe_id').in('id',ids.slice(i,i+150));(r.data||[]).forEach(l=>L[l.id]=l)}
+  const nm=id=>id?(P[id]?.name||'?'):'-',pend=(data||[]).filter(x=>x.status=='pending'),done=(data||[]).filter(x=>x.status!='pending');
+  const row=x=>{const o=L[x.orig_lead_id]||{},r=x.row||{},d=new Date(x.requested_at);return `<div class="card"><b>${esc(x.phone10)}</b> <span class="mu">asked by ${esc(nm(x.requested_by))} · ${dshort(d)}, ${tmS(d)}</span><div style="margin-top:6px">🆕 <b>New:</b> ${esc(r.name||'-')} · ${esc([r.property,r.bhk,r.locality].filter(Boolean).join(' · ')||'no property')}</div><div style="margin-top:4px">📌 <b>Already in CRM:</b> ${esc(o.name||'-')} · ${esc(o.property||'no property')} · ${o.status?tag(o.status):''} ${[o.tc_id&&P[o.tc_id]?'TC '+esc(P[o.tc_id].name):'',o.fe_id&&P[o.fe_id]?'FE '+esc(P[o.fe_id].name):''].filter(Boolean).join(' · ')} · #${x.orig_lead_id}</div><div style="margin-top:4px">💬 <b>Reason:</b> ${esc(x.reason||'')}</div>${x.status=='pending'?`<div class="acts"><button class="p" onclick="decDup(${x.id},1)">✅ Allow</button><button onclick="decDup(${x.id},0)">❌ Reject</button></div>`:`<div class="mu" style="margin-top:4px">${x.status=='approved'?'✅ Allowed':'❌ Rejected'} by ${esc(nm(x.decided_by))}${x.decision_note?' · '+esc(x.decision_note):''}</div>`}</div>`};
+  return `<button onclick="go('team')" style="margin-bottom:10px">← Team</button><div class="card"><b>🆕 Duplicate requests</b><div class="mu">${pend.length} waiting. Allow creates a new lead with a red DUPLICATE tag, assigned to the person who asked. Reject keeps it out.</div></div>`+(pend.map(row).join('')||empty('No pending requests'))+(done.length?'<h3 style="margin:14px 0 6px">Earlier</h3>'+done.map(row).join(''):'');
+};
+async function decDup(id,ok){
+  let note='';
+  if(ok){if(!confirm('Allow this duplicate? A new lead will be created with a DUPLICATE tag.'))return}
+  else{note=prompt('Reason for rejecting (optional)')||''}
+  const {error}=ok?await sb.rpc('approve_dup',{p_id:id}):await sb.rpc('reject_dup',{p_id:id,p_note:note});
+  if(error)return toast(error.message,1);
+  for(const k in VC)delete VC[k];toast(ok?'Allowed ✅ lead created':'Rejected');render();
+}
 VIEW['admin:dups']=async()=>{
-  const all=await pageAll(()=>sb.from('leads').select('id,name,phone,property,status,tc_id,fe_id').order('id'));
-  const m={};all.forEach(l=>{const p=ph10(l.phone);if(p.length==10)(m[p]=m[p]||[]).push(l)});
+  const all=await pageAll(()=>sb.from('leads').select('id,name,phone,property,status,tc_id,fe_id,dup_of').order('id'));
+  const m={};all.filter(l=>!l.dup_of).forEach(l=>{const p=ph10(l.phone);if(p.length==10)(m[p]=m[p]||[]).push(l)});
   const g=Object.entries(m).filter(([p,a])=>a.length>1).sort((a,b)=>a[0]<b[0]?-1:1);
   const who=l=>[l.tc_id&&P[l.tc_id]?'TC '+esc(P[l.tc_id].name):'',l.fe_id&&P[l.fe_id]?'FE '+esc(P[l.fe_id].name):''].filter(Boolean).join(' · ')||'not assigned';
   return `<button onclick="go('team')" style="margin-bottom:10px">← Team</button><div class="card"><b>🔁 Duplicate numbers</b><div class="mu">${g.length} numbers are in the CRM more than once. Tap "Keep this" to keep that record. The other record's calls and notes move into it, then it is removed.</div></div>`+
