@@ -1549,7 +1549,7 @@ function drawerBody(C){
   if(MODE=='rm'&&ME.role!='admin')return `<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>👤 <b>Back to Owner work</b></span><span>›</span></div><div class="ds">Relationship Manager</div>`+list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+`<div class="di" onclick="toggleRing()"><span>🔔 New lead sound</span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`;
   const rmBtn=ME.canRM?`<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>🤝 <b>Open RM (buyers)</b> <span class="mu">· Relationship Manager</span></span><span>›</span></div>`:'';
   return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+rmBtn+
-    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
+    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();aiSwitch()"><span>🤖 <b>AI RM (WhatsApp)</b> <span class="mu">· on/off + daily limit</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
@@ -1842,5 +1842,33 @@ window.waSheet=async function(kind,id){
    show()}catch(e){toast(e.message||'Could not open',1)}
 };
 })();
+</script>
+<script>
+window.aiSwitch=async function(){
+  try{
+    var r=await sb.from('wa_settings').select('*').eq('id',1).single();if(r.error)throw r.error;
+    var c=await sb.rpc('wa_sent_today');var sent=c.data||0,st=r.data;
+    var old=document.getElementById('aiov');if(old)old.remove();
+    var d=document.createElement('div');d.id='aiov';
+    d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px';
+    d.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:16px;box-sizing:border-box">'+
+     '<h3 style="margin:0 0 6px">🤖 AI RM (WhatsApp)</h3>'+
+     '<div style="font-size:13px;color:#555;margin-bottom:10px">Master switch. OFF = koi message nahi jayega.</div>'+
+     '<label style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;margin:8px 0"><input type="checkbox" id="ai_en" style="width:22px;height:22px"'+(st.enabled?' checked':'')+'> AI RM chalu</label>'+
+     '<label style="display:block;font-size:13px;margin:10px 0 4px">Roz ke max messages (0–5000)</label>'+
+     '<input id="ai_cap" type="number" min="0" max="5000" value="'+st.daily_cap+'" style="width:100%;box-sizing:border-box;padding:9px;font-size:15px">'+
+     '<div style="margin:10px 0;font-size:13px">Aaj bheje gaye: <b>'+sent+'</b> / '+st.daily_cap+'</div>'+
+     '<div style="font-size:12px;color:#777;margin-bottom:10px">Meta balance (₹) Meta ke Billing page par dikhta hai. Balance khatam = message ruk jayenge.</div>'+
+     '<div style="display:flex;gap:8px"><button id="ai_save" style="flex:1;padding:10px;font-weight:700;background:#14532d;color:#fff;border:0;border-radius:8px">Save</button>'+
+     '<button id="ai_x" style="flex:1;padding:10px;border:1px solid #ccc;background:#fff;border-radius:8px">Close</button></div></div>';
+    document.body.appendChild(d);
+    document.getElementById('ai_x').onclick=function(){d.remove()};
+    document.getElementById('ai_save').onclick=async function(){
+      var cap=parseInt(document.getElementById('ai_cap').value,10);if(isNaN(cap)||cap<0||cap>5000)return toast('Limit 0 se 5000 ke beech',1);
+      var q=await sb.rpc('wa_set',{p_enabled:document.getElementById('ai_en').checked,p_cap:cap});
+      if(q.error)return toast(q.error.message,1);toast('Saved ✅');d.remove();
+    };
+  }catch(e){toast(e.message||'Could not open',1)}
+};
 </script>
 </body></html>
