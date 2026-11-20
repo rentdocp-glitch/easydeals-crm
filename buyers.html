@@ -1125,7 +1125,7 @@ function olShow(){
 }
 
 /* ---------- Assign work: buyer leads + deal-closed properties, 1 to 4 people, auto rotation ---------- */
-let EMP=null,TK='buyer',TF='none',TSEL=new Set(),TEM=new Set(),TLIM=60,RUL=null;
+let EMP=null,TK='buyer',TP='',TF='none',TSEL=new Set(),TEM=new Set(),TLIM=60,RUL=null;
 async function loadEmp(){try{const {data}=await sb.from('profiles').select('id,name,role');EMP=(data||[]).filter(p=>p.role!='admin')}catch(e){EMP=[]}render()}
 const empName=id=>{const e=(EMP||[]).find(x=>x.id==id);return e?(e.name||'Employee'):'?'};
 const aOf=x=>x.assignees||[];
@@ -1133,7 +1133,8 @@ const tItems=()=>TK=='buyer'?BL:PR.filter(p=>!isSold(p));
 const tKey=x=>String(x.id);
 function tList(){let l=tItems().slice();l.sort(TK=='buyer'?(a,b)=>b.id-a.id:(a,b)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true}));
   if(TF=='none')l=l.filter(x=>!aOf(x).length);else if(TF!='all')l=l.filter(x=>aOf(x).includes(TF));
-  if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');l=l.filter(x=>(TK=='buyer'?[x.buyer_name,x.code,x.requirement,x.remarks,x.property_id,x.buyer_phone]:[x.id,x.project,x.owner_name,x.locality,x.owner_phone]).join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(x.buyer_phone||x.owner_phone).includes(d)))}
+  if(TK=='buyer'&&TP)l=l.filter(x=>x.property_id==TP);
+  if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');l=l.filter(x=>(TK=='buyer'?[x.buyer_name,x.code,x.requirement,x.remarks,x.property_id,x.buyer_phone,(P(x.property_id)||{}).project]:[x.id,x.project,x.owner_name,x.locality,x.owner_phone]).join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(x.buyer_phone||x.owner_phone).includes(d)))}
   return l}
 const tPend=k=>(k=='buyer'?BL:PR.filter(p=>!isSold(p))).filter(x=>!aOf(x).length).length;
 function tUpd(){const l=tList(),n=l.filter(b=>TSEL.has(tKey(b))).length;const c=$('#tcnt');if(c)c.textContent=n+' selected';const a=$('#tall');if(a)a.checked=l.length>0&&n==l.length;
@@ -1142,7 +1143,8 @@ function tTog(id,v){v?TSEL.add(id):TSEL.delete(id);tUpd()}
 function tAll(v){tList().forEach(b=>v?TSEL.add(tKey(b)):TSEL.delete(tKey(b)));document.querySelectorAll('.tcb').forEach(c=>c.checked=v);tUpd()}
 function tFirst(){const n=parseInt($('#tn').value)||0;if(n<1)return toast('Enter how many',1);TSEL.clear();tList().slice(0,n).forEach(b=>TSEL.add(tKey(b)));render()}
 function tFilt(k){TF=k;TSEL.clear();TLIM=60;render()}
-function tKind(k){TK=k;TF='none';TSEL.clear();TLIM=60;q='';render()}
+function tProp(v){TP=v;TSEL.clear();TLIM=60;render()}
+function tKind(k){TK=k;TP='';TF='none';TSEL.clear();TLIM=60;q='';render()}
 function tEm(id,btn){TEM.has(id)?TEM.delete(id):TEM.add(id);btn.classList.toggle('p',TEM.has(id))}
 async function tAssign(clear){
   const sel=tList().filter(x=>TSEL.has(tKey(x)));if(!sel.length)return toast('Select at least one item first',1);
@@ -1181,7 +1183,8 @@ VIEW.team=()=>{
   return `<div class="sec">👥 Assign work</div>
   <div style="display:flex;gap:6px;margin-bottom:10px">${tab('buyer','Buyer leads',pb)}${tab('prop','Deal closed',pp)}</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chip('none','Not assigned')}${chip('all','All')}${(EMP||[]).map(e=>chip(e.id,e.name||'Employee')).join('')}</div>
-  <input placeholder="Search" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{TSEL.clear();render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
+  ${TK=='buyer'?`<select onchange="tProp(this.value)" style="margin-bottom:8px"><option value="">All properties</option>${PR.filter(p=>BL.some(b=>b.property_id==p.id)).sort((a,b)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true})).map(p=>`<option value="${esc(p.id)}" ${TP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))} (${BL.filter(b=>b.property_id==p.id).length})</option>`).join('')}</select>`:''}
+  <input placeholder="Search (name, number, property name)" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{TSEL.clear();render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
   <div class="card" style="position:sticky;top:0;z-index:20;padding:10px">
    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:8px;font-weight:600"><input id="tall" type="checkbox" style="width:20px;height:20px" ${l.length&&n==l.length?'checked':''} onchange="tAll(this.checked)"> Select all (${l.length})</label><span style="display:flex;gap:4px;align-items:center"><input id="tn" type="number" inputmode="numeric" placeholder="15" style="width:64px"><button type="button" onclick="tFirst()">Select first</button></span><b id="tcnt" style="margin-left:auto">${n} selected</b></div>
    <div class="mu" style="margin-bottom:4px">Give to (tap one or more):</div>
