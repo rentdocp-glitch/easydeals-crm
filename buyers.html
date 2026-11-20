@@ -1181,7 +1181,7 @@ VIEW.team=()=>{
     `<div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.owner_name||'Owner ?')}</b><span class="mu">${esc(x.id)}</span></div><div class="mu">${esc(x.project||'-')} · ${esc([x.bhk,x.locality].filter(Boolean).join(', '))}</div><div>`)+
     (ass.length?ass.map(a=>`<span class="pill" style="background:#e0f5e6;color:#1b6b34">${esc(empName(a))}</span>`).join(''):'<span class="pill" style="background:#fff6e0;color:#7a5200">Not assigned</span>')+`</div></div></label>`};
   return `<div class="sec">👥 Assign work</div>
-  <div style="display:flex;gap:6px;margin-bottom:10px">${tab('buyer','Buyer leads',pb)}${tab('prop','Deal closed',pp)}</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px">${tab('buyer','Buyer leads',pb)}${tab('prop','Properties → RM',pp)}</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chip('none','Not assigned')}${chip('all','All')}${(EMP||[]).map(e=>chip(e.id,e.name||'Employee')).join('')}</div>
   ${TK=='buyer'?`<select onchange="tProp(this.value)" style="margin-bottom:8px"><option value="">All properties</option>${PR.filter(p=>BL.some(b=>b.property_id==p.id)).sort((a,b)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true})).map(p=>`<option value="${esc(p.id)}" ${TP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))} (${BL.filter(b=>b.property_id==p.id).length})</option>`).join('')}</select>`:''}
   <input placeholder="Search (name, number, property name)" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{TSEL.clear();render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">

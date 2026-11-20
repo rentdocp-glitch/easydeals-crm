@@ -219,7 +219,7 @@ a{color:var(--pr2)}
 .sugl{margin-top:8px;border:1px solid #e3e8f0;border-radius:12px;overflow:hidden;background:#fff}.sugi{padding:9px 11px;border-bottom:1px solid #eef1f6;cursor:pointer}.sugi:last-child{border-bottom:0}.sugi:active{background:#eef4ff}.sugi mark{background:#fde68a;padding:0 1px;border-radius:3px}
 </style>
 </head><body>
-<header id="hdr" style="display:none"><div class="hl"><button id="bk" onclick="history.back()" aria-label="Back" style="display:none">←</button><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
+<header id="hdr" style="display:none"><div class="hl"><button id="bk" onclick="history.back()" aria-label="Back" style="display:none">←</button><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button id="mdb" onclick="toggleMode()" style="display:none;font-weight:700"></button><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
 <main id="app"></main>
 <nav id="nav" style="display:none"></nav>
 <div id="ov" onclick="closeDrawer()"></div>
@@ -267,7 +267,8 @@ async function boot(user){
   if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
   ME=me;ME.email=user.email||'';for(const k in VC)delete VC[k];
   if(!window.TAB0)window.TAB0=JSON.parse(JSON.stringify(TABS));if(TAB0[ME.role])TABS[ME.role]=TAB0[ME.role].map(x=>x.slice());
-  try{const ta=await sb.from('team_access').select('props,buy').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(ME.role!='admin'&&TABS[ME.role]){if(ta.data&&ta.data.buy===false)TABS[ME.role]=TABS[ME.role].filter(t=>t[0]!='buy');if(!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties'])}}catch(e){}
+  try{const ta=await sb.from('team_access').select('props,buy').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(ME.role!='admin'&&TABS[ME.role]){const noBuy=ta.data&&ta.data.buy===false;ME.canRM=!noBuy&&!!TABS[ME.role].find(t=>t[0]=='buy');TABS[ME.role]=TABS[ME.role].filter(t=>t[0]!='buy');if(!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties']);BASE=TABS[ME.role].map(x=>x.slice());let m='owner';try{m=localStorage.getItem('ed_mode_'+ME.id)||'owner'}catch(e){}MODE=ME.canRM&&m=='rm'?'rm':'owner';applyMode()}}catch(e){}
+  if(!BASE&&ME.role!='admin'&&TABS[ME.role]){ME.canRM=!!TABS[ME.role].find(t=>t[0]=='buy');TABS[ME.role]=TABS[ME.role].filter(t=>t[0]!='buy');BASE=TABS[ME.role].map(x=>x.slice());MODE='owner'}
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
@@ -299,6 +300,10 @@ const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team'],['zones','🗺 Zones & Areas']],
   telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup'],['buy','🤝 RM · Buyers']],
   fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup'],['buy','🤝 RM · Buyers']]};
+const RMTABS=[['rmh','🏢 My Properties'],['buy','👥 Buyers'],['rfu','🔁 Follow-up'],['rvis','📅 Visits'],['rdeal','✅ Deals'],['rrep','📊 Report']];
+let MODE='owner',BASE=null;
+function applyMode(){const r=ME.role;if(!BASE||!TABS[r]||r=='admin')return;TABS[r]=(MODE=='rm'?RMTABS:BASE).map(x=>x.slice())}
+function toggleMode(){if(!ME||!ME.canRM)return;MODE=MODE=='rm'?'owner':'rm';try{localStorage.setItem('ed_mode_'+ME.id,MODE)}catch(e){}applyMode();for(const k in VC)delete VC[k];tab='';closeDrawer();render();window.scrollTo(0,0)}
 let MR={on:false,f:'',t:''},MF=null,MFk=null;
 function go(t){if(t=='today'){mDate=null;MR.on=false}const chg=t!==tab;tab=t;if(chg&&!window.__pop){try{history.pushState({tab:t},'')}catch(e){}}q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
@@ -306,16 +311,17 @@ async function render(){
   if(!ME)return; if(Date.now()-DCT>300000)await dcLoad();
   const list=TABS[ME.role]||TABS.telecaller;
   if(tab!='st'&&tab!='rep'&&tab!='daily'&&!((tab=='xfer'||tab=='dups'||tab=='xlog'||tab=='dreq')&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
-  const NAVX={admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
+  const NAVX=MODE=='rm'&&ME.role!='admin'?{telecaller:['buy','rfu','rvis'],fe:['buy','rfu','rvis']}:{admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
-  $('#who').textContent=(ME.name||'')+' · '+(ROLE[ME.role]||ME.role);
+  $('#who').textContent=(ME.name||'')+' · '+(MODE=='rm'&&ME.role!='admin'?'Relationship Manager':(ROLE[ME.role]||ME.role));
+  {const mb=$('#mdb');if(mb){mb.style.display=ME.canRM?'inline-block':'none';mb.textContent=MODE=='rm'?'👤 Owner work':'🤝 RM'}}
   {const bk=$('#bk');if(bk)bk.style.display=(tab!=list[0][0]||openId||noteId||showAdd)?'inline-block':'none'}
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP,JSON.stringify(GX)].join('|');
+  const ck=[ME.role,MODE,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP,JSON.stringify(GX)].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
-  const dbp=(ME.role=='telecaller'&&tab!='deal')?dealBanner().catch(()=>''):Promise.resolve('');
+  const dbp=(ME.role=='telecaller'&&tab!='deal'&&MODE!='rm')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
   try{h=await VIEW[ME.role+':'+tab]()}catch(e){h=`<div class="errc"><div class="ei">⚠️</div><div><b>Something went wrong</b><div class="mu">${esc(e.message||e)}</div><div class="acts"><button class="p" onclick="render()">⟳ Try again</button></div></div></div>`}
   const nb=await dbp;
@@ -846,11 +852,17 @@ VIEW['telecaller:lk']=VIEW['fe:lk']=()=>`<div class="card"><b>🔎 Number Lookup
 const BUY_ST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Not Interested','Deal Closed'];
 let BUYL=[],BUYP={},buyOpen=null,buyF='all',buyProp='';
 const buyToday=()=>new Date().toLocaleDateString('en-CA');
-VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
-  const {data,error}=await sb.from('buyer_leads').select('*').contains('assignees',[ME.id]).order('id',{ascending:false}).limit(500);
+let MYP=[];
+async function rmLoad(){
+  const {data,error}=await sb.from('buyer_leads').select('*').contains('assignees',[ME.id]).order('id',{ascending:false}).limit(1000);
   if(error)throw error;BUYL=data||[];
-  const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean))];BUYP={};
-  if(ids.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price').in('id',ids);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
+  let mp=[];try{const r=await sb.from('properties').select('id,project,locality,bhk,price').contains('assignees',[ME.id]);mp=r.data||[]}catch(e){}
+  MYP=mp;const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean).concat(mp.map(p=>p.id)))];BUYP={};mp.forEach(p=>BUYP[p.id]=p);
+  const miss=ids.filter(id=>!BUYP[id]);
+  if(miss.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price').in('id',miss);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
+}
+VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
+  await rmLoad();
   const t=buyToday(),isNew=b=>(b.status||'New')=='New',closed=b=>['Not Interested','Deal Closed'].includes(b.status),due=b=>b.next_fu&&b.next_fu<=t&&!closed(b);
   const vis=b=>b.visit_at&&b.visit_at.slice(0,10)>=t&&!closed(b),today=b=>isNew(b)||due(b)||(b.visit_at&&b.visit_at.slice(0,10)==t);
   const done=BUYL.filter(b=>b.last_fu==t).length,open=BUYL.filter(b=>!closed(b)).length;
@@ -892,6 +904,46 @@ async function buySave(id){
   if(note||st!=(b.status||'New')){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+(b.status||'New')+' → '+st)})}
   buyOpen=null;toast('Saved ✅');render();
 }
+
+/* ---------- RM mode screens ---------- */
+const rmClosed=b=>['Not Interested','Deal Closed'].includes(b.status);
+const rmStat=(arr,t)=>({n:arr.length,nw:arr.filter(b=>(b.status||'New')=='New').length,due:arr.filter(b=>b.next_fu&&b.next_fu<=t&&!rmClosed(b)).length,vis:arr.filter(b=>b.visit_at&&b.visit_at.slice(0,10)>=t&&!rmClosed(b)).length,won:arr.filter(b=>b.status=='Deal Closed').length,today:arr.filter(b=>b.last_fu==t).length});
+const rmHead=(t)=>`<div class="card" style="margin-bottom:10px"><b>${t}</b></div>`;
+VIEW['telecaller:rmh']=VIEW['fe:rmh']=async()=>{
+  await rmLoad();const t=buyToday();
+  const ids=[...new Set(MYP.map(p=>p.id).concat(BUYL.map(b=>b.property_id).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
+  const mine=new Set(MYP.map(p=>p.id));
+  const all=rmStat(BUYL,t);
+  const card=id=>{const p=BUYP[id]||{id},st=rmStat(BUYL.filter(b=>b.property_id==id),t);
+    return `<div class="card" style="cursor:pointer" onclick="buyProp='${esc(id)}';buyF='all';go('buy')"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(p.project||id)}</b><span class="mu">${esc(id)}</span></div><div class="mu">${esc([p.bhk,p.locality,p.price].filter(Boolean).join(' · '))}${mine.has(id)?'':' · <span style="color:#b45309">not your property</span>'}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="tag">Buyers ${st.n}</span><span class="tag" style="background:#e8eefc">New ${st.nw}</span><span class="tag" style="background:#fff1d6">Due ${st.due}</span><span class="tag" style="background:#e9e2fb">Visits ${st.vis}</span><span class="tag" style="background:#cdeed6">Deals ${st.won}</span><span class="tag">Worked today ${st.today}</span></div></div>`};
+  return rmHead('🏢 My Properties')+`<div class="mu" style="margin:0 4px 10px">Buyers of the properties given to you by admin come to you automatically. Tap a property to see its buyers.</div><div class="card"><b>All my buyers</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="tag">Buyers ${all.n}</span><span class="tag" style="background:#e8eefc">New ${all.nw}</span><span class="tag" style="background:#fff1d6">Due ${all.due}</span><span class="tag" style="background:#e9e2fb">Visits ${all.vis}</span><span class="tag" style="background:#cdeed6">Deals ${all.won}</span><span class="tag">Worked today ${all.today}</span></div></div>`+(ids.map(card).join('')||'<div class="card"><div class="mu">No property is given to you yet. Admin will assign one.</div></div>');
+};
+VIEW['telecaller:rfu']=VIEW['fe:rfu']=async()=>{
+  await rmLoad();const t=buyToday();
+  const l=BUYL.filter(b=>b.next_fu&&!rmClosed(b)).sort((a,b)=>String(a.next_fu).localeCompare(String(b.next_fu)));
+  const grp=(lab,arr)=>arr.length?`<div class="mu" style="margin:10px 4px 4px;font-weight:700">${lab} · ${arr.length}</div>`+arr.map(b=>buyCard(b,b.next_fu<=t)).join(''):'';
+  return rmHead('🔁 Follow-up')+(grp('⚠️ Overdue',l.filter(b=>b.next_fu<t))+grp('📌 Today',l.filter(b=>b.next_fu==t))+grp('🗓 Upcoming',l.filter(b=>b.next_fu>t))||'<div class="card"><div class="mu">No follow-up set. Open a buyer and set Next follow-up.</div></div>');
+};
+VIEW['telecaller:rvis']=VIEW['fe:rvis']=async()=>{
+  await rmLoad();const t=buyToday();
+  const l=BUYL.filter(b=>b.visit_at&&!rmClosed(b)).sort((a,b)=>String(a.visit_at).localeCompare(String(b.visit_at)));
+  const grp=(lab,arr)=>arr.length?`<div class="mu" style="margin:10px 4px 4px;font-weight:700">${lab} · ${arr.length}</div>`+arr.map(b=>buyCard(b,false)).join(''):'';
+  return rmHead('📅 Site visits')+(grp('📌 Today',l.filter(b=>b.visit_at.slice(0,10)==t))+grp('🗓 Upcoming',l.filter(b=>b.visit_at.slice(0,10)>t))+grp('⏮ Past (update status)',l.filter(b=>b.visit_at.slice(0,10)<t&&b.status!='Site Visit Done'))||'<div class="card"><div class="mu">No site visit set.</div></div>');
+};
+VIEW['telecaller:rdeal']=VIEW['fe:rdeal']=async()=>{
+  await rmLoad();const l=BUYL.filter(b=>b.status=='Deal Closed');
+  return rmHead('✅ Deals closed')+(l.map(b=>buyCard(b,false)).join('')||'<div class="card"><div class="mu">No deal closed yet.</div></div>');
+};
+VIEW['telecaller:rrep']=VIEW['fe:rrep']=async()=>{
+  await rmLoad();const t=buyToday(),d7=new Date(Date.now()-6*864e5).toLocaleDateString('en-CA');
+  const w=BUYL.filter(b=>b.last_fu&&b.last_fu>=d7).length,td=BUYL.filter(b=>b.last_fu==t).length,not=BUYL.filter(b=>!b.last_fu&&!rmClosed(b)).length;
+  const by={};BUYL.forEach(b=>{const k=b.status||'New';by[k]=(by[k]||0)+1});
+  const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean))];
+  return rmHead('📊 My report')+`<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag" style="font-size:14px">Worked today ${td}</span><span class="tag" style="font-size:14px">Last 7 days ${w}</span><span class="tag" style="font-size:14px;background:#fff1d6">Not worked yet ${not}</span></div></div>
+  <div class="card"><b>By status</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${BUY_ST.filter(k=>by[k]).map(k=>`<span class="tag">${esc(k)} ${by[k]}</span>`).join('')||'<span class="mu">No buyers yet</span>'}</div></div>
+  <div class="card"><b>By property</b>${ids.map(id=>{const st=rmStat(BUYL.filter(b=>b.property_id==id),t),p=BUYP[id]||{};return `<div style="margin-top:8px"><b>${esc(p.project||id)}</b> <span class="mu">${esc(id)}</span><div class="mu">Buyers ${st.n} · New ${st.nw} · Due ${st.due} · Visits ${st.vis} · Deals ${st.won} · Worked today ${st.today}</div></div>`}).join('')||'<div class="mu">No data</div>'}</div>`;
+};
 function tfSet(k,v){const td=isoToday();if(k==='f'){TF.f=v;if(TF.t&&TF.t<v)TF.t=v;TF.m='range'}else if(k==='t'){TF.t=v;if(TF.f&&TF.f>v)TF.f=v;TF.m='range'}else if(k==='today'){TF.f=TF.t=td;TF.m='range'}else TF.m=k;render()}
 VIEW['telecaller:fu']=async()=>{
   await loadFilt();const td=isoToday();if(!TF.f)TF.f=TF.t=td;
@@ -1494,7 +1546,9 @@ let qvOpen=false;
 function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';$('#qva').textContent=qvOpen?'▾':'▸'}
 function drawerBody(C){
   const list=TABS[ME.role]||[];
-  return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+
+  if(MODE=='rm'&&ME.role!='admin')return `<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>👤 <b>Back to Owner work</b></span><span>›</span></div><div class="ds">Relationship Manager</div>`+list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+`<div class="di" onclick="toggleRing()"><span>🔔 New lead sound</span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`;
+  const rmBtn=ME.canRM?`<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>🤝 <b>Open RM (buyers)</b> <span class="mu">· Relationship Manager</span></span><span>›</span></div>`:'';
+  return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+rmBtn+
     (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
@@ -1511,6 +1565,7 @@ async function openDrawer(){
   $('#dnm').textContent=ME.name||'';$('#drl').textContent=ROLE[ME.role]||ME.role;$('#dem').textContent=ME.email||'';
   $('#drb').innerHTML=drawerBody(null);
   $('#ov').style.display='block';$('#dr').classList.add('open');
+  if(MODE=='rm'&&ME.role!='admin')return;
   try{
     const r=await Promise.all(Object.keys(ST).map(s=>sb.from('leads').select('*',{count:'exact',head:true}).eq('status',s).then(x=>[s,x.count||0])));
     if($('#dr').classList.contains('open'))$('#drb').innerHTML=drawerBody(Object.fromEntries(r));
