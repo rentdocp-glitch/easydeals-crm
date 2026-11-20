@@ -327,7 +327,15 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;$(
 async function doInstall(){if(!instEv)return;instEv.prompt();await instEv.userChoice;instEv=null;$('#inst').style.display='none'}
 
 /* ---------- helpers ---------- */
-async function pageAll(build){let out=[],f=0;for(;;){const {data,error}=await build().range(f,f+999);if(error)throw error;out=out.concat(data);if(data.length<1000||f>20000)break;f+=1000}return out}
+async function pageAll(build){
+  const a=await build().range(0,999);if(a.error)throw a.error;let out=a.data;if(out.length<1000)return out;
+  for(let f=1000;f<=20000;f+=4000){
+    const rs=await Promise.all([0,1,2,3].map(i=>build().range(f+i*1000,f+i*1000+999)));let end=false;
+    for(const r of rs){if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000){end=true;break}}
+    if(end)break;
+  }
+  return out;
+}
 async function histMap(ids){
   if(!ids.length)return {};
   const {data}=await sb.from('calls').select('lead_id,by_id,duration_sec,outcome,created_at').in('lead_id',ids).order('created_at',{ascending:false});
@@ -577,6 +585,8 @@ async function dupMine(){
 }
 async function loadFilt(){
   if(Date.now()-FILT.t<300000)return;
+  const r=await sb.rpc('filt_values');
+  if(!r.error&&r.data&&r.data.loc){FILT.loc=r.data.loc;FILT.bhk=r.data.bhk;FILT.t=Date.now();return}
   const d=await pageAll(()=>sb.from('leads').select('locality,bhk'));
   FILT.loc=[...new Set(d.map(x=>x.locality).filter(Boolean))].sort();
   FILT.bhk=[...new Set(d.map(x=>x.bhk).filter(Boolean))].sort();FILT.t=Date.now();
@@ -656,8 +666,10 @@ const zonesView=async()=>{
   await loadZA(true);
   if(!ZA.ok)return `<div class="errc"><div class="ei">⚠️</div><div><b>Zones are not set up yet</b><div class="mu">Run the Step 6 SQL in Supabase.</div></div></div>`;
   const pend=ZA.areas.filter(a=>a.status=='pending'),appr=ZA.areas.filter(a=>a.status=='approved');
-  const [lc,un]=await Promise.all([pageAll(()=>sb.from('leads').select('area_id,locality')),sb.rpc('area_unclassified')]);
-  const cnt={},cntT={};lc.forEach(l=>{if(l.area_id)cnt[l.area_id]=(cnt[l.area_id]||0)+1;else{const k=edNorm(l.locality);cntT[k]=(cntT[k]||0)+1}});
+  const [lcr,un]=await Promise.all([sb.rpc('area_lead_counts'),sb.rpc('area_unclassified')]);
+  let lc=lcr.data;const cnt={},cntT={};
+  if(lcr.error||!lc){lc=(await pageAll(()=>sb.from('leads').select('area_id,locality'))).map(l=>({...l,n:1}))}
+  lc.forEach(l=>{const n=+l.n||1;if(l.area_id)cnt[l.area_id]=(cnt[l.area_id]||0)+n;else{const k=edNorm(l.locality);cntT[k]=(cntT[k]||0)+n}});
   const U=(un.data||[]);
   const tabs=[['pending',`⏳ Pending ${pend.length}`],['approved',`✅ Approved ${appr.length}`],['unc',`❓ Unclassified ${U.reduce((s,r)=>s+(+r.n),0)}`],['zones','🗺 Zones'],['hist','📜 History']];
   let h=`<div class="card" style="padding:12px"><b style="font-size:17px">🗺 Manage Zones & Areas</b><div class="mu">Once a new area is approved here, it appears in everyones dropdown and filter.</div>
@@ -1132,7 +1144,7 @@ VIEW['admin:daily']=async()=>{
 VIEW['admin:team']=async()=>{
   const {data}=await sb.from('profiles').select('*').order('role');
   data.forEach(p=>P[p.id]=p);
-  const all=await pageAll(()=>sb.from('leads').select('tc_id,fe_id,status'));
+  let all;{const r=await sb.rpc('lead_counts');if(!r.error&&r.data){all=[];r.data.forEach(x=>{for(let i=0;i<+x.n;i++)all.push({tc_id:x.tc_id,fe_id:x.fe_id,status:x.status})})}else all=await pageAll(()=>sb.from('leads').select('tc_id,fe_id,status'))}
   const SC={new:'#e8eefc|#1f4e9c',callback:'#fff1d6|#8a5a00',ringing:'#eef0f3|#4a5361',followup:'#e3f3ff|#0b5a8a',meeting_assigned:'#e9e2fb|#5b3aa8',meeting_done:'#e0f5e6|#1b6b34',online_meet_done:'#e0f5e6|#1b6b34',not_interested:'#fde4e4|#9b1c1c',deal_closed:'#cdeed6|#0f5a28',not_available:'#f1e6dc|#7a4a1f',prospect:'#fff3c4|#7a5b00'};
   const card=(title,sub,rows,uid)=>{const c={};rows.forEach(l=>c[l.status]=(c[l.status]||0)+1);
     const chips=Object.keys(ST).filter(k=>c[k]).map(k=>{const [bg,fg]=(SC[k]||'#eef0f3|#4a5361').split('|');return `<span style="background:${bg};color:${fg};padding:3px 9px;border-radius:99px;font-size:12.5px;font-weight:600">${ST[k]} ${c[k]}</span>`}).join(' ');
