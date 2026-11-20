@@ -15,12 +15,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Signing key (created once, then reused so app updates install over old ones)
+      - name: Signing key (private key from repo secrets; falls back to legacy key if secrets not set)
         env:
           GH_TOKEN: ${{ github.token }}
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          if gh release download keys -p easydeals.keystore -O android/easydeals.keystore; then
-            echo reuse existing key
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/easydeals.keystore
+            echo using private key from secrets
+          elif gh release download keys -p easydeals.keystore -O android/easydeals.keystore; then
+            echo reuse legacy key
           else
             keytool -genkeypair -keystore android/easydeals.keystore -alias easydeals -keyalg RSA -keysize 2048 -validity 12000 -storepass easydeals123 -keypass easydeals123 -dname "CN=EasyDeals CRM, O=EasyDeals, C=IN"
             gh release create keys android/easydeals.keystore --title keys --notes "signing key"
@@ -29,6 +33,7 @@ jobs:
         working-directory: android
         env:
           RUN_NO: ${{ github.run_number }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_B64 != '' && secrets.KEYSTORE_PASSWORD || '' }}
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Publish APK
         env:

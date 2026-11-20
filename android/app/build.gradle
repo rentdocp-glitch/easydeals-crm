@@ -16,9 +16,10 @@ android {
     signingConfigs {
         shared {
             storeFile file('../easydeals.keystore')
-            storePassword 'easydeals123'
+            // Real password comes from the KEYSTORE_PASSWORD secret; old default only for the legacy key
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'easydeals123'
             keyAlias 'easydeals'
-            keyPassword 'easydeals123'
+            keyPassword System.getenv('KEYSTORE_PASSWORD') ?: 'easydeals123'
         }
     }
     buildTypes {
