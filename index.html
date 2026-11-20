@@ -1878,11 +1878,12 @@ window.aiDraft=function(id){
   var p=(typeof BUYP!=='undefined'?BUYP:{})[b.property_id];
   if(!p)return toast('Is buyer ki property linked nahi hai, draft nahi ban sakta',1);
   var worked=!!b.last_fu&&!/^new$/i.test(b.status||'');
-  var tpl=worked?'ed_followup':'ed_welcome';
+  var tpl=worked?'ed_followup_v2':'ed_welcome_v2';
   var first=String(b.buyer_name||'Sir/Madam').trim().split(/\s+/)[0];first=first.charAt(0).toUpperCase()+first.slice(1);
   var nm=String(p.project||'').trim(),bk=String(p.bhk||'').trim();if(bk&&nm.toLowerCase().replace(/\s/g,'').indexOf(bk.toLowerCase().replace(/\s/g,''))<0)nm=(nm+' '+bk).trim();var prop=(nm+(p.locality?', '+p.locality:'')).trim()||p.id;
-  var txt=worked?('Namaste '+first+' ji, Easy Deals se. '+prop+' ke baare me aapka kya vichar hai? Site visit ke liye bas time bata dijiye, hum arrange kar denge. Band karne ke liye STOP likhein.')
-    :('Namaste '+first+' ji, Easy Deals se. Aapne '+prop+' ke baare me poochha tha. Kya aap is hafte site visit karna chahenge? Apna suitable time bata dijiye. Band karne ke liye STOP likhein.');
+  var sr=String(b.source||'').toLowerCase(),src=/housing/.test(sr)?'Housing.com':/99/.test(sr)?'99acres':/magic/.test(sr)?'MagicBricks':'an online property portal';
+  var txt=worked?('Hello '+first+',\n\nThis is Easy Deals, Pune, following up on your enquiry for '+prop+' on '+src+'.\n\nThe property is still available. Would you like to see it in person? We can arrange a visit at a time that suits you.\n\nReply STOP if you do not wish to receive further messages.\n\nRegards,\nEasy Deals, Pune')
+    :('Hello '+first+',\n\nThis is Easy Deals, Pune. You recently enquired about '+prop+' on '+src+', and we are the team handling this property.\n\nWould you like to visit it this week? Please share a convenient day and time, and we will arrange the site visit for you.\n\nIf you would prefer not to receive messages from us, just reply STOP.\n\nRegards,\nEasy Deals, Pune');
   var old=document.getElementById('aidr');if(old)old.remove();
   var d=document.createElement('div');d.id='aidr';
   d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px';

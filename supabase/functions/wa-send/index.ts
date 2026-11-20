@@ -7,6 +7,8 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const J = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: CORS });
 
 const TEMPLATES: Record<string, { n: number; text: string }> = {
+  ed_welcome_v2: { n: 3, text: "Hello {{1}},\n\nThis is Easy Deals, Pune. You recently enquired about {{2}} on {{3}}, and we are the team handling this property.\n\nWould you like to visit it this week? Please share a convenient day and time, and we will arrange the site visit for you.\n\nIf you would prefer not to receive messages from us, just reply STOP.\n\nRegards,\nEasy Deals, Pune" },
+  ed_followup_v2: { n: 3, text: "Hello {{1}},\n\nThis is Easy Deals, Pune, following up on your enquiry for {{2}} on {{3}}.\n\nThe property is still available. Would you like to see it in person? We can arrange a visit at a time that suits you.\n\nReply STOP if you do not wish to receive further messages.\n\nRegards,\nEasy Deals, Pune" },
   ed_welcome: { n: 2, text: "Namaste {{1}} ji, Easy Deals se. Aapne {{2}} ke baare me poochha tha. Kya aap is hafte site visit karna chahenge? Apna suitable time bata dijiye. Band karne ke liye STOP likhein." },
   ed_followup: { n: 2, text: "Namaste {{1}} ji, Easy Deals se. {{2}} ke baare me aapka kya vichar hai? Site visit ke liye bas time bata dijiye, hum arrange kar denge. Band karne ke liye STOP likhein." },
   ed_visit_slots: { n: 4, text: "Namaste {{1}} ji, {{2}} ki site visit ke liye ye 2 samay available hain: {{3}} ya {{4}}. Aapko kaun sa suit karega? 1 ya 2 reply kijiye." },
@@ -73,7 +75,9 @@ Deno.serve(async (req) => {
     const bk = String(p.bhk || "").trim();
     if (bk && !nm.toLowerCase().replace(/\s/g, "").includes(bk.toLowerCase().replace(/\s/g, ""))) nm = (nm + " " + bk).trim();
     const prop = (nm + (p.locality ? ", " + p.locality : "")).trim() || p.id;
-    const params = [first, prop, ...extra].slice(0, T.n);
+    const sr = String(b.source || "").toLowerCase();
+    const srcLabel = /housing/.test(sr) ? "Housing.com" : /99/.test(sr) ? "99acres" : /magic/.test(sr) ? "MagicBricks" : "an online property portal";
+    const params = tpl.endsWith("_v2") ? [first, prop, srcLabel] : [first, prop, ...extra].slice(0, T.n);
     if (params.length < T.n || params.some((x) => !x)) return J({ ok: false, reason: "missing template values" });
     const rendered = T.text.replace(/\{\{(\d)\}\}/g, (_, i) => params[Number(i) - 1] ?? "");
 
