@@ -296,8 +296,8 @@ window.addEventListener('popstate',e=>{
 /* ---------- shell ---------- */
 const TABS={
   admin:[['dash','📊 Dashboard'],['calls','📞 Call Log'],['leads','🗂 Data'],['team','👥 Team'],['zones','🗺 Zones & Areas']],
-  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']],
-  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup'],['buy','👥 Buyer Leads']]};
+  telecaller:[['rep','📊 My KPI'],['call','📞 Calling'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['meet','📅 Meetings'],['deal','✅ Deals'],['lk','🔎 Number Lookup'],['buy','🤝 RM · Buyers']],
+  fe:[['rep','📊 My KPI'],['today','📅 Today'],['fcalls','📞 Calls'],['asg','📋 All Meetings'],['fu','🔁 Follow Up'],['pros','⭐ Prospect'],['tag','🏷 Tagged'],['done','☑️ Done'],['deal','✅ Deals'],['ni','❌ Not Int.'],['na','🚫 Not Available'],['lk','🔎 Number Lookup'],['buy','🤝 RM · Buyers']]};
 let MR={on:false,f:'',t:''},MF=null,MFk=null;
 function go(t){if(t=='today'){mDate=null;MR.on=false}const chg=t!==tab;tab=t;if(chg&&!window.__pop){try{history.pushState({tab:t},'')}catch(e){}}q='';openId=null;openK=null;noteId=null;showAdd=false;closeDrawer();render();window.scrollTo(0,0)}
 const navHtml=(t,tgt)=>{const i=t[1].indexOf(' ');const dest=tgt||t[0];return `<button class="${(tgt?false:t[0]==tab)?'on':''}" onclick="go('${dest}')"><span class="ni">${t[1].slice(0,i)}</span><span class="nl">${t[1].slice(i+1)}</span></button>`};
@@ -843,19 +843,26 @@ VIEW['telecaller:lk']=VIEW['fe:lk']=()=>`<div class="card"><b>🔎 Number Lookup
 
 /* ---------- Buyer Leads: only those assigned by admin ---------- */
 const BUY_ST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Not Interested','Deal Closed'];
-let BUYL=[],BUYP={},buyOpen=null,buyF='all';
+let BUYL=[],BUYP={},buyOpen=null,buyF='all',buyProp='';
 const buyToday=()=>new Date().toLocaleDateString('en-CA');
 VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
   const {data,error}=await sb.from('buyer_leads').select('*').contains('assignees',[ME.id]).order('id',{ascending:false}).limit(500);
   if(error)throw error;BUYL=data||[];
   const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean))];BUYP={};
   if(ids.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price').in('id',ids);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
-  const t=buyToday(),isNew=b=>(b.status||'New')=='New',due=b=>b.next_fu&&b.next_fu<=t&&!['Not Interested','Deal Closed'].includes(b.status);
-  let l=BUYL;if(buyF=='new')l=l.filter(isNew);else if(buyF=='due')l=l.filter(due);
-  const chip=(k,lab,n)=>`<button class="${buyF==k?'p':''}" style="padding:7px 12px;border-radius:99px" onclick="buyF='${k}';render()">${lab} ${n}</button>`;
-  return `<div class="card" style="margin-bottom:10px"><b>👥 Buyer Leads</b> <span class="mu">· assigned to you by admin</span></div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chip('all','All',BUYL.length)}${chip('new','New',BUYL.filter(isNew).length)}${chip('due','Follow-up due',BUYL.filter(due).length)}</div>`+
-  (l.map(b=>buyCard(b,due(b))).join('')||'<div class="card"><div class="mu">No leads yet. Leads assigned by admin will appear here.</div></div>');
+  const t=buyToday(),isNew=b=>(b.status||'New')=='New',closed=b=>['Not Interested','Deal Closed'].includes(b.status),due=b=>b.next_fu&&b.next_fu<=t&&!closed(b);
+  const vis=b=>b.visit_at&&b.visit_at.slice(0,10)>=t&&!closed(b),today=b=>isNew(b)||due(b)||(b.visit_at&&b.visit_at.slice(0,10)==t);
+  const done=BUYL.filter(b=>b.last_fu==t).length,open=BUYL.filter(b=>!closed(b)).length;
+  let l=BUYL;if(buyProp)l=l.filter(b=>b.property_id==buyProp);
+  if(buyF=='new')l=l.filter(isNew);else if(buyF=='due')l=l.filter(due);else if(buyF=='today')l=l.filter(today);else if(buyF=='visit')l=l.filter(vis);else if(buyF=='won')l=l.filter(b=>b.status=='Deal Closed');
+  const cnt=f=>BUYL.filter(b=>(!buyProp||b.property_id==buyProp)&&f(b)).length;
+  const chip=(k,lab,n)=>`<button class="${buyF==k?'p':''}" style="padding:7px 12px;border-radius:99px;white-space:nowrap" onclick="buyF='${k}';render()">${lab} ${n}</button>`;
+  const props=Object.keys(BUYP).sort((x,y)=>String(x).localeCompare(String(y),undefined,{numeric:true}));
+  return `<div class="card" style="margin-bottom:10px"><b>🤝 Relationship Manager</b> <span class="mu">· buyers assigned to you</span>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="tag">Open ${open}</span><span class="tag">Worked today ${done}</span><span class="tag">Not worked yet ${BUYL.filter(b=>!b.last_fu&&!closed(b)).length}</span></div></div>
+  <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">${chip('today','⚡ Today',cnt(today))}${chip('all','All',cnt(()=>true))}${chip('new','New',cnt(isNew))}${chip('due','Follow-up due',cnt(due))}${chip('visit','📅 Visits',cnt(vis))}${chip('won','✅ Deals',cnt(b=>b.status=='Deal Closed'))}</div>
+  ${props.length>1?`<select onchange="buyProp=this.value;render()" style="margin-bottom:10px"><option value="">All properties</option>${props.map(id=>`<option value="${esc(id)}" ${buyProp==id?'selected':''}>${esc(id+' · '+((BUYP[id]||{}).project||''))} (${BUYL.filter(b=>b.property_id==id).length})</option>`).join('')}</select>`:''}`+
+  (l.map(b=>buyCard(b,due(b))).join('')||'<div class="card"><div class="mu">Nothing here. Leads assigned by admin will appear here.</div></div>');
 };
 function buyCard(b,due){
   const p=BUYP[b.property_id],ph=ph10(b.buyer_phone),o=buyOpen==b.id;
