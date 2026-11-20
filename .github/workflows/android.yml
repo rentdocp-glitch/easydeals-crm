@@ -19,10 +19,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KSP: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > android/easydeals.keystore
             echo using private key from secrets
+            P=$(printf %s "$KSP" | tr -d '[:space:]')
+            echo "password length: ${#P} (expected 24)"
+            echo "KEYSTORE_PASSWORD=$P" >> "$GITHUB_ENV"
           elif gh release download keys -p easydeals.keystore -O android/easydeals.keystore; then
             echo reuse legacy key
           else
@@ -33,7 +37,6 @@ jobs:
         working-directory: android
         env:
           RUN_NO: ${{ github.run_number }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_B64 != '' && secrets.KEYSTORE_PASSWORD || '' }}
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Publish APK
         env:
