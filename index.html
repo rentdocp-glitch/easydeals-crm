@@ -1879,8 +1879,8 @@ window.aiDraft=function(id){
   if(!p)return toast('Is buyer ki property linked nahi hai, draft nahi ban sakta',1);
   var worked=!!b.last_fu&&!/^new$/i.test(b.status||'');
   var tpl=worked?'ed_followup':'ed_welcome';
-  var first=String(b.buyer_name||'Sir/Madam').trim().split(/\s+/)[0];
-  var prop=[p.project,p.locality?'('+p.locality+')':'',p.bhk].filter(Boolean).join(' ').trim()||p.id;
+  var first=String(b.buyer_name||'Sir/Madam').trim().split(/\s+/)[0];first=first.charAt(0).toUpperCase()+first.slice(1);
+  var nm=String(p.project||'').trim(),bk=String(p.bhk||'').trim();if(bk&&nm.toLowerCase().replace(/\s/g,'').indexOf(bk.toLowerCase().replace(/\s/g,''))<0)nm=(nm+' '+bk).trim();var prop=(nm+(p.locality?', '+p.locality:'')).trim()||p.id;
   var txt=worked?('Namaste '+first+' ji, Easy Deals se. '+prop+' ke baare me aapka kya vichar hai? Site visit ke liye bas time bata dijiye, hum arrange kar denge. Band karne ke liye STOP likhein.')
     :('Namaste '+first+' ji, Easy Deals se. Aapne '+prop+' ke baare me poochha tha. Kya aap is hafte site visit karna chahenge? Apna suitable time bata dijiye. Band karne ke liye STOP likhein.');
   var old=document.getElementById('aidr');if(old)old.remove();

@@ -67,8 +67,12 @@ Deno.serve(async (req) => {
     if ((today ?? 0) >= 1) return J({ ok: false, reason: "already messaged this buyer today" });
 
     // 6) build parameters from CRM only (never from the caller)
-    const first = String(b.buyer_name || "Sir/Madam").trim().split(/\s+/)[0];
-    const prop = [p.project, p.locality ? "(" + p.locality + ")" : "", p.bhk].filter(Boolean).join(" ").trim() || p.id;
+    let first = String(b.buyer_name || "Sir/Madam").trim().split(/\s+/)[0];
+    first = first.charAt(0).toUpperCase() + first.slice(1);
+    let nm = String(p.project || "").trim();
+    const bk = String(p.bhk || "").trim();
+    if (bk && !nm.toLowerCase().replace(/\s/g, "").includes(bk.toLowerCase().replace(/\s/g, ""))) nm = (nm + " " + bk).trim();
+    const prop = (nm + (p.locality ? ", " + p.locality : "")).trim() || p.id;
     const params = [first, prop, ...extra].slice(0, T.n);
     if (params.length < T.n || params.some((x) => !x)) return J({ ok: false, reason: "missing template values" });
     const rendered = T.text.replace(/\{\{(\d)\}\}/g, (_, i) => params[Number(i) - 1] ?? "");
