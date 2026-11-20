@@ -863,9 +863,9 @@ function buyCard(b,due){
    <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(b.buyer_name||'Buyer')}</b><span class="mu">${esc(b.code||'')}</span></div>
    <div class="mu">${p?esc(p.id+' · '+(p.project||'')+(p.locality?' · '+p.locality:'')):esc(b.property_id||'No property linked')} · ${esc(b.source||'')}</div>
    <div style="margin-top:4px"><span style="background:#eaf1ff;color:#1e3a8a;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600">${esc(b.status||'New')}</span></div>
-   ${b.next_fu?`<div class="mu" style="${due?'color:#b45309;font-weight:600':''}">🔁 Next follow-up: ${dshort(b.next_fu)}</div>`:''}${b.visit_at?`<div class="mu">📅 Visit: ${new Date(b.visit_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`:''}
+   ${b.last_fu?`<div class="mu">✅ Last worked: ${dshort(b.last_fu)}</div>`:'<div class="mu" style="color:#b45309">⚠️ Not worked yet</div>'}${b.next_fu?`<div class="mu" style="${due?'color:#b45309;font-weight:600':''}">🔁 Next follow-up: ${dshort(b.next_fu)}</div>`:''}${b.visit_at?`<div class="mu">📅 Visit: ${new Date(b.visit_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`:''}
    ${b.requirement?`<div class="mu" style="margin-top:4px">${esc(b.requirement)}</div>`:''}</div>
-   <div class="acts" style="margin-top:8px">${ph?`<a class="btn" href="tel:${ph}">📞 Call</a><a class="btn" href="javascript:void(0)" onclick="waSheet('buyer',${b.id})">💬 WhatsApp</a>`:'<span class="mu er">No number</span>'}</div>
+   <div class="acts" style="margin-top:8px">${ph?`<a class="btn" href="tel:${ph}">📞 Call</a><a class="btn" href="javascript:void(0)" onclick="waSheet('buyer',${b.id})">💬 WhatsApp</a>`:'<span class="mu er">No number</span>'}<a class="btn" href="javascript:void(0)" onclick="buyOpen=${o?'null':b.id};render()" style="background:#e8f7ec;color:#14532d;font-weight:700">${o?'✖ Close':'✏️ Update status'}</a></div>
    ${o?buyForm(b):''}</div>`;
 }
 function buyForm(b){
