@@ -266,7 +266,8 @@ async function boot(user){
   const {data:me,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(error||!me){showLogin('Profile not found. Please contact the admin.');return}
   ME=me;ME.email=user.email||'';for(const k in VC)delete VC[k];
-  try{const ta=await sb.from('team_access').select('props').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(TABS[ME.role]&&ME.role!='admin'&&!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties'])}catch(e){}
+  if(!window.TAB0)window.TAB0=JSON.parse(JSON.stringify(TABS));if(TAB0[ME.role])TABS[ME.role]=TAB0[ME.role].map(x=>x.slice());
+  try{const ta=await sb.from('team_access').select('props,buy').eq('user_id',user.id).maybeSingle();ME.props=!!(ta.data&&ta.data.props);if(ME.role!='admin'&&TABS[ME.role]){if(ta.data&&ta.data.buy===false)TABS[ME.role]=TABS[ME.role].filter(t=>t[0]!='buy');if(!TABS[ME.role].find(t=>t[0]=='props'))TABS[ME.role].push(['props','🏢 Properties'])}}catch(e){}
   const {data:all}=await sb.from('profiles').select('*');P={};(all||[]).forEach(p=>P[p.id]=p);
   $('#hdr').style.display='flex';$('#nav').style.display='flex';
   tab='';openId=null;openK=null;q='';
