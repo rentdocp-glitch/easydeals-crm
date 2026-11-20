@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     const out = await r.json();
     const ok = r.ok && out?.messages?.[0]?.id;
     await db.from("wa_messages").insert({
-      direction: "out", wa_phone: ten, lead_kind: "buyer", lead_id: String(buyerId), body: rendered,
+      direction: "out", wa_phone: ten, lead_kind: "buyer", lead_id: buyerId, body: rendered,
       status: ok ? "sent" : "failed", wa_msg_id: ok ? out.messages[0].id : null, raw: { template: tpl, by: u.user.id, response: out },
     });
     return ok ? J({ ok: true, sent: rendered }) : J({ ok: false, reason: out?.error?.message || "Meta rejected the message" });
