@@ -400,6 +400,7 @@ async function invPdf(r){
     const blob=await html2pdf().set({margin:0,filename:'x.pdf',image:{type:'jpeg',quality:.96},html2canvas:{scale:2,useCORS:true,windowWidth:794},jsPDF:{unit:'px',format:[794,1123],hotfixes:['px_scaling']}}).from(h.firstElementChild).outputPdf('blob');
     h.remove();
     const name='Invoice-'+String(r.inv_no).replace(/\//g,'-')+'.pdf',file=new File([blob],name,{type:'application/pdf'});
+    if(window.EDApp&&EDApp.saveFile){const b64=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(String(fr.result).split(',')[1]);fr.onerror=no;fr.readAsDataURL(blob)});const rs=EDApp.saveFile(name,'application/pdf',b64);if(rs==='ok')return;throw new Error(rs)}
     if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});return}catch(e){if(e&&e.name==='AbortError')return}}
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast('PDF downloaded ✅');
   }catch(e){toast('PDF failed: '+(e.message||e),1)}
@@ -1237,7 +1238,7 @@ VIEW.rep=()=>{
 
 /* ---------- backup ---------- */
 function csv(rows){if(!rows.length)return '';const k=Object.keys(rows[0]);return [k.join(',')].concat(rows.map(r=>k.map(x=>{const v=r[x]==null?'':String(r[x]);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(','))).join('\n')}
-function dl(name,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+txt],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function dl(name,txt){if(window.EDApp&&EDApp.saveFile){try{if(EDApp.saveFile(name,'text/csv',btoa(unescape(encodeURIComponent('\ufeff'+txt))))==='ok')return}catch(e){}}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+txt],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 function backup(){const d=today();dl(`easydeals-properties-${d}.csv`,csv(PR));setTimeout(()=>dl(`easydeals-buyer-leads-${d}.csv`,csv(BL)),600);toast('Backup is downloading ✅')}
 
 sb.auth.getSession().then(({data:{session}})=>session?boot(session.user):showLogin());

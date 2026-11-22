@@ -11,6 +11,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.CallLog;
+import android.content.ContentValues;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -108,6 +114,51 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+        wv.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public String saveFile(final String name, final String mime, final String b64) {
+                try {
+                    byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                    Uri uri;
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        ContentValues cv = new ContentValues();
+                        cv.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                        cv.put(MediaStore.Downloads.MIME_TYPE, mime);
+                        cv.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                        uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                        java.io.OutputStream os = getContentResolver().openOutputStream(uri);
+                        os.write(data);
+                        os.close();
+                    } else {
+                        java.io.File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                        java.io.File f = new java.io.File(dir, name);
+                        java.io.FileOutputStream os = new java.io.FileOutputStream(f);
+                        os.write(data);
+                        os.close();
+                        uri = null;
+                    }
+                    final Uri open = uri;
+                    h.post(new Runnable() {
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Saved in Downloads: " + name, Toast.LENGTH_LONG).show();
+                            if (open != null) {
+                                try {
+                                    Intent i = new Intent(Intent.ACTION_VIEW);
+                                    i.setDataAndType(open, mime);
+                                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    startActivity(i);
+                                } catch (Exception e) {
+                                    // no viewer app; file is still in Downloads
+                                }
+                            }
+                        }
+                    });
+                    return "ok";
+                } catch (Exception e) {
+                    return "error: " + e.getMessage();
+                }
+            }
+        }, "EDApp");
         wv.loadUrl(HOME);
         askPermissions();
     }
