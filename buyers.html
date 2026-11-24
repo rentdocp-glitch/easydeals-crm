@@ -371,7 +371,8 @@ const pill=(s,n)=>{const c=(BSC[s]||'#eef0f3|#4a5361').split('|');return `<span 
 const isSold=p=>/^sold/i.test(p.status||'');
 
 /* ---------- state ---------- */
-let OWN_N=0,CE=[],ME=null,PR=[],BL=[],OW=[],tab='props',openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
+var fRep=false,BLIM=60;let OWN_N=0,CE=[],ME=null,PR=[],BL=[],OW=[],tab=(/^#(props|buyers|fu|deal|rep|team|un|access|mb)$/.test(location.hash)?location.hash.slice(1):'props'),openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
+if(location.hash=='#buyers-new'){tab='buyers';fSt='New'}
 
 /* ---------- login ---------- */
 function showLogin(msg){
@@ -415,7 +416,7 @@ const nextCode=()=>{const n=BL.map(b=>+String(b.code||'').replace(/\D/g,'')||0);
 
 /* ---------- shell ---------- */
 const NAV=[['props','🏢 Properties'],['buyers','🧑‍🤝‍🧑 Buyers'],['fu','🔁 Follow-up'],['deal','✅ Deal Closed'],['rep','📈 Report']];
-function go(t){tab=t;openP=null;openB=null;q='';editP=null;addB=false;newFromLead=null;dupOk=false;closeDrawer();render();window.scrollTo(0,0)}
+function go(t){tab=t;BLIM=60;fRep=false;openP=null;openB=null;q='';editP=null;addB=false;newFromLead=null;dupOk=false;closeDrawer();render();window.scrollTo(0,0)}
 function render(){
   $('#nav').innerHTML=NAV.map(([id,lab])=>{const i=lab.indexOf(' ');return `<button class="${tab==id?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`}).join('');
   let h='';
@@ -969,6 +970,7 @@ async function saveB(id){
   const pchg=(b.property_id||null)!==(pid||null)&&b.property_id;
   if(pchg&&!confirm('This buyer enquired about '+b.property_id+'. Change the property ONLY to correct a wrong link, never to offer another property. Change to '+(pid||'no property')+'?'))return;
   const pnote=pchg?'Property link corrected: '+b.property_id+' → '+(pid||'none'):'';
+  if(pid&&pid!==(b.property_id||null)){const tw=BL.find(x=>x.id!=b.id&&x.property_id==pid&&ph10(x.buyer_phone)&&ph10(x.buyer_phone)==ph10(b.buyer_phone));if(tw&&!confirm('This number already has an enquiry for '+pid+' ('+(tw.code||'#'+tw.id)+', '+(tw.status||'')+'). Linking will create a repeat entry. Continue?'))return}
   if(note||st!=b.status)upd.last_fu=today();
   const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
   if(note||st!=b.status||pchg){const h=await sb.from('buyer_history').insert({buyer_id:id,status:st,note:[note||(st!=b.status?'Status: '+b.status+' → '+st:''),pnote].filter(Boolean).join(' · ')});if(h.error){Object.assign(b,upd);delete hist[id];openB=null;render();return toast('Saved, but history note failed: '+h.error.message,1)}}
@@ -981,14 +983,21 @@ function filtB(list){
 }
 VIEW.buyers=()=>{
   if(addB)return addBForm();
-  const rp=repeats(),list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id),show=list.slice(0,60);
+  const rp=repeats(),rk=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
+  let list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id);
+  const nRep=BL.filter(b=>(rp[rk(b)]||0)>1).length;
+  if(window.fRep)list=list.filter(b=>(rp[rk(b)]||0)>1).sort((a,b)=>rk(a).localeCompare(rk(b))||a.id-b.id);
+  const lim=window.BLIM||60,show=list.slice(0,lim);
   const wqn=wqList().length;
   return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ New buyer lead</button><button onclick="wqOpen()" style="${wqn?'background:#e7f8ee;border-color:#25a35a;color:#11683a;font-weight:700':''}">📨 WhatsApp to new leads${wqn?' ('+wqn+' pending)':''}</button></div>
   <input placeholder="Search: name, number, L-ID" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[placeholder^=Search]');if(i){i.focus();i.setSelectionRange(99,99)}},400)">
   <div class="f2" style="margin:8px 0"><select onchange="fSt=this.value;render()"><option value="">All statuses</option>${BST.map(s=>`<option ${fSt==s?'selected':''}>${s}</option>`).join('')}</select><select onchange="fSrc=this.value;render()"><option value="">All portals</option>${SRC.map(s=>`<option ${fSrc==s?'selected':''}>${s}</option>`).join('')}</select></div>
   <select onchange="fP=this.value;render()" style="margin-bottom:10px"><option value="">All properties</option>${PR.map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select>
-  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>60?' · showing first 60, use search to find more':''}</div>
-  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>No leads found</b></div>'}`;
+  ${nRep?`<div class="chips"><button class="${window.fRep?'on':''}" onclick="fRep=!window.fRep;BLIM=60;render()">🔁 Repeat entries (same number + same property): ${nRep}${window.fRep?' ✕':''}</button></div>`:''}
+  ${window.fRep?'<div class="warn">These entries share a phone number and property. Nothing is deleted automatically. Review each group and mark the extra one "Not Interested" or tell admin to merge.</div>':''}
+  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>show.length?' · showing '+show.length:''}</div>
+  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>No leads found</b></div>'}
+  ${list.length>show.length?`<button class="p" style="width:100%;min-height:46px;margin:6px 0 14px" onclick="BLIM=(window.BLIM||60)+60;render()">Load ${Math.min(60,list.length-show.length)} more · showing ${show.length} of ${list.length}</button>`:''}`;
 };
 function addBForm(){
   return `<button onclick="addB=false;dupOk=false;render()" style="margin-bottom:10px">← Cancel</button>

@@ -15,24 +15,22 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Signing key (private key from repo secrets; falls back to legacy key if secrets not set)
+      - name: Signing key (from repo secrets only; build stops if they are missing)
         env:
-          GH_TOKEN: ${{ github.token }}
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
           KSP: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > android/easydeals.keystore
-            echo using private key from secrets
-            P=$(printf %s "$KSP" | tr -d '[:space:]')
-            echo "password length: ${#P} (expected 24)"
-            echo "KEYSTORE_PASSWORD=$P" >> "$GITHUB_ENV"
-          elif gh release download keys -p easydeals.keystore -O android/easydeals.keystore; then
-            echo reuse legacy key
-          else
-            keytool -genkeypair -keystore android/easydeals.keystore -alias easydeals -keyalg RSA -keysize 2048 -validity 12000 -storepass easydeals123 -keypass easydeals123 -dname "CN=EasyDeals CRM, O=EasyDeals, C=IN"
-            gh release create keys android/easydeals.keystore --title keys --notes "signing key"
+          # No fallback key: an APK signed with a different or public key would not update on staff phones
+          # and could be impersonated. Missing secrets = fail the build.
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KSP" ]; then
+            echo "::error::KEYSTORE_B64 and KEYSTORE_PASSWORD repo secrets are required. Build stopped, nothing published."
+            exit 1
           fi
+          echo "$KEYSTORE_B64" | base64 -d > android/easydeals.keystore
+          P=$(printf %s "$KSP" | tr -d '[:space:]')
+          echo "::add-mask::$P"
+          echo "KEYSTORE_PASSWORD=$P" >> "$GITHUB_ENV"
+          keytool -list -keystore android/easydeals.keystore -storepass "$P" >/dev/null || { echo "::error::Keystore or password is wrong. Build stopped."; exit 1; }
       - name: Build APK
         working-directory: android
         env:

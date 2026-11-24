@@ -418,7 +418,7 @@ async function render(){
   {const bk=$('#bk');if(bk)bk.style.display=(tab!=list[0][0]||openId||noteId||showAdd)?'inline-block':'none'}
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,MODE,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP,JSON.stringify(GX)].join('|');
+  const ck=[ME.role,MODE,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,(typeof ST_SUB=='string'?ST_SUB+ST_LIM:''),mDate,showF,CMP,JSON.stringify(GX)].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
   const dbp=(ME.role=='telecaller'&&tab!='deal'&&MODE!='rm')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -621,11 +621,20 @@ async function saveEdit(id){
   openId=null;openK=null;toast('Lead updated ✅');render();
 }
 function delForm(l){
-  return `<div class="form"><div class="er">Delete ${esc(l.name||'this lead')}? Its call history will also be deleted. This cannot be undone.</div>
+  return `<div class="form"><div class="er">Delete ${esc(l.name||'this lead')}? Its call history will also be deleted. A safety copy (JSON file) is downloaded first; keep it if you may need to restore.</div>
   <div class="acts" style="margin-top:0"><button class="r" onclick="doDelete(${l.id})">Yes, delete</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function doDelete(id){
   if(ME.role!='admin')return toast('Only admin can delete',1);
+  // Safety copy first: the lead + its calls, phone calls, assignment log and shares are saved as a file before deleting.
+  // If the copy cannot be made, the delete is stopped.
+  try{
+    const one=async(t,col)=>{const r=await sb.from(t).select('*').eq(col,id);if(r.error)throw new Error(t+': '+r.error.message);return r.data||[]};
+    const lead=await one('leads','id');if(!lead.length)return toast('Lead not found (maybe already deleted). Refresh.',1);
+    const copy={_meta:{type:'deleted lead backup',taken_at:new Date().toISOString(),by:ME.name||''},lead:lead[0],calls:await one('calls','lead_id'),device_calls:await one('device_calls','lead_id'),lead_assignment_log:await one('lead_assignment_log','lead_id')};
+    try{copy.lead_shares=await one('lead_shares','lead_id')}catch(e){copy.lead_shares='not readable'}
+    await saveBlobFile('EasyDeals_DeletedLead_'+id+'_'+isoToday()+'.json','application/json',new Blob([JSON.stringify(copy,null,1)],{type:'application/json'}));
+  }catch(e){return toast('Delete stopped: could not save a safety copy first ('+(e.message||e)+')',1)}
   const {data,error}=await sb.from('leads').delete().eq('id',id).select('id');
   if(error)return toast(error.message,1);
   if(!data||!data.length)return toast('Could not delete',1);
@@ -1168,7 +1177,7 @@ VIEW['admin:dash']=async()=>{
   const C=Object.fromEntries(cnt),total=cnt.reduce((a,c)=>a+c[1],0);
   const talk=calls.reduce((a,c)=>a+(c.duration_sec||0),0);
   const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(isMeet(c))b.m++});
-  const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
+  const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';ST_SUB='';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
   const [dco,att]=await Promise.all([dcCard(),attnCard()]);
   return att+rangeChips()+dco+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
   <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k],k)).join('')}</div>
@@ -1180,12 +1189,15 @@ async function attnCard(){
   const td=isoToday(),hc=q=>q.then(r=>r.error?null:(r.count||0),()=>null),L=()=>sb.from('leads').select('id',{count:'exact',head:true}),B=()=>sb.from('buyer_leads').select('id',{count:'exact',head:true});
   const [unTc,newL,od,mt,bNew,bUn,bNoP]=await Promise.all([
     hc(L().is('tc_id',null).eq('status','new')),hc(L().eq('status','new')),
-    hc(L().in('status',['followup','callback']).lt('follow_date',td)),
+    hc(L().eq('status','followup').lt('follow_date',td)),
     hc(L().eq('status','meeting_assigned').eq('meeting_date',td)),
     hc(B().eq('status','New')),hc(B().eq('assignees','{}')),hc(B().is('property_id',null))]);
   const it=(n,lab,sub,cls,click)=>n==null?'':`<div class="att ${n?cls:''}"${click?` onclick="${click}" role="button" tabindex="0"`:''}><b>${n}</b><span>${lab}</span>${sub?`<small>${sub}</small>`:''}</div>`;
-  return `<div class="card attn"><div class="row" style="align-items:center"><b>🎯 Needs attention</b><span class="mu">live · ${new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</span></div>
-  <div class="attg">${it(od,'Overdue follow-ups','owner leads','er',"viewSt='followup';go('st')")}${it(mt,'Meetings today','assigned','wr',"viewSt='meeting_assigned';go('st')")}${it(unTc,'New leads, no telecaller','of '+(newL==null?'?':newL)+' new','wr',"go('team')")}${it(bNew,'Buyers still New','not contacted','wr',"location.href='buyers.html'")}${it(bUn,'Buyers unassigned','no RM','er',"location.href='buyers.html'")}${it(bNoP,'Buyers without property','link needed','er',"location.href='buyers.html'")}</div></div>`;
+  let lb=null;try{lb=localStorage.getItem('ed_last_backup')}catch(e){}
+  const bdays=lb?Math.floor((Date.now()-new Date(lb))/864e5):null;
+  const bk=bdays!=null&&bdays<7?'':`<div class="bkr" onclick="fullBackup(this)" role="button" tabindex="0">💾 <b>${bdays==null?'No full backup taken on this phone yet':'Last full backup '+bdays+' days ago'}</b><span>Tap to back up all data now (weekly is recommended)</span></div>`;
+  return bk+`<div class="card attn"><div class="row" style="align-items:center"><b>🎯 Needs attention</b><span class="mu">live · ${new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</span></div>
+  <div class="attg">${it(od,'Overdue follow-ups','owner leads','er',"viewSt='followup';ST_SUB='overdue';go('st')")}${it(mt,'Meetings today','assigned','wr',"viewSt='meeting_assigned';ST_SUB='today';go('st')")}${it(unTc,'New leads, no telecaller','of '+(newL==null?'?':newL)+' new','wr',"viewSt='new';ST_SUB='notc';go('st')")}${it(bNew,'Buyers still New','not contacted','wr',"location.href='buyers.html#buyers-new'")}${it(bUn,'Buyers unassigned','no RM','er',"location.href='buyers.html#team'")}${it(bNoP,'Buyers without property','link needed','er',"location.href='buyers.html#un'")}</div></div>`;
 }
 async function lookup(){
   const n=ph10($('#ln').value);if(n.length<10){$('#lk').innerHTML='<p class="er">Enter a 10-digit number</p>';return}
@@ -1513,14 +1525,23 @@ async function setRole(id,r){const {error}=await sb.from('profiles').update({rol
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
 
 /* ---------- status view, menu drawer, bell ---------- */
+/* Status list: exact total from the database + "Load more" (no lead is silently hidden). ST_SUB narrows to the Needs-attention cases. */
+let ST_LIM=100,ST_SUB='',ST_LAST='';
+const ST_SUBS={overdue:['Overdue (date passed)',q=>q.lt('follow_date',isoToday())],today:['Today',q=>q.eq('meeting_date',isoToday())],notc:['No telecaller yet',q=>q.is('tc_id',null)]};
 VIEW['admin:st']=VIEW['telecaller:st']=VIEW['fe:st']=async()=>{
-  await loadFilt();let qy=sb.from('leads').select('*').eq('status',viewSt).order('created_at',{ascending:false}).limit(100);qy=gxQ(qy);const {data,error}=await qy;
+  if(ST_LAST!==viewSt+'|'+ST_SUB){ST_LAST=viewSt+'|'+ST_SUB;ST_LIM=100}
+  await loadFilt();let qy=sb.from('leads').select('*',{count:'exact'}).eq('status',viewSt).order('created_at',{ascending:false}).range(0,ST_LIM-1);
+  const sub=ST_SUBS[ST_SUB];if(sub)qy=sub[1](qy);
+  qy=gxQ(qy);const {data,error,count}=await qy;
   if(error)throw error;
+  const total=count==null?data.length:count;
   const hs=await histMap(data.map(l=>l.id));
-  return gxHead(1,ME.role!=='fe')+`<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${data.length}${data.length>=100?'+':''} lead${data.length==1?'':'s'}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+
-    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'));
+  const subChip=sub?`<div class="chips"><button class="on" onclick="ST_SUB='';render()">${esc(sub[0])} ✕</button>${ST_SUB=='notc'&&ME.role=='admin'?`<button onclick="go('team')">👥 Assign in bulk (Team)</button>`:''}</div>`:'';
+  const more=data.length<total?`<button class="p" style="width:100%;margin:4px 0 12px;min-height:46px" onclick="ST_LIM+=100;render()">Load ${Math.min(100,total-data.length)} more · showing ${data.length} of ${total}</button>`:'';
+  return gxHead(1,ME.role!=='fe')+`<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${total} lead${total==1?'':'s'}${data.length<total?' · showing '+data.length:''}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+subChip+
+    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'))+more;
 };
-function viewStatus(k){viewSt=k;go('st')}
+function viewStatus(k){viewSt=k;ST_SUB='';go('st')}
 
 /* ---------- KPI reports ---------- */
 const pct=(a,b)=>b?Math.round(a*100/b)+'%':'–';
@@ -1592,6 +1613,7 @@ async function fullBackup(btn){
       for(const t of BK_TABLES){const rows=out[t];if(!rows||!rows.length)continue;XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.map(r=>{const o={};for(const k in r)o[k]=cell(r[k]);return o})),t.slice(0,31))}
       await new Promise(r=>setTimeout(r,700));await saveWb(wb,'EasyDeals_FullBackup_'+stamp+'.xlsx')}catch(e){bad.push('Excel: '+(e.message||e))}
     const n=Object.values(out._meta.tables).filter(v=>typeof v=='number').reduce((a,b)=>a+b,0);
+    if(!bad.length)try{localStorage.setItem('ed_last_backup',new Date().toISOString())}catch(e){}
     toast(bad.length?'Backup saved ('+n+' rows), but some tables failed: '+bad.join(' | '):'✅ Full backup saved ('+n+' rows). Keep the files safe (Google Drive).',bad.length?1:0);
   }finally{btn.innerHTML=old;btn.style.pointerEvents=''}
 }
@@ -1744,7 +1766,7 @@ async function updateBell(){
   }catch(e){}
 }
 function bellGo(){
-  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('fu');else{viewSt='meeting_assigned';go('st')}
+  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('fu');else{viewSt='meeting_assigned';ST_SUB='';go('st')}
 }
 
 /* ---------- start ---------- */
