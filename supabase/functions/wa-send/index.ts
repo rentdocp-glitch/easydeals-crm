@@ -50,14 +50,16 @@ Deno.serve(async (req) => {
     const { data: b } = await db.from("buyer_leads").select("*").eq("id", buyerId).single();
     if (!b) return J({ ok: false, reason: "buyer not found" });
     const { data: isAdmin } = await userDb.rpc("ed_is_admin");
-    if (!isAdmin && b.assigned_to !== u.user.id) return J({ ok: false, reason: "not allowed for this buyer" }, 403);
+    const isAssigned = b.assigned_to === u.user.id || (Array.isArray(b.assignees) && b.assignees.includes(u.user.id));
+    if (!isAdmin && !isAssigned) return J({ ok: false, reason: "not allowed for this buyer" }, 403);
     if (/closed|not interested/i.test(b.status || "")) return J({ ok: false, reason: `buyer status is ${b.status}` });
 
     // 4) property lock: only the buyer's original, available property
     if (!b.property_id) return J({ ok: false, reason: "buyer has no property" });
     const { data: p } = await db.from("properties").select("*").eq("id", b.property_id).single();
     if (!p) return J({ ok: false, reason: "property not found" });
-    if (p.status && p.status !== "Available") return J({ ok: false, reason: `property is ${p.status}` });
+    // real values are "Available - Sale" / "Available - Rent"; anything else (Sold, etc.) is blocked
+    if (p.status && !/^available\b/i.test(String(p.status).trim())) return J({ ok: false, reason: `property is ${p.status}` });
 
     // 5) phone, opt-out, one message per buyer per day
     const digits = String(b.buyer_phone || "").replace(/\D/g, "");

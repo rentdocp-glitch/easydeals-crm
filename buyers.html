@@ -242,6 +242,120 @@ html,body{overflow-x:hidden;max-width:100vw}main,#app,.card{min-width:0;max-widt
 #sbar{display:none;position:fixed;top:8px;left:8px;z-index:100}#sbar button{height:42px;padding:0 16px;border-radius:99px;background:#fff;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 a.btn.g,a.btn.g:hover{color:#fff}
 </style>
+<style id="ui3">
+/* ===== UI v3 (Nov 2026): mobile layout fixes + consistency. Overrides only; logic unchanged. ===== */
+header{gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top,0px))}
+header .hl{flex:1;min-width:0;gap:8px}
+header .hl>div:last-child{min-width:0;flex:1}
+header b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;line-height:1.25}
+header br{display:none}
+#who{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
+header>div:last-child{flex:none;display:flex;gap:6px!important}
+header button{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;font-size:19px;flex:none;padding:0}
+header #mdb{width:auto;padding:0 11px;font-size:13px;white-space:nowrap}
+/* KPI tiles: compact, no decorative blob */
+.card.stat::after{display:none}
+.grid .stat,.card.stat{padding:12px 14px}
+.stat b{font-size:24px;line-height:1.15}
+.stat .mu,.card.stat .mu{font-size:10.5px;line-height:1.3}
+/* busy (double-tap guard) */
+button.busy,a.btn.busy{opacity:.6;pointer-events:none;position:relative}
+button.busy::after,a.btn.busy::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;vertical-align:-1px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* touch targets + text safety */
+.acts button,.acts .btn{min-height:40px}
+.card,.lc{overflow-wrap:anywhere}
+.tag{line-height:1.5}
+input[type=date],input[type=time],input[type=datetime-local]{min-height:44px}
+select{appearance:auto}
+#toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));text-align:center;line-height:1.4}
+.note{max-height:160px;overflow:auto}
+@media(max-width:380px){header b{font-size:15px}header button{width:40px;height:40px}header #mdb{padding:0 8px;font-size:12px}}
+/* --- status colours (badges + card accent). DB values unchanged; colour only. --- */
+.tag.st-new{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+.tag.st-ringing{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.tag.st-callback,.tag.st-followup{background:#fefce8;color:#854d0e;border-color:#fde68a}
+.tag.st-prospect{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}
+.tag.st-meeting_assigned{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+.tag.st-meeting_done,.tag.st-online_meet_done{background:#ecfeff;color:#155e75;border-color:#a5f3fc}
+.tag.st-deal_closed{background:#dcfce7;color:#166534;border-color:#86efac}
+.tag.st-not_interested{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.tag.st-not_available{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+.lc{border-left:4px solid #cbd5e1}
+.lc.ls-new{border-left-color:#818cf8}.lc.ls-ringing{border-left-color:#fb923c}.lc.ls-callback,.lc.ls-followup{border-left-color:#facc15}
+.lc.ls-prospect{border-left-color:#a78bfa}.lc.ls-meeting_assigned{border-left-color:#38bdf8}.lc.ls-meeting_done,.lc.ls-online_meet_done{border-left-color:#22d3ee}
+.lc.ls-deal_closed{border-left-color:#22c55e}.lc.ls-not_interested{border-left-color:#f87171}.lc.ls-not_available{border-left-color:#94a3b8}
+/* --- lead card density --- */
+.lc .nm{font-size:16.5px}
+.lc .wh{font-size:13.5px}
+.lc .acts{gap:6px}
+.lc .acts>button:not(.ic),.lc .acts>a.btn:not(.ic){flex:1 1 auto}
+/* --- forms: Save / Cancel stay reachable above the bottom bar --- */
+.form>.acts:last-child,.form>button.p:last-of-type{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:4;background:linear-gradient(180deg,rgba(255,255,255,0),#fff 35%);padding:10px 0 4px;margin-top:4px}
+.form>.acts:last-child button{flex:1}
+.form label{margin-top:2px;margin-bottom:-2px}
+/* --- needs-attention panel --- */
+.attg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.att{border:1px solid var(--bd);border-radius:12px;padding:10px;background:#f8fafc;cursor:pointer;min-width:0}
+.att b{display:block;font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.att span{display:block;font-size:12px;font-weight:600;color:#334155;line-height:1.25;margin-top:2px}
+.att small{display:block;font-size:11px;color:var(--mu)}
+.att.er{background:#fef2f2;border-color:#fecaca}.att.er b{color:#b91c1c}
+.att.wr{background:#fffbeb;border-color:#fde68a}.att.wr b{color:#b45309}
+.att:active{transform:scale(.97)}
+@media(max-width:360px){.attg{grid-template-columns:repeat(2,1fr)}}
+/* --- tables, chips, overflow safety --- */
+html,body{overflow-x:hidden}
+.tbl,table{max-width:100%}
+.tw,.card:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chips{scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+img{max-width:100%}
+/* --- motion: short and subtle (no long slide on every refresh) --- */
+#app>*{animation:fade .18s ease both!important}
+/* --- login --- */
+.login{display:grid;gap:12px}
+.login input{min-height:48px;font-size:16px}
+.login button.p{min-height:50px;font-size:16px}
+/* --- desktop / tablet: left navigation rail instead of bottom bar --- */
+@media(min-width:1024px){
+ body:has(#nav[style*="flex"]){padding-bottom:24px;padding-left:96px}
+ nav#nav{top:0;bottom:0;left:0;right:auto;width:96px;max-width:none;transform:none;flex-direction:column;justify-content:flex-start;gap:4px;border-radius:0;border:0;border-right:1px solid var(--bd);padding:12px 8px 16px;box-shadow:none;background:#fff}
+ nav#nav{overflow-y:auto}nav#nav button{flex:none;min-height:58px;padding:6px 2px}nav#nav .nl{text-align:center;line-height:1.2}
+ nav#nav button.on::before{top:50%;left:0;width:3px;height:26px;margin:-13px 0 0;border-radius:0 4px 4px 0}
+ #toast{bottom:28px}
+ .form>.acts:last-child,.form>button.p:last-of-type{bottom:0}
+ main{max-width:1180px}
+}
+html{background:var(--bg)}
+/* --- tables: readable headers, horizontal scroll instead of squashed columns --- */
+.tbl th,.tbl td{white-space:nowrap}
+.tbl td:first-child,.tbl th:first-child{white-space:normal;min-width:120px;position:sticky;left:0;background:#fff;z-index:1}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.oacts a{white-space:nowrap;font-size:13.5px;display:flex;align-items:center;justify-content:center;min-height:42px}
+/* --- lead card actions: main row (Call / WhatsApp / Status) + light second row --- */
+.acts.acts1{display:grid;grid-template-columns:1.4fr auto 1fr;gap:8px;margin-top:10px}
+.acts.acts1>*{min-height:44px;margin:0}
+.acts.acts1 .stb{font-weight:700;color:var(--pr);background:#fff}
+.acts2{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.acts2 .gh{background:transparent;border:1px solid transparent;box-shadow:none;color:#475569;font-size:13px;font-weight:600;padding:6px 10px;min-height:36px;border-radius:10px}
+.acts2 .gh:hover{background:#f1f5f9;border-color:var(--bd)}
+.acts2 .gh.r{color:var(--er)}
+.cmp .acts2{display:none}
+/* --- RM filter chips wrap instead of hiding off-screen --- */
+.rmchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.rmchips button{min-height:38px}
+/* --- bottom sheets (Number history etc.) --- */
+.sheetov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s ease}
+.sheet{background:#fff;color:var(--tx);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(15,23,42,.25)}
+.sheet::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:#cbd5e1;margin:2px auto 10px}
+.sheet button,.sheet .btn{min-height:42px}
+@media(min-width:700px){.sheetov{align-items:center}.sheet{border-radius:20px;max-height:80vh}}
+/* --- backup reminder + current drawer item --- */
+.bkr{display:flex;flex-direction:column;gap:2px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:var(--r);padding:12px 14px;margin-bottom:12px;cursor:pointer}
+.bkr span{font-size:12.5px;color:#9a3412}
+.di.on{background:#eef4ff;color:var(--pr);font-weight:700}
+@media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
+</style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who">Admin · Buyers</span></div></div><div style="display:flex;gap:8px"><button onclick="location.href='./'" aria-label="Main CRM" title="Main CRM">↩</button><button onclick="reload()" aria-label="Refresh" title="Refresh">⟳</button></div></header>
 <main id="app"></main>
@@ -249,7 +363,7 @@ a.btn.g,a.btn.g:hover{color:#fff}
 <div id="ov" onclick="closeDrawer()"></div>
 <aside id="dr"><div class="dh"><div class="av">A</div><div><b id="dnm">Admin</b><div class="mu">Buyers (admin only)</div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
 <div id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script>
 <script>
 const SB_URL='https://sfvpslsexobukgerkixi.supabase.co';
 const SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';
@@ -262,7 +376,13 @@ const dshort=x=>x?new Date(x).toLocaleDateString('en-IN',{day:'2-digit',month:'s
 const dtime=x=>x?new Date(x).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
 const rs=n=>{n=+n;if(!n)return '';return n>=1e7?'₹'+(n/1e7).toFixed(2).replace(/\.?0+$/,'')+' Cr':'₹'+(n/1e5).toFixed(2).replace(/\.?0+$/,'')+' L'};
 const mask=p=>{p=ph10(p);return p?p.slice(0,2)+'xxxxxx'+p.slice(8):''};
-function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
+function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200);unbusy()}
+/* Double-tap guard: a save/action button cannot fire twice. It unlocks when the result toast shows, the screen redraws, a confirm is cancelled, or after 8 s. */
+const BUSYRX=/^\s*(save\w*|reqDup|decDup|doTransfer|doTag|doMerge|doImport|doDelete|addLead|xGo|xUndo|nhSave|buySave|dcDone|rSave|payAdd|mbImport|invSave|tAssign)\(/;
+function unbusy(b){(b?[b]:document.querySelectorAll('[data-busy]')).forEach(x=>{delete x.dataset.busy;x.classList.remove('busy')})}
+document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('button,a.btn');if(!b)return;if(!BUSYRX.test(b.getAttribute('onclick')||''))return;if(b.dataset.busy){e.stopImmediatePropagation();e.preventDefault();return}b.dataset.busy='1';b.classList.add('busy');setTimeout(()=>unbusy(b),8000)},true);
+{const _cf=window.confirm.bind(window);window.confirm=m=>{const r=_cf(m);if(!r)unbusy();return r}}
+
 
 /* ---------- constants ---------- */
 const BST=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Not Interested','Deal Closed'];
@@ -273,7 +393,8 @@ const pill=(s,n)=>{const c=(BSC[s]||'#eef0f3|#4a5361').split('|');return `<span 
 const isSold=p=>/^sold/i.test(p.status||'');
 
 /* ---------- state ---------- */
-let OWN_N=0,CE=[],ME=null,PR=[],BL=[],OW=[],tab='props',openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
+var fRep=false,BLIM=60;let OWN_N=0,CE=[],ME=null,PR=[],BL=[],OW=[],tab=(/^#(props|buyers|fu|deal|rep|team|un|access|mb)$/.test(location.hash)?location.hash.slice(1):'props'),openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
+if(location.hash=='#buyers-new'){tab='buyers';fSt='New'}
 
 /* ---------- login ---------- */
 function showLogin(msg){
@@ -317,12 +438,12 @@ const nextCode=()=>{const n=BL.map(b=>+String(b.code||'').replace(/\D/g,'')||0);
 
 /* ---------- shell ---------- */
 const NAV=[['props','🏢 Properties'],['buyers','🧑‍🤝‍🧑 Buyers'],['fu','🔁 Follow-up'],['deal','✅ Deal Closed'],['rep','📈 Report']];
-function go(t){tab=t;openP=null;openB=null;q='';editP=null;addB=false;newFromLead=null;dupOk=false;closeDrawer();render();window.scrollTo(0,0)}
+function go(t){tab=t;BLIM=60;fRep=false;openP=null;openB=null;q='';editP=null;addB=false;newFromLead=null;dupOk=false;closeDrawer();render();window.scrollTo(0,0)}
 function render(){
   $('#nav').innerHTML=NAV.map(([id,lab])=>{const i=lab.indexOf(' ');return `<button class="${tab==id?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`}).join('');
   let h='';
   try{h=(VIEW[tab]||VIEW.props)()}catch(e){console.error(e);h=`<div class="errc"><div class="ei">⚠️</div><div><b>Something went wrong</b><div class="mu">${esc(e.message||e)}</div></div></div>`}
-  $('#app').innerHTML=`<div class="beta">🧪 Test version · visible to admin only · team app not affected</div>`+h;
+  $('#app').innerHTML=h;
 }
 function openDrawer(){
   const un=BL.filter(b=>!b.property_id).length;
@@ -773,7 +894,7 @@ function waShow(){const b=waB,p=P(b.property_id),ph=ph10(b.buyer_phone),t=waText
   <div class="mu">You can edit anything here before sending.</div>
   <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#wtx').value).then(()=>toast('Copied ✅'))">📋 Copy</button>${ph?`<a class="btn g" style="color:#fff" target="_blank" href="#" onclick="waSent();this.href='https://wa.me/91${ph}?text='+encodeURIComponent($('#wtx').value)">Send on WhatsApp</a>`:'<span class="er">Buyer mobile number is missing</span>'}</div></div>`;scrollTo(0,0)}
 function waSent(){const b=waB,w=WT.find(x=>x[0]==waK);if(!b)return;WS.add(b.id);SENT_T++;sb.from('buyer_history').insert({buyer_id:b.id,status:b.status,note:'💬 WhatsApp sent: '+(w?w[1].replace(/^\S+\s/,''):waK)}).then(()=>{delete hist[b.id]})}
-function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<div class="beta">🧪 Test version</div><button onclick="render()" style="margin-bottom:10px">← Back</button>
+function sendPitch(id){const p=P(id);const t=pitch(p,'');$('#app').innerHTML=`<button onclick="render()" style="margin-bottom:10px">← Back</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">📤 Message to send to buyer · ${esc(id)}</div><div class="mu">This same message goes automatically from the lead WhatsApp button. You can also copy it from here and send it to anyone.</div>
   <textarea id="ptx" rows="16" style="margin-top:10px;font-size:13.5px">${esc(t)}</textarea>
   <div class="acts"><button class="p" onclick="navigator.clipboard.writeText($('#ptx').value).then(()=>toast('Copied ✅'))">📋 Copy</button><a class="btn g" style="color:#fff" target="_blank" href="#" onclick="this.href='https://wa.me/?text='+encodeURIComponent($('#ptx').value)">Send on WhatsApp</a></div>
@@ -867,9 +988,14 @@ async function loadHist(id){const {data}=await sb.from('buyer_history').select('
 async function saveB(id){
   const b=BL.find(x=>x.id==id),st=$('#bs_st').value,nf=$('#bs_nf').value||null,va=$('#bs_va').value,pid=$('#bs_p').value||null,note=$('#bs_note').value.trim();
   const upd={status:st,next_fu:nf,visit_at:va?new Date(va).toISOString():null,property_id:pid};
+  // Business rule: a buyer belongs to the property they enquired about. Changing it is only for fixing a wrong link.
+  const pchg=(b.property_id||null)!==(pid||null)&&b.property_id;
+  if(pchg&&!confirm('This buyer enquired about '+b.property_id+'. Change the property ONLY to correct a wrong link, never to offer another property. Change to '+(pid||'no property')+'?'))return;
+  const pnote=pchg?'Property link corrected: '+b.property_id+' → '+(pid||'none'):'';
+  if(pid&&pid!==(b.property_id||null)){const tw=BL.find(x=>x.id!=b.id&&x.property_id==pid&&ph10(x.buyer_phone)&&ph10(x.buyer_phone)==ph10(b.buyer_phone));if(tw&&!confirm('This number already has an enquiry for '+pid+' ('+(tw.code||'#'+tw.id)+', '+(tw.status||'')+'). Linking will create a repeat entry. Continue?'))return}
   if(note||st!=b.status)upd.last_fu=today();
   const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
-  if(note||st!=b.status){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+b.status+' → '+st)})}
+  if(note||st!=b.status||pchg){const h=await sb.from('buyer_history').insert({buyer_id:id,status:st,note:[note||(st!=b.status?'Status: '+b.status+' → '+st:''),pnote].filter(Boolean).join(' · ')});if(h.error){Object.assign(b,upd);delete hist[id];openB=null;render();return toast('Saved, but history note failed: '+h.error.message,1)}}
   Object.assign(b,upd);delete hist[id];openB=null;toast('Saved ✅');render();
 }
 function filtB(list){
@@ -879,14 +1005,21 @@ function filtB(list){
 }
 VIEW.buyers=()=>{
   if(addB)return addBForm();
-  const rp=repeats(),list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id),show=list.slice(0,60);
+  const rp=repeats(),rk=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
+  let list=filtB(BL.slice()).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))||b.id-a.id);
+  const nRep=BL.filter(b=>(rp[rk(b)]||0)>1).length;
+  if(window.fRep)list=list.filter(b=>(rp[rk(b)]||0)>1).sort((a,b)=>rk(a).localeCompare(rk(b))||a.id-b.id);
+  const lim=window.BLIM||60,show=list.slice(0,lim);
   const wqn=wqList().length;
   return `<div class="chips"><button class="p" onclick="addB=true;render()">➕ New buyer lead</button><button onclick="wqOpen()" style="${wqn?'background:#e7f8ee;border-color:#25a35a;color:#11683a;font-weight:700':''}">📨 WhatsApp to new leads${wqn?' ('+wqn+' pending)':''}</button></div>
   <input placeholder="Search: name, number, L-ID" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[placeholder^=Search]');if(i){i.focus();i.setSelectionRange(99,99)}},400)">
   <div class="f2" style="margin:8px 0"><select onchange="fSt=this.value;render()"><option value="">All statuses</option>${BST.map(s=>`<option ${fSt==s?'selected':''}>${s}</option>`).join('')}</select><select onchange="fSrc=this.value;render()"><option value="">All portals</option>${SRC.map(s=>`<option ${fSrc==s?'selected':''}>${s}</option>`).join('')}</select></div>
   <select onchange="fP=this.value;render()" style="margin-bottom:10px"><option value="">All properties</option>${PR.map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select>
-  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>60?' · showing first 60, use search to find more':''}</div>
-  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>No leads found</b></div>'}`;
+  ${nRep?`<div class="chips"><button class="${window.fRep?'on':''}" onclick="fRep=!window.fRep;BLIM=60;render()">🔁 Repeat entries (same number + same property): ${nRep}${window.fRep?' ✕':''}</button></div>`:''}
+  ${window.fRep?'<div class="warn">These entries share a phone number and property. Nothing is deleted automatically. Review each group and mark the extra one "Not Interested" or tell admin to merge.</div>':''}
+  <div class="mu" style="margin:0 2px 8px">${list.length} leads${list.length>show.length?' · showing '+show.length:''}</div>
+  ${show.map(b=>bCard(b,rp)).join('')||'<div class="empty"><div class="ei">🧑</div><b>No leads found</b></div>'}
+  ${list.length>show.length?`<button class="p" style="width:100%;min-height:46px;margin:6px 0 14px" onclick="BLIM=(window.BLIM||60)+60;render()">Load ${Math.min(60,list.length-show.length)} more · showing ${show.length} of ${list.length}</button>`:''}`;
 };
 function addBForm(){
   return `<button onclick="addB=false;dupOk=false;render()" style="margin-bottom:10px">← Cancel</button>
@@ -1006,7 +1139,7 @@ VIEW.mb=()=>{
 async function mbRead(files){
   files=[...(files||[])];if(!files.length)return;toast('Reading files…');
   try{
-    const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||'')));
+    const have=new Set(BL.flatMap(b=>[ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''),...(b.listing_id?[ph10(b.buyer_phone)+'|'+b.listing_id]:[])]));
     const rows=[],seen=new Set(),info=[];
     for(const f of files){
       const a=await bReadRows(f),d=bDetect(a);
@@ -1031,7 +1164,7 @@ async function mbMap(src,mbid,pid){
   toast(info.label+' '+mbid+' → '+pid+' ✅');render();
 }
 function mbRecalc(){
-  const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''))),seen=new Set();
+  const have=new Set(BL.flatMap(b=>[ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''),...(b.listing_id?[ph10(b.buyer_phone)+'|'+b.listing_id]:[])])),seen=new Set();
   MBP.rows.forEach(r=>{const pr=mbFind(r.mbid,r.src);r.pid=pr?pr.id:null;const key=r.phone+'|'+(pr?pr.id:r.mbid);r.dup=have.has(key)||seen.has(key);seen.add(key)});
 }
 async function mbNew(src,mbid){

@@ -218,6 +218,120 @@ a{color:var(--pr2)}
 .zteam{margin-top:8px;padding:8px 10px;border-radius:10px;background:#eef4ff;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sugl{margin-top:8px;border:1px solid #e3e8f0;border-radius:12px;overflow:hidden;background:#fff}.sugi{padding:9px 11px;border-bottom:1px solid #eef1f6;cursor:pointer}.sugi:last-child{border-bottom:0}.sugi:active{background:#eef4ff}.sugi mark{background:#fde68a;padding:0 1px;border-radius:3px}
 </style>
+<style id="ui3">
+/* ===== UI v3 (Nov 2026): mobile layout fixes + consistency. Overrides only; logic unchanged. ===== */
+header{gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top,0px))}
+header .hl{flex:1;min-width:0;gap:8px}
+header .hl>div:last-child{min-width:0;flex:1}
+header b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;line-height:1.25}
+header br{display:none}
+#who{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
+header>div:last-child{flex:none;display:flex;gap:6px!important}
+header button{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;font-size:19px;flex:none;padding:0}
+header #mdb{width:auto;padding:0 11px;font-size:13px;white-space:nowrap}
+/* KPI tiles: compact, no decorative blob */
+.card.stat::after{display:none}
+.grid .stat,.card.stat{padding:12px 14px}
+.stat b{font-size:24px;line-height:1.15}
+.stat .mu,.card.stat .mu{font-size:10.5px;line-height:1.3}
+/* busy (double-tap guard) */
+button.busy,a.btn.busy{opacity:.6;pointer-events:none;position:relative}
+button.busy::after,a.btn.busy::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;vertical-align:-1px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* touch targets + text safety */
+.acts button,.acts .btn{min-height:40px}
+.card,.lc{overflow-wrap:anywhere}
+.tag{line-height:1.5}
+input[type=date],input[type=time],input[type=datetime-local]{min-height:44px}
+select{appearance:auto}
+#toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));text-align:center;line-height:1.4}
+.note{max-height:160px;overflow:auto}
+@media(max-width:380px){header b{font-size:15px}header button{width:40px;height:40px}header #mdb{padding:0 8px;font-size:12px}}
+/* --- status colours (badges + card accent). DB values unchanged; colour only. --- */
+.tag.st-new{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+.tag.st-ringing{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.tag.st-callback,.tag.st-followup{background:#fefce8;color:#854d0e;border-color:#fde68a}
+.tag.st-prospect{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}
+.tag.st-meeting_assigned{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+.tag.st-meeting_done,.tag.st-online_meet_done{background:#ecfeff;color:#155e75;border-color:#a5f3fc}
+.tag.st-deal_closed{background:#dcfce7;color:#166534;border-color:#86efac}
+.tag.st-not_interested{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.tag.st-not_available{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+.lc{border-left:4px solid #cbd5e1}
+.lc.ls-new{border-left-color:#818cf8}.lc.ls-ringing{border-left-color:#fb923c}.lc.ls-callback,.lc.ls-followup{border-left-color:#facc15}
+.lc.ls-prospect{border-left-color:#a78bfa}.lc.ls-meeting_assigned{border-left-color:#38bdf8}.lc.ls-meeting_done,.lc.ls-online_meet_done{border-left-color:#22d3ee}
+.lc.ls-deal_closed{border-left-color:#22c55e}.lc.ls-not_interested{border-left-color:#f87171}.lc.ls-not_available{border-left-color:#94a3b8}
+/* --- lead card density --- */
+.lc .nm{font-size:16.5px}
+.lc .wh{font-size:13.5px}
+.lc .acts{gap:6px}
+.lc .acts>button:not(.ic),.lc .acts>a.btn:not(.ic){flex:1 1 auto}
+/* --- forms: Save / Cancel stay reachable above the bottom bar --- */
+.form>.acts:last-child,.form>button.p:last-of-type{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:4;background:linear-gradient(180deg,rgba(255,255,255,0),#fff 35%);padding:10px 0 4px;margin-top:4px}
+.form>.acts:last-child button{flex:1}
+.form label{margin-top:2px;margin-bottom:-2px}
+/* --- needs-attention panel --- */
+.attg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.att{border:1px solid var(--bd);border-radius:12px;padding:10px;background:#f8fafc;cursor:pointer;min-width:0}
+.att b{display:block;font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.att span{display:block;font-size:12px;font-weight:600;color:#334155;line-height:1.25;margin-top:2px}
+.att small{display:block;font-size:11px;color:var(--mu)}
+.att.er{background:#fef2f2;border-color:#fecaca}.att.er b{color:#b91c1c}
+.att.wr{background:#fffbeb;border-color:#fde68a}.att.wr b{color:#b45309}
+.att:active{transform:scale(.97)}
+@media(max-width:360px){.attg{grid-template-columns:repeat(2,1fr)}}
+/* --- tables, chips, overflow safety --- */
+html,body{overflow-x:hidden}
+.tbl,table{max-width:100%}
+.tw,.card:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chips{scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+img{max-width:100%}
+/* --- motion: short and subtle (no long slide on every refresh) --- */
+#app>*{animation:fade .18s ease both!important}
+/* --- login --- */
+.login{display:grid;gap:12px}
+.login input{min-height:48px;font-size:16px}
+.login button.p{min-height:50px;font-size:16px}
+/* --- desktop / tablet: left navigation rail instead of bottom bar --- */
+@media(min-width:1024px){
+ body:has(#nav[style*="flex"]){padding-bottom:24px;padding-left:96px}
+ nav#nav{top:0;bottom:0;left:0;right:auto;width:96px;max-width:none;transform:none;flex-direction:column;justify-content:flex-start;gap:4px;border-radius:0;border:0;border-right:1px solid var(--bd);padding:12px 8px 16px;box-shadow:none;background:#fff}
+ nav#nav{overflow-y:auto}nav#nav button{flex:none;min-height:58px;padding:6px 2px}nav#nav .nl{text-align:center;line-height:1.2}
+ nav#nav button.on::before{top:50%;left:0;width:3px;height:26px;margin:-13px 0 0;border-radius:0 4px 4px 0}
+ #toast{bottom:28px}
+ .form>.acts:last-child,.form>button.p:last-of-type{bottom:0}
+ main{max-width:1180px}
+}
+html{background:var(--bg)}
+/* --- tables: readable headers, horizontal scroll instead of squashed columns --- */
+.tbl th,.tbl td{white-space:nowrap}
+.tbl td:first-child,.tbl th:first-child{white-space:normal;min-width:120px;position:sticky;left:0;background:#fff;z-index:1}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.oacts a{white-space:nowrap;font-size:13.5px;display:flex;align-items:center;justify-content:center;min-height:42px}
+/* --- lead card actions: main row (Call / WhatsApp / Status) + light second row --- */
+.acts.acts1{display:grid;grid-template-columns:1.4fr auto 1fr;gap:8px;margin-top:10px}
+.acts.acts1>*{min-height:44px;margin:0}
+.acts.acts1 .stb{font-weight:700;color:var(--pr);background:#fff}
+.acts2{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.acts2 .gh{background:transparent;border:1px solid transparent;box-shadow:none;color:#475569;font-size:13px;font-weight:600;padding:6px 10px;min-height:36px;border-radius:10px}
+.acts2 .gh:hover{background:#f1f5f9;border-color:var(--bd)}
+.acts2 .gh.r{color:var(--er)}
+.cmp .acts2{display:none}
+/* --- RM filter chips wrap instead of hiding off-screen --- */
+.rmchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.rmchips button{min-height:38px}
+/* --- bottom sheets (Number history etc.) --- */
+.sheetov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s ease}
+.sheet{background:#fff;color:var(--tx);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(15,23,42,.25)}
+.sheet::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:#cbd5e1;margin:2px auto 10px}
+.sheet button,.sheet .btn{min-height:42px}
+@media(min-width:700px){.sheetov{align-items:center}.sheet{border-radius:20px;max-height:80vh}}
+/* --- backup reminder + current drawer item --- */
+.bkr{display:flex;flex-direction:column;gap:2px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:var(--r);padding:12px 14px;margin-bottom:12px;cursor:pointer}
+.bkr span{font-size:12.5px;color:#9a3412}
+.di.on{background:#eef4ff;color:var(--pr);font-weight:700}
+@media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
+</style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button id="bk" onclick="history.back()" aria-label="Back" style="display:none">←</button><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button id="mdb" onclick="toggleMode()" style="display:none;font-weight:700"></button><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
 <main id="app"></main>
@@ -225,7 +339,7 @@ a{color:var(--pr2)}
 <div id="ov" onclick="closeDrawer()"></div>
 <aside id="dr"><div class="dh"><div class="av" id="dav"></div><div><b id="dnm"></b><div class="mu" id="drl"></div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
 <div id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script>
 <script>
 const SB_URL='https://sfvpslsexobukgerkixi.supabase.co';
 const SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';
@@ -241,10 +355,16 @@ const FES=['meeting_done','prospect','followup','not_interested','not_available'
 const ALLS=Object.keys(ST).filter(k=>k!='new');
 const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
-const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
+const tag=s=>`<span class="tag st-${esc(s)} ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
 let DR={id:'',day:''};let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc=[],fBhk=[],fSt=[],msOpen='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
 
-function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
+function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200);unbusy()}
+/* Double-tap guard: a save/action button cannot fire twice. It unlocks when the result toast shows, the screen redraws, a confirm is cancelled, or after 8 s. */
+const BUSYRX=/^\s*(save\w*|reqDup|decDup|doTransfer|doTag|doMerge|doImport|doDelete|addLead|xGo|xUndo|nhSave|buySave|dcDone|rSave|payAdd|mbImport|invSave|tAssign)\(/;
+function unbusy(b){(b?[b]:document.querySelectorAll('[data-busy]')).forEach(x=>{delete x.dataset.busy;x.classList.remove('busy')})}
+document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('button,a.btn');if(!b)return;if(!BUSYRX.test(b.getAttribute('onclick')||''))return;if(b.dataset.busy){e.stopImmediatePropagation();e.preventDefault();return}b.dataset.busy='1';b.classList.add('busy');setTimeout(()=>unbusy(b),8000)},true);
+{const _cf=window.confirm.bind(window);window.confirm=m=>{const r=_cf(m);if(!r)unbusy();return r}}
+
 const clean=s=>String(s||'').replace(/[,()%*]/g,' ').trim();
 const ph10=s=>String(s||'').replace(/\D/g,'').slice(-10);
 
@@ -284,6 +404,7 @@ try{history.replaceState({tab:'__root'},'')}catch(e){}
 window.addEventListener('popstate',e=>{
   if(!ME)return;
   const st=e.state||{};
+  {const pop=document.querySelector('#nhv,#aiov');if(pop){pop.remove();try{history.pushState({tab},'')}catch(x){}return}}
   if(openId||openK||noteId||showAdd){ // close the open form first, stay on this tab
     openId=null;openK=null;noteId=null;showAdd=false;clearInterval(tint);t0=null;
     try{history.pushState({tab},'')}catch(x){}
@@ -313,13 +434,14 @@ async function render(){
   if(tab!='st'&&tab!='rep'&&tab!='daily'&&!((tab=='xfer'||tab=='dups'||tab=='xlog'||tab=='dreq')&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX=MODE=='rm'&&ME.role!='admin'?{telecaller:['buy','rfu','rvis'],fe:['buy','rfu','rvis']}:{admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
-  $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
+  const WIDE=window.matchMedia&&matchMedia('(min-width:1024px)').matches;
+  $('#nav').innerHTML=WIDE?nv(list[0][0],'🏠 Home',tab==list[0][0])+list.slice(1).map(t=>nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily'))).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):''):nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(MODE=='rm'&&ME.role!='admin'?'Relationship Manager':(ROLE[ME.role]||ME.role));
-  {const mb=$('#mdb');if(mb){mb.style.display=ME.canRM?'inline-block':'none';mb.textContent=MODE=='rm'?'👤 Owner work':'🤝 RM'}}
+  {const mb=$('#mdb');if(mb){mb.style.display=ME.canRM?'inline-block':'none';mb.textContent=MODE=='rm'?'👤 Owner':'🤝 RM';mb.title=MODE=='rm'?'Switch to owner lead work':'Switch to RM (buyers) work'}}
   {const bk=$('#bk');if(bk)bk.style.display=(tab!=list[0][0]||openId||noteId||showAdd)?'inline-block':'none'}
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
-  const ck=[ME.role,MODE,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,mDate,showF,CMP,JSON.stringify(GX)].join('|');
+  const ck=[ME.role,MODE,tab,DR.id,DR.day,q,cDate,fZn,fLoc,fBhk,fSt,msOpen,RANGE,repTab,viewSt,(typeof ST_SUB=='string'?ST_SUB+ST_LIM:''),mDate,showF,CMP,JSON.stringify(GX)].join('|');
   if(!busy&&VC[ck])$('#app').innerHTML=VC[ck];else if(!busy)$('#app').innerHTML=skel(3);
   const dbp=(ME.role=='telecaller'&&tab!='deal'&&MODE!='rm')?dealBanner().catch(()=>''):Promise.resolve('');
   let h;
@@ -336,7 +458,7 @@ async function doInstall(){if(!instEv)return;instEv.prompt();await instEv.userCh
 /* ---------- helpers ---------- */
 async function pageAll(build){
   const a=await build().range(0,999);if(a.error)throw a.error;let out=a.data;if(out.length<1000)return out;
-  for(let f=1000;f<=20000;f+=4000){
+  for(let f=1000;f<=2000000;f+=4000){
     const rs=await Promise.all([0,1,2,3].map(i=>build().range(f+i*1000,f+i*1000+999)));let end=false;
     for(const r of rs){if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000){end=true;break}}
     if(end)break;
@@ -368,13 +490,25 @@ function parsePrice(s){
   if(u)return v;
   return v>=100000?Math.round(v/1000)/100:null;
 }
+/* Notes keep history: a new note is added on top with date + name. Old notes are never replaced. */
+const noteStamp=()=>new Date().toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+' · '+((ME&&ME.name)||'');
+async function withNote(id,txt){
+  txt=String(txt||'').trim();if(!txt)return null;
+  let cur=(LEADS[id]&&LEADS[id].remarks)||'';
+  try{const r=await sb.from('leads').select('remarks').eq('id',id).single();if(!r.error&&r.data)cur=r.data.remarks||''}catch(e){}
+  return noteStamp()+': '+txt+(cur?'\n'+cur:'');
+}
+const oldNotes=l=>l&&l.remarks?`<div class="note" style="max-height:132px;overflow:auto;margin-top:0"><div class="mu" style="font-weight:700;margin-bottom:2px">Earlier notes (kept)</div>${esc(l.remarks)}</div>`:'';
 function noteBlock(l){
-  if(noteId==l.id)return `<div class="form"><textarea id="nt" rows="3" placeholder="Write a note...">${esc(l.remarks||'')}</textarea><div class="acts" style="margin-top:0"><button class="g sm" onclick="saveNote(${l.id})">💾 Save</button><button class="sm" onclick="noteId=null;render()">Cancel</button></div></div>`;
+  if(noteId==l.id)return `<div class="form"><label>Add a note</label><textarea id="nt" rows="3" placeholder="Write a new note. Earlier notes stay saved."></textarea>${oldNotes(l)}<div class="acts" style="margin-top:0"><button class="g sm" onclick="saveNote(${l.id})">💾 Save note</button><button class="sm" onclick="noteId=null;render()">Cancel</button></div></div>`;
   return l.remarks?`<div class="note" onclick="noteId=${l.id};openId=null;openK=null;render()">📝 ${esc(l.remarks)}</div>`:'';
 }
 async function saveNote(id){
-  const {error}=await sb.from('leads').update({remarks:$('#nt').value.trim()}).eq('id',id);
-  if(error)return toast(error.message,1);noteId=null;toast('Note saved ✅');render();
+  const txt=$('#nt').value.trim();if(!txt)return toast('Write a note first',1);
+  const remarks=await withNote(id,txt);
+  const {data,error}=await sb.from('leads').update({remarks}).eq('id',id).select('id');
+  if(error)return toast(error.message,1);if(!data||!data.length)return toast('Could not save the note (no permission)',1);
+  noteId=null;toast('Note saved ✅');render();
 }
 
 /* ---------- lead card + actions ---------- */
@@ -404,7 +538,7 @@ function leadCard(l,cs){
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
   const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',''].filter(Boolean).join(' · ');
-  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${l.dup_of?`<div class="mu" style="margin:4px 0;padding:4px 8px;border-radius:8px;background:#fdecec;color:#b42318;font-weight:700">🔁 DUPLICATE of #${l.dup_of}${l.dup_reason?' · '+esc(l.dup_reason):''}</div>`:''}${dealBtn(l)}
+  return `<div class="card lc ls-${esc(l.status)}"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${l.dup_of?`<div class="mu" style="margin:4px 0;padding:4px 8px;border-radius:8px;background:#fdecec;color:#b42318;font-weight:700">🔁 DUPLICATE of #${l.dup_of}${l.dup_reason?' · '+esc(l.dup_reason):''}</div>`:''}${dealBtn(l)}
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${followLine(l)}${meetLine(l)}
@@ -422,11 +556,13 @@ function actions(l){
   const b=[];
   b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
   b.push(`<a class="btn ic wi" title="WhatsApp" href="javascript:void(0)" onclick="waSheet('lead',${l.id})"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
-  b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
-  if(ME.role!='admin')b.push(`<button class="ic" title="Transfer / Tag" onclick="openForm(${l.id},'share')">🔁</button>`);
-  b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
-  if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
-  return `<div class="acts">${b.join('')}</div>`;
+  b.push(`<button class="stb" onclick="openForm(${l.id},'status')">✓ Status</button>`);
+  // Secondary actions in a lighter second row, so the main row has only Call / WhatsApp / Status.
+  const s2=[];
+  if(ME.role!='admin')s2.push(`<button class="gh" aria-label="Transfer or tag" onclick="openForm(${l.id},'share')">🔁 Transfer / Tag</button>`);
+  s2.push(`<button class="gh" aria-label="Edit lead" onclick="openForm(${l.id},'edit')">✏️ Edit</button>`);
+  if(ME.role=='admin')s2.push(`<button class="gh r" aria-label="Delete lead" onclick="openForm(${l.id},'del')">🗑 Delete</button>`);
+  return `<div class="acts acts1">${b.join('')}</div><div class="acts2">${s2.join('')}</div>`;
 }
 const stOpts=()=>'<option value="">— Select status —</option>'+myStatuses().map(s=>`<option value="${s}">${ST[s]}</option>`).join('');
 const feOpts=sel=>Object.values(P).filter(p=>p.role=='fe').map(f=>`<option value="${f.id}" ${f.id==sel?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
@@ -452,16 +588,17 @@ function statusUpd(l,st){
 }
 function statusForm(l){
   return `<div class="form"><label>Change status</label><select id="sst" ${onSt}>${stOpts()}</select>${ME.role!='fe'?meetBox(l):''}${fuBox(l)}
-  <label>Note (optional)</label><textarea id="sn" rows="2" placeholder="Write a note...">${esc(l.remarks||'')}</textarea>
+  <label>Add a note (optional)</label><textarea id="sn" rows="2" placeholder="New note. Earlier notes stay saved."></textarea>${oldNotes(l)}
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveStatus(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveStatus(id){
   const l=LEADS[id],st=$('#sst').value;
   if(!st)return toast('Select a status',1);
   const u=statusUpd(l,st);if(u.err)return toast(u.err,1);
-  const sn=$('#sn');if(sn&&sn.value.trim()!==(l.remarks||''))u.upd.remarks=sn.value.trim();
-  const {error}=await sb.from('leads').update(u.upd).eq('id',id);
+  const sn=$('#sn');if(sn&&sn.value.trim())u.upd.remarks=await withNote(id,sn.value);
+  const {data,error}=await sb.from('leads').update(u.upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
+  if(!data||!data.length)return toast('Could not save. You may not have access to this lead now. Refresh and try again.',1);
   openId=null;openK=null;toast('Status updated ✅');render();
 }
 function assignForm(l){
@@ -488,7 +625,7 @@ function editForm(l){
   ${zUI()?zonePicker('e',l.locality)+`<label>Address / landmark</label><input id="ead" value="${v(l.address)}">`:`<label>Area / Address</label><input id="el" value="${v(l.locality)}">`}
   <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
   <label>Price</label><input id="ec" value="${v(fp(l))}" placeholder="85 L or 1.2 Cr">
-  <label>Notes</label><textarea id="em" rows="2">${v(l.remarks)}</textarea>
+  <label>All notes (full text, edit only to correct a mistake)</label><textarea id="em" rows="3">${v(l.remarks)}</textarea>
   <label>Assign / hand over to</label><select id="easg"><option value="">— No change —</option>${asgGrp('fe','Field Executives',l.fe_id)}${asgGrp('telecaller','Telecallers',l.tc_id)}</select>
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveEdit(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
@@ -509,11 +646,20 @@ async function saveEdit(id){
   openId=null;openK=null;toast('Lead updated ✅');render();
 }
 function delForm(l){
-  return `<div class="form"><div class="er">Delete ${esc(l.name||'this lead')}? Its call history will also be deleted. This cannot be undone.</div>
+  return `<div class="form"><div class="er">Delete ${esc(l.name||'this lead')}? Its call history will also be deleted. A safety copy (JSON file) is downloaded first; keep it if you may need to restore.</div>
   <div class="acts" style="margin-top:0"><button class="r" onclick="doDelete(${l.id})">Yes, delete</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function doDelete(id){
   if(ME.role!='admin')return toast('Only admin can delete',1);
+  // Safety copy first: the lead + its calls, phone calls, assignment log and shares are saved as a file before deleting.
+  // If the copy cannot be made, the delete is stopped.
+  try{
+    const one=async(t,col)=>{const r=await sb.from(t).select('*').eq(col,id);if(r.error)throw new Error(t+': '+r.error.message);return r.data||[]};
+    const lead=await one('leads','id');if(!lead.length)return toast('Lead not found (maybe already deleted). Refresh.',1);
+    const copy={_meta:{type:'deleted lead backup',taken_at:new Date().toISOString(),by:ME.name||''},lead:lead[0],calls:await one('calls','lead_id'),device_calls:await one('device_calls','lead_id'),lead_assignment_log:await one('lead_assignment_log','lead_id')};
+    try{copy.lead_shares=await one('lead_shares','lead_id')}catch(e){copy.lead_shares='not readable'}
+    await saveBlobFile('EasyDeals_DeletedLead_'+id+'_'+isoToday()+'.json','application/json',new Blob([JSON.stringify(copy,null,1)],{type:'application/json'}));
+  }catch(e){return toast('Delete stopped: could not save a safety copy first ('+(e.message||e)+')',1)}
   const {data,error}=await sb.from('leads').delete().eq('id',id).select('id');
   if(error)return toast(error.message,1);
   if(!data||!data.length)return toast('Could not delete',1);
@@ -728,8 +874,8 @@ async function numHist(ph){
   const old=document.getElementById('nhv');if(old)old.remove();
   const ov=document.createElement('div');ov.id='nhv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
-  ov.onclick=function(e){if(e.target===ov)ov.remove()};
-  ov.innerHTML='<div style="background:#fff;color:#111;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px"><div class="mu">Loading history…</div></div>';
+  ov.onclick=function(e){if(e.target===ov)ov.remove()};ov.className='sheetov';
+  ov.innerHTML='<div class="sheet"><div class="mu">Loading history…</div></div>';
   document.body.appendChild(ov);const box=ov.firstChild;
   const like='%'+ph,lk2='*'+ph;
   const q=p=>Promise.resolve(p).then(r=>r&&r.data?r.data:[],()=>[]);
@@ -740,7 +886,7 @@ async function numHist(ph){
     q(sb.from('message_log').select('by_id,channel,direction,body,at,source').eq('phone',ph).order('at',{ascending:false}).limit(80)),
     q(sb.from('leads').select('name,property').ilike('phone',like).limit(1)),
     q(sb.from('properties').select('id,owner_name,project').or('owner_phone.ilike.'+lk2+',owner_phone2.ilike.'+lk2).limit(1)),
-    q(sb.from('buyer_leads').select('buyer_name,project').ilike('buyer_phone',like).limit(1))]);
+    q(sb.from('buyer_leads').select('buyer_name,property_id').ilike('buyer_phone',like).order('id',{ascending:false}).limit(1))]);
   const nmOf=id=>(P[id]&&P[id].name)||'';const items=[];
   dc.forEach(c=>items.push({at:c.started_at,k:'call',dir:c.direction,sec:c.duration_sec||0,by:nmOf(c.by_id)}));
   cl.forEach(c=>items.push({at:c.created_at,k:'call',dir:'out',sec:c.duration_sec||0,by:nmOf(c.by_id),man:1}));
@@ -748,7 +894,7 @@ async function numHist(ph){
   ml.forEach(m=>items.push({at:m.at,k:m.channel,dir:m.direction,body:m.body,by:nmOf(m.by_id),src:m.source}));
   items.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const nm=(ld[0]&&ld[0].name)||(pr[0]&&pr[0].owner_name&&('Owner: '+pr[0].owner_name))||(bl[0]&&bl[0].buyer_name&&('Buyer: '+bl[0].buyer_name))||'Unknown number';
-  const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].project)||'';
+  const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].property_id&&('Enquiry for '+bl[0].property_id))||'';
   const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
   const row=i=>{const tm=new Date(i.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});const ex=i.k==='call'&&i.sec?' · talked '+fmt(i.sec):'';const bd=i.body?esc(i.body):(i.k==='wa'&&i.src==='crm'?'Chat opened from CRM':'');return '<div style="padding:8px 0;border-top:1px solid #eef1f6"><div style="font-weight:600;color:'+(i.dir==='missed'?'#dc2626':'#111')+'">'+lab(i)+'</div><div class="mu">'+tm+(i.by?' · '+esc(i.by):'')+ex+(i.man?' · timer':'')+'</div>'+(bd?'<div style="margin-top:2px">'+bd+'</div>':'')+'</div>'};
   box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:17px;font-weight:700">'+esc(nm)+'</div><div class="mu">'+esc(ph)+(sub?' · '+esc(sub):'')+'</div></div><button onclick="document.getElementById(\'nhv\').remove()">✕</button></div>'
@@ -772,7 +918,7 @@ function callForm(l){if(SYNC===null){SYNC=false;chkSync()}
   <div id="tmr" class="mu">Tap "Start call" to run a timer, then "End call" to fill the talk time below. You can also type it by hand.</div>`}
   <div class="f2"><div><label>Talk time: minutes</label><input id="mi" type="number" min="0" value="${autoTT(l).m}"></div><div><label>Talk time: seconds</label><input id="se" type="number" min="0" max="59" value="${autoTT(l).s}"></div></div>
   <label>Call result / status</label><select id="sst" ${onSt}>${stOpts()}</select>${meetBox(l)}${fuBox(l)}
-  <textarea id="cn" rows="2" placeholder="Notes (optional)">${esc(l.remarks||'')}</textarea>
+  <label>Add a note (optional)</label><textarea id="cn" rows="2" placeholder="New note. Earlier notes stay saved."></textarea>${oldNotes(l)}
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveCall(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveCall(id){
@@ -780,11 +926,12 @@ async function saveCall(id){
   if(!st)return toast('Select a call result / status',1);
   const u=statusUpd(l,st);if(u.err)return toast(u.err,1);
   const nt=$('#cn').value.trim();
-  if(nt!==(l.remarks||''))u.upd.remarks=nt;
+  if(nt)u.upd.remarks=await withNote(id,nt);
   const {error}=await sb.from('calls').insert({lead_id:id,phone:l.phone,by_id:ME.id,duration_sec:dur,outcome:ST[st]});
   if(error)return toast(error.message,1);
-  const {error:e2}=await sb.from('leads').update(u.upd).eq('id',id);
-  if(e2)return toast(e2.message,1);
+  const {data:d2,error:e2}=await sb.from('leads').update(u.upd).eq('id',id).select('id');
+  if(e2)return toast('Call saved, but status not updated: '+e2.message,1);
+  if(!d2||!d2.length)return toast('Call saved, but status not updated (no access to this lead now). Refresh and try again.',1);
   clearInterval(tint);t0=null;openId=null;openK=null;toast('Saved ✅');render();
 }
 
@@ -841,7 +988,7 @@ async function lookupAny(){
     const chips=[l.bhk,l.price].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
     const who=[l.tc_name?'Telecaller: <b>'+esc(l.tc_name)+'</b>':'',l.fe_name?'Field Exec: <b>'+esc(l.fe_name)+'</b>':''].filter(Boolean).join(' · ')||'Not assigned yet';
     const mt=l.meeting_date?`<div class="fol">📅 Meeting: <b>${new Date(l.meeting_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</b>${l.meeting_time?' · <b>'+fmtT(l.meeting_time.slice(0,5))+'</b>':''}</div>`:'';
-    return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>
+    return `<div class="card lc ls-${esc(l.status)}"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>
     ${(l.property||l.locality)?`<div class="wh">🏢 ${[l.property,l.locality].filter(Boolean).map(esc).join(' · ')}</div>`:''}
     ${chips?`<div class="chp cp">${chips}</div>`:''}${mt}
     <div class="mu cp">👤 ${who}</div></div>`}).join('');
@@ -873,7 +1020,7 @@ VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
   const props=Object.keys(BUYP).sort((x,y)=>String(x).localeCompare(String(y),undefined,{numeric:true}));
   return `<div class="card" style="margin-bottom:10px"><b>🤝 Relationship Manager</b> <span class="mu">· buyers assigned to you</span>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="tag">Open ${open}</span><span class="tag">Worked today ${done}</span><span class="tag">Not worked yet ${BUYL.filter(b=>!b.last_fu&&!closed(b)).length}</span></div></div>
-  <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">${chip('today','⚡ Today',cnt(today))}${chip('all','All',cnt(()=>true))}${chip('new','New',cnt(isNew))}${chip('due','Follow-up due',cnt(due))}${chip('visit','📅 Visits',cnt(vis))}${chip('won','✅ Deals',cnt(b=>b.status=='Deal Closed'))}</div>
+  <div class="rmchips">${chip('today','⚡ Today',cnt(today))}${chip('all','All',cnt(()=>true))}${chip('new','New',cnt(isNew))}${chip('due','Follow-up due',cnt(due))}${chip('visit','📅 Visits',cnt(vis))}${chip('won','✅ Deals',cnt(b=>b.status=='Deal Closed'))}</div>
   ${props.length>1?`<select onchange="buyProp=this.value;render()" style="margin-bottom:10px"><option value="">All properties</option>${props.map(id=>`<option value="${esc(id)}" ${buyProp==id?'selected':''}>${esc(id+' · '+((BUYP[id]||{}).project||''))} (${BUYL.filter(b=>b.property_id==id).length})</option>`).join('')}</select>`:''}`+
   (l.map(b=>buyCard(b,due(b))).join('')||'<div class="card"><div class="mu">Nothing here. Leads assigned by admin will appear here.</div></div>');
 };
@@ -900,8 +1047,9 @@ async function buySave(id){
   const st=$('#by_st').value,nf=$('#by_nf').value||null,va=$('#by_va').value,note=$('#by_note').value.trim();
   const upd={status:st,next_fu:nf,visit_at:va?new Date(va).toISOString():null};
   if(note||st!=(b.status||'New'))upd.last_fu=buyToday();
-  const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
-  if(note||st!=(b.status||'New')){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+(b.status||'New')+' → '+st)})}
+  const {data:bd,error}=await sb.from('buyer_leads').update(upd).eq('id',id).select('id');if(error)return toast(error.message,1);
+  if(!bd||!bd.length)return toast('Could not save (no access to this buyer now). Refresh and try again.',1);
+  if(note||st!=(b.status||'New')){const h=await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+(b.status||'New')+' → '+st)});if(h.error){buyOpen=null;toast('Status saved, but the note was not saved: '+h.error.message,1);return render()}}
   buyOpen=null;toast('Saved ✅');render();
 }
 
@@ -1022,7 +1170,7 @@ function gxHead(ns,withSearch){return (withSearch?searchBar('Name, number, socie
 let DCM={},DCT=0,AF={f:null,t:null,od:false,html:''};
 const dph=s=>String(s||'').replace(/\D/g,'').slice(-10);
 const nrm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-async function dcLoad(){DCT=Date.now();try{const rows=await pageAll(()=>sb.from('leads').select('id,phone,name,property,locality,bhk,tc_id,fe_id').eq('status','deal_closed'));const ed={};window.DCED=ed;try{const r=await sb.from('properties').select('lead_id,ed_id');(r.data||[]).forEach(x=>{if(x.lead_id)ed[x.lead_id]=x.ed_id})}catch(e){}const m={};(rows||[]).forEach(x=>{const k=dph(x.phone);if(k.length<10)return;x.ed=ed[x.id]||'';(m[k]=m[k]||[]).push(x)});DCM=m}catch(e){}}
+async function dcLoad(){DCT=Date.now();try{const rows=await pageAll(()=>sb.from('leads').select('id,phone,name,property,locality,bhk,tc_id,fe_id').eq('status','deal_closed'));const ed={};window.DCED=ed;try{const r=await sb.from('properties').select('id,owner_lead_id');(r.data||[]).forEach(x=>{if(x.owner_lead_id)ed[x.owner_lead_id]=x.id})}catch(e){}const m={};(rows||[]).forEach(x=>{const k=dph(x.phone);if(k.length<10)return;x.ed=ed[x.id]||'';(m[k]=m[k]||[]).push(x)});DCM=m}catch(e){}}
 function dealBtn(l){if(l.status!=='deal_closed')return '';const ed=(window.DCED||{})[l.id];if(ed)return '<div style="background:#e6f7ec;color:#166534;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px">✅ Details filled · '+esc(ed)+'</div>';return '<div style="background:#fff7e0;color:#92400e;border-radius:8px;padding:8px 10px;margin:8px 0 6px;font-size:13px">Property details are pending. Please fill in the owner details.</div><a href="onboard.html?lead='+encodeURIComponent(l.id)+'" style="display:block;text-align:center;background:#1f4e78;color:#fff;border-radius:8px;padding:10px;font-size:14px;text-decoration:none;margin-bottom:6px">📝 Fill property details</a>'}
 function dcBanner(l){if(l.status==='deal_closed')return '';const a=(DCM[dph(l.phone)]||[]).filter(x=>x.id!==l.id);if(!a.length)return '';const sp=nrm(l.property);const same=sp?a.find(x=>nrm(x.property)===sp):null;const x=same||a[0];const who=[x.fe_id&&P[x.fe_id]?P[x.fe_id].name:'',x.tc_id&&P[x.tc_id]?P[x.tc_id].name:''].filter(Boolean)[0]||'';const nm=(x.ed?esc(x.ed)+' · ':'')+esc([x.property,x.locality].filter(Boolean).join(', ')||'-')+(x.bhk?' · '+esc(x.bhk):'');
 if(same)return '<div style="background:#e6f7ec;border:2px solid #1f9d55;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#0f5a28">✅ <b>ALREADY DEAL CLOSED</b><br>'+nm+(who?'<br><span style="opacity:.8">Closed by '+esc(who)+'</span>':'')+'<br><b>⚠️ Same property, do not call again</b></div>';
@@ -1054,13 +1202,28 @@ VIEW['admin:dash']=async()=>{
   const C=Object.fromEntries(cnt),total=cnt.reduce((a,c)=>a+c[1],0);
   const talk=calls.reduce((a,c)=>a+(c.duration_sec||0),0);
   const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(isMeet(c))b.m++});
-  const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
-  const dco=await dcCard();
-  return rangeChips()+dco+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
+  const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';ST_SUB='';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
+  const [dco,att]=await Promise.all([dcCard(),attnCard()]);
+  return att+rangeChips()+dco+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
   <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k],k)).join('')}</div>
   <div class="card"><b>📲 Incoming call? Enter the number</b><div class="f2" style="grid-template-columns:1fr auto;margin-top:8px"><input id="ln" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookup()"><button class="p" onclick="lookup()">Look up</button></div><div id="lk"></div></div>
   <div class="card"><b>Telecaller performance</b>${Object.entries(by).map(([id,b])=>lr(`<b>${esc(P[id]?.name||'?')}</b><br><span class="mu">${b.n} calls · ${b.m} meetings</span>`,`${fmt(b.t)}<br><span class="mu">talk time</span>`)).join('')||'<p class="mu">No calls in this period</p>'}</div>`;
 };
+/* Admin "Needs attention" panel: live counts straight from the database (no estimates). */
+async function attnCard(){
+  const td=isoToday(),hc=q=>q.then(r=>r.error?null:(r.count||0),()=>null),L=()=>sb.from('leads').select('id',{count:'exact',head:true}),B=()=>sb.from('buyer_leads').select('id',{count:'exact',head:true});
+  const [unTc,newL,od,mt,bNew,bUn,bNoP]=await Promise.all([
+    hc(L().is('tc_id',null).eq('status','new')),hc(L().eq('status','new')),
+    hc(L().eq('status','followup').lt('follow_date',td)),
+    hc(L().eq('status','meeting_assigned').eq('meeting_date',td)),
+    hc(B().eq('status','New')),hc(B().eq('assignees','{}')),hc(B().is('property_id',null))]);
+  const it=(n,lab,sub,cls,click)=>n==null?'':`<div class="att ${n?cls:''}"${click?` onclick="${click}" role="button" tabindex="0"`:''}><b>${n}</b><span>${lab}</span>${sub?`<small>${sub}</small>`:''}</div>`;
+  let lb=null;try{lb=localStorage.getItem('ed_last_backup')}catch(e){}
+  const bdays=lb?Math.floor((Date.now()-new Date(lb))/864e5):null;
+  const bk=bdays!=null&&bdays<7?'':`<div class="bkr" onclick="fullBackup(this)" role="button" tabindex="0">💾 <b>${bdays==null?'No full backup taken on this phone yet':'Last full backup '+bdays+' days ago'}</b><span>Tap to back up all data now (weekly is recommended)</span></div>`;
+  return bk+`<div class="card attn"><div class="row" style="align-items:center"><b>🎯 Needs attention</b><span class="mu">live · ${new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</span></div>
+  <div class="attg">${it(od,'Overdue follow-ups','owner leads','er',"viewSt='followup';ST_SUB='overdue';go('st')")}${it(mt,'Meetings today','assigned','wr',"viewSt='meeting_assigned';ST_SUB='today';go('st')")}${it(unTc,'New leads, no telecaller','of '+(newL==null?'?':newL)+' new','wr',"viewSt='new';ST_SUB='notc';go('st')")}${it(bNew,'Buyers still New','not contacted','wr',"location.href='buyers.html#buyers-new'")}${it(bUn,'Buyers unassigned','no RM','er',"location.href='buyers.html#team'")}${it(bNoP,'Buyers without property','link needed','er',"location.href='buyers.html#un'")}</div></div>`;
+}
 async function lookup(){
   const n=ph10($('#ln').value);if(n.length<10){$('#lk').innerHTML='<p class="er">Enter a 10-digit number</p>';return}
   const {data}=await sb.from('leads').select('*').eq('phone',n).limit(10);
@@ -1387,14 +1550,23 @@ async function setRole(id,r){const {error}=await sb.from('profiles').update({rol
 async function setName(id,n){const {error}=await sb.from('profiles').update({name:n.trim()}).eq('id',id);if(error)return toast(error.message,1);P[id].name=n.trim();toast('Name updated ✅')}
 
 /* ---------- status view, menu drawer, bell ---------- */
+/* Status list: exact total from the database + "Load more" (no lead is silently hidden). ST_SUB narrows to the Needs-attention cases. */
+let ST_LIM=100,ST_SUB='',ST_LAST='';
+const ST_SUBS={overdue:['Overdue (date passed)',q=>q.lt('follow_date',isoToday())],today:['Today',q=>q.eq('meeting_date',isoToday())],notc:['No telecaller yet',q=>q.is('tc_id',null)]};
 VIEW['admin:st']=VIEW['telecaller:st']=VIEW['fe:st']=async()=>{
-  await loadFilt();let qy=sb.from('leads').select('*').eq('status',viewSt).order('created_at',{ascending:false}).limit(100);qy=gxQ(qy);const {data,error}=await qy;
+  if(ST_LAST!==viewSt+'|'+ST_SUB){ST_LAST=viewSt+'|'+ST_SUB;ST_LIM=100}
+  await loadFilt();let qy=sb.from('leads').select('*',{count:'exact'}).eq('status',viewSt).order('created_at',{ascending:false}).range(0,ST_LIM-1);
+  const sub=ST_SUBS[ST_SUB];if(sub)qy=sub[1](qy);
+  qy=gxQ(qy);const {data,error,count}=await qy;
   if(error)throw error;
+  const total=count==null?data.length:count;
   const hs=await histMap(data.map(l=>l.id));
-  return gxHead(1,ME.role!=='fe')+`<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${data.length}${data.length>=100?'+':''} lead${data.length==1?'':'s'}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+
-    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'));
+  const subChip=sub?`<div class="chips"><button class="on" onclick="ST_SUB='';render()">${esc(sub[0])} ✕</button>${ST_SUB=='notc'&&ME.role=='admin'?`<button onclick="go('team')">👥 Assign in bulk (Team)</button>`:''}</div>`:'';
+  const more=data.length<total?`<button class="p" style="width:100%;margin:4px 0 12px;min-height:46px" onclick="ST_LIM+=100;render()">Load ${Math.min(100,total-data.length)} more · showing ${data.length} of ${total}</button>`:'';
+  return gxHead(1,ME.role!=='fe')+`<div style="margin:2px 2px 12px;font-size:18px"><b>${ST[viewSt]}</b> <span class="mu">${total} lead${total==1?'':'s'}${data.length<total?' · showing '+data.length:''}${ME.role=='fe'?' (yours)':' (whole team)'}</span></div>`+subChip+
+    (data.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty('No leads with this status.'))+more;
 };
-function viewStatus(k){viewSt=k;go('st')}
+function viewStatus(k){viewSt=k;ST_SUB='';go('st')}
 
 /* ---------- KPI reports ---------- */
 const pct=(a,b)=>b?Math.round(a*100/b)+'%':'–';
@@ -1409,10 +1581,18 @@ const REPT={admin:[['ov','📊 Overview'],['tc','📞 Telecallers'],['fe','🚶 
 const repTabs=()=>{const l=REPT[ME.role];if(!l.find(t=>t[0]==repTab))repTab=l[0][0];return `<div class="chips" style="overflow-x:auto">${l.map(t=>`<button class="${repTab==t[0]?'on':''}" onclick="repTab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>`};
 const kpi=async()=>{const {data,error}=await sb.rpc('kpi',{since:sinceISO()});if(error)throw error;return data||[]};
 
+/* Save a file: Android app saves into Downloads through its bridge (WebView ignores normal blob downloads); browsers download normally. */
+async function saveBlobFile(name,mime,blob){
+  if(window.EDApp&&EDApp.saveFile){try{const b64=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(String(fr.result).split(',')[1]);fr.onerror=no;fr.readAsDataURL(blob)});if(EDApp.saveFile(name,mime,b64)==='ok')return}catch(e){}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+}
+const XLSXM='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const saveWb=(wb,name)=>saveBlobFile(name,XLSXM,new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:XLSXM}));
+async function needXLSX(){if(!window.XLSX){await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load the Excel library. Check your internet.'));document.head.appendChild(sc)})}}
 async function exportXlsx(btn,allTime){
-  const old=btn.textContent;btn.disabled=true;btn.textContent='⏳ Building Excel…';
+  const old=btn.innerHTML;btn.disabled=true;btn.textContent='⏳ Building Excel…';
   try{
-    if(!window.XLSX){await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load the Excel library — check your internet'));document.head.appendChild(sc)})}
+    await needXLSX();
     let all=[],from=0;
     for(;;){const {data,error}=await sb.from('leads').select('*').order('created_at',{ascending:true}).range(from,from+999);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<1000)break;from+=1000}
     const r0=RANGE;if(allTime)RANGE='all';let rows;try{rows=await kpi()}finally{RANGE=r0}
@@ -1433,10 +1613,34 @@ async function exportXlsx(btn,allTime){
     add('Field Exec KPI',feS,[16,14,10,8,9,9,14,10,8,12,13,13]);
     add('Lead workload',wl,[18,8,6,10,10,10,16,14,18,14,12,14]);
     add('All Leads',leads,[5,18,13,30,7,7,22,10,11,16,12,12,13,13,13,13,34,20]);
-    XLSX.writeFile(wb,'EasyDeals_KPI_'+isoToday()+'.xlsx');
+    await saveWb(wb,'EasyDeals_KPI_'+isoToday()+'.xlsx');
     toast&&toast('✅ Excel downloaded ('+all.length+' leads)');
-  }catch(e){alert('Excel error: '+(e.message||e))}
-  btn.disabled=false;btn.textContent=old;
+  }catch(e){toast('Excel error: '+(e.message||e),1)}
+  btn.disabled=false;btn.innerHTML=old;
+}
+/* Full backup (admin): every CRM table, read with the admin's own login. Read-only, nothing is changed.
+   Gives 2 files: .json (exact copy, for restore) and .xlsx (easy to open). */
+const BK_TABLES=['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares','dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history','invoices','assign_rules','app_settings','wa_settings','wa_messages'];
+async function fullBackup(btn){
+  if(!ME||ME.role!='admin')return toast('Only admin can take a full backup',1);
+  const old=btn.innerHTML;btn.style.pointerEvents='none';
+  const out={_meta:{app:'EasyDeals CRM',taken_at:new Date().toISOString(),by:ME.name||'',tables:{}}},bad=[];
+  try{
+    for(const t of BK_TABLES){
+      btn.textContent='⏳ Backup: '+t+'…';
+      try{const rows=[];for(let f=0;;f+=1000){const {data,error}=await sb.from(t).select('*').range(f,f+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}
+        out[t]=rows;out._meta.tables[t]=rows.length}catch(e){bad.push(t+': '+(e.message||e));out._meta.tables[t]='ERROR '+(e.message||e)}
+    }
+    const stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    await saveBlobFile('EasyDeals_FullBackup_'+stamp+'.json','application/json',new Blob([JSON.stringify(out)],{type:'application/json'}));
+    try{await needXLSX();const wb=XLSX.utils.book_new();const cell=v=>v==null?'':typeof v=='object'?JSON.stringify(v).slice(0,32000):typeof v=='string'?v.slice(0,32000):v;
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(Object.entries(out._meta.tables).map(([k,v])=>({Table:k,Rows:v}))),'Summary');
+      for(const t of BK_TABLES){const rows=out[t];if(!rows||!rows.length)continue;XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.map(r=>{const o={};for(const k in r)o[k]=cell(r[k]);return o})),t.slice(0,31))}
+      await new Promise(r=>setTimeout(r,700));await saveWb(wb,'EasyDeals_FullBackup_'+stamp+'.xlsx')}catch(e){bad.push('Excel: '+(e.message||e))}
+    const n=Object.values(out._meta.tables).filter(v=>typeof v=='number').reduce((a,b)=>a+b,0);
+    if(!bad.length)try{localStorage.setItem('ed_last_backup',new Date().toISOString())}catch(e){}
+    toast(bad.length?'Backup saved ('+n+' rows), but some tables failed: '+bad.join(' | '):'✅ Full backup saved ('+n+' rows). Keep the files safe (Google Drive).',bad.length?1:0);
+  }finally{btn.innerHTML=old;btn.style.pointerEvents=''}
 }
 const rangeNote='<p class="mu" style="margin:0 2px 10px">Calls, data given, meetings, attended and deals follow the selected period (by the date each happened). Pending / overdue / unused data are live totals.</p>';
 const tcFunnel=r=>funnel([['Data given',+r.given],['Data touched',+r.touched],['Meetings fixed',+r.meet],['Attended',+r.att],['Deals closed',+r.deal]]);
@@ -1544,17 +1748,27 @@ document.body.classList.toggle('cmp',CMP);
 function toggleCmp(){CMP=!CMP;try{localStorage.setItem('cmp',CMP?'1':'0')}catch(e){}document.body.classList.toggle('cmp',CMP);closeDrawer();render()}
 let qvOpen=false;
 function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';$('#qva').textContent=qvOpen?'▾':'▸'}
+/* Drawer menu grouped by work type (same tabs, same order inside each group; nothing removed). */
+const DGRP={fe:[['Meetings',['today','asg','done','fcalls']],['Leads by stage',['fu','pros','tag','deal','ni','na']],['Tools',['rep','lk','props']]],
+  telecaller:[['Daily work',['call','fu','pros','meet']],['Leads by stage',['tag','deal']],['Tools',['rep','lk','props']]]};
+function drawerMenu(list){
+  const g=DGRP[ME.role],di=t=>`<div class="di${t[0]==tab?' on':''}" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`;
+  if(!g)return `<div class="ds">Menu</div>`+list.map(di).join('');
+  const used=new Set();let h='';
+  g.forEach(([name,ids])=>{const items=ids.map(id=>list.find(t=>t[0]==id)).filter(Boolean);items.forEach(t=>used.add(t[0]));if(items.length)h+=`<div class="ds">${name}</div>`+items.map(di).join('')});
+  const rest=list.filter(t=>!used.has(t[0]));if(rest.length)h+=`<div class="ds">More</div>`+rest.map(di).join('');
+  return h;
+}
 function drawerBody(C){
   const list=TABS[ME.role]||[];
   if(MODE=='rm'&&ME.role!='admin')return `<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>👤 <b>Back to Owner work</b></span><span>›</span></div><div class="ds">Relationship Manager</div>`+list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+`<div class="di" onclick="toggleRing()"><span>🔔 New lead sound</span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`;
   const rmBtn=ME.canRM?`<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>🤝 <b>Open RM (buyers)</b> <span class="mu">· Relationship Manager</span></span><span>›</span></div>`:'';
   return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+rmBtn+
-    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();aiSwitch()"><span>🤖 <b>AI RM (WhatsApp)</b> <span class="mu">· on/off + daily limit</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
+    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();aiSwitch()"><span>🤖 <b>AI RM (WhatsApp)</b> <span class="mu">· on/off + daily limit</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div><div class="di" onclick="fullBackup(this)"><span>💾 <b>Full backup</b> <span class="mu">· all data, JSON + Excel</span></span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
-    `<div class="ds">Menu</div>`+
-    list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+
+    drawerMenu(list)+
     `<div class="di" onclick="toggleCmp()"><span>▤ Compact view <span class="mu">· more leads per screen</span></span><span class="cnt ${CMP?'hi':''}">${CMP?'ON':'OFF'}</span></div>`+
     `<div class="di" onclick="toggleRing()"><span>🔔 New lead sound <span class="mu">· when CRM is open</span></span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`+
     (instEv?`<div class="di" onclick="doInstall();closeDrawer()"><span>📲 Install app</span></div>`:'');
@@ -1587,7 +1801,7 @@ async function updateBell(){
   }catch(e){}
 }
 function bellGo(){
-  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('fu');else{viewSt='meeting_assigned';go('st')}
+  if(ME.role=='fe')go('today');else if(ME.role=='telecaller')go('fu');else{viewSt='meeting_assigned';ST_SUB='';go('st')}
 }
 
 /* ---------- start ---------- */

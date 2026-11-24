@@ -1,4 +1,4 @@
-const CACHE = 'easydeals-v29';
+const CACHE = 'easydeals-v30';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
