@@ -1,5 +1,12 @@
 -- PROPOSED (not applied). Keeps a copy of every deleted owner lead with its history, so a delete can be undone by hand.
 -- Additive only: new table + trigger. The CRM code does not need any change.
+-- Safe to run twice. Validated on local Postgres 16 (see supabase/proposed/tests/).
+
+-- PRE-CHECK: stop here (nothing created) if leads.id is not an integer type.
+do $$ declare t text; begin
+  select data_type into t from information_schema.columns where table_schema='public' and table_name='leads' and column_name='id';
+  if t is null or t not in ('bigint','integer') then raise exception 'leads.id is % - script expects bigint/integer, not applied', t; end if;
+end $$;
 create table if not exists public.lead_archive (
   id          bigserial primary key,
   lead_id     bigint,
@@ -12,6 +19,9 @@ alter table public.lead_archive enable row level security;
 drop policy if exists admin_read on public.lead_archive;
 create policy admin_read on public.lead_archive for select to authenticated using (public.ed_is_admin());
 -- no insert/update/delete policy: only the trigger (security definer) writes here.
+revoke all on public.lead_archive from anon;
+revoke insert, update, delete, truncate on public.lead_archive from authenticated;
+grant select on public.lead_archive to authenticated;
 
 create or replace function public.ed_archive_lead()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -28,7 +38,9 @@ drop trigger if exists a_archive_lead on public.leads;
 create trigger a_archive_lead before delete on public.leads for each row execute function public.ed_archive_lead();
 
 -- RESTORE one lead (admin, SQL editor): insert the saved row back.
--- insert into public.leads select * from jsonb_populate_record(null::public.leads, (select lead from public.lead_archive where lead_id=<ID> order by id desc limit 1));
+-- insert into public.leads overriding system value
+--   select * from jsonb_populate_record(null::public.leads, (select lead from public.lead_archive where lead_id=<ID> order by id desc limit 1));
+-- ("overriding system value" is needed only if leads.id is an identity column; harmless otherwise.)
 -- (calls can be restored the same way from related->'calls' with jsonb_populate_recordset.)
 
 -- ROLLBACK:

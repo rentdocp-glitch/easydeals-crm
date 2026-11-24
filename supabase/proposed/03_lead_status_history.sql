@@ -1,4 +1,9 @@
 -- PROPOSED (not applied). Status history for owner leads: one row per status change.
+-- Safe to run twice. Validated on local Postgres 16 (see supabase/proposed/tests/).
+do $$ declare t text; begin
+  select data_type into t from information_schema.columns where table_schema='public' and table_name='leads' and column_name='id';
+  if t is null or t not in ('bigint','integer') then raise exception 'leads.id is % - script expects bigint/integer, not applied', t; end if;
+end $$;
 create table if not exists public.lead_status_log (
   id bigserial primary key, lead_id bigint not null, old_status text, new_status text,
   by_id uuid default auth.uid(), at timestamptz default now()
@@ -9,6 +14,9 @@ drop policy if exists read_own_or_admin on public.lead_status_log;
 -- Visible to anyone who can see the lead (re-uses the leads RLS through a sub-select).
 create policy read_own_or_admin on public.lead_status_log for select to authenticated
   using (exists (select 1 from public.leads l where l.id = lead_status_log.lead_id));
+revoke all on public.lead_status_log from anon;
+revoke insert, update, delete, truncate on public.lead_status_log from authenticated;
+grant select on public.lead_status_log to authenticated;
 create or replace function public.ed_log_status()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin

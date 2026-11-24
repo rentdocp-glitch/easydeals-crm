@@ -1,0 +1,107 @@
+--- apply pass 1 (must be clean both times) ---
+psql:../01_profiles_role_guard.sql:22: NOTICE:  trigger "a_guard_role" for relation "public.profiles" does not exist, skipping
+psql:../02_lead_archive_on_delete.sql:19: NOTICE:  policy "admin_read" for relation "public.lead_archive" does not exist, skipping
+psql:../02_lead_archive_on_delete.sql:37: NOTICE:  trigger "a_archive_lead" for relation "public.leads" does not exist, skipping
+psql:../03_lead_status_history.sql:13: NOTICE:  policy "read_own_or_admin" for relation "public.lead_status_log" does not exist, skipping
+psql:../03_lead_status_history.sql:28: NOTICE:  trigger "z_log_status" for relation "public.leads" does not exist, skipping
+--- apply pass 2 (must be clean both times) ---
+psql:../02_lead_archive_on_delete.sql:17: NOTICE:  relation "lead_archive" already exists, skipping
+psql:../03_lead_status_history.sql:10: NOTICE:  relation "lead_status_log" already exists, skipping
+psql:../03_lead_status_history.sql:11: NOTICE:  relation "lead_status_log_lead_idx" already exists, skipping
+=== T1 telecaller self-promote (expect ERROR Only an admin) ===
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}
+
+psql:run_tests.sql:8: ERROR:  Only an admin can change a role
+CONTEXT:  PL/pgSQL function ed_guard_role_change() line 8 at RAISE
+=== T2 telecaller rename self (expect UPDATE 1) ===
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}
+
+ t2_name 
+---------
+ Tele 2
+
+=== T3 telecaller insert admin profile (expect ERROR) ===
+                   set_config                   
+------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000d"}
+
+psql:run_tests.sql:14: ERROR:  Only an admin can create an admin profile
+CONTEXT:  PL/pgSQL function ed_guard_role_change() line 11 at RAISE
+=== T4 admin changes FE to telecaller (expect UPDATE 1) ===
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}
+
+  t4_role   
+------------
+ telecaller
+
+=== T5 SQL editor (no jwt) changes role (expect UPDATE 1) ===
+ t5_role 
+---------
+ fe
+
+=== T6 telecaller changes status of own lead -> log row with by_id=tele (expect 1 row) ===
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}
+
+ lead_id | old_status | new_status |                by_id                 
+---------+------------+------------+--------------------------------------
+       1 | new        | callback   | 00000000-0000-0000-0000-00000000000b
+
+=== T7 telecaller cannot see log of lead B (expect 0) / cannot insert log (expect ERROR) ===
+ tele_sees_lead_b 
+------------------
+                0
+
+psql:run_tests.sql:28: ERROR:  permission denied for table lead_status_log
+=== T8 admin deletes lead 1 -> archive keeps lead + 2 calls + 1 device + 1 log + 1 share ===
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}
+
+ lead_id |  name  | c | d | a | s |              deleted_by              
+---------+--------+---+---+---+---+--------------------------------------
+       1 | Lead A | 2 | 1 | 1 | 1 | 00000000-0000-0000-0000-00000000000a
+
+=== T9 telecaller cannot read archive (expect 0) / cannot write it (expect ERROR) ===
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}
+
+ tele_sees_archive 
+-------------------
+                 0
+
+psql:run_tests.sql:37: ERROR:  permission denied for table lead_archive
+=== T10 restore lead 1 + calls from archive (expect lead back, 2 calls) ===
+ id |  name  | status | calls 
+----+--------+--------+-------
+  1 | Lead A | new    |     2
+
+=== T11 anon sees nothing in new tables (expect ERROR permission denied x2) ===
+psql:run_tests.sql:45: ERROR:  permission denied for table lead_archive
+psql:run_tests.sql:46: ERROR:  permission denied for table lead_status_log
+--- rollback scripts ---
+ tgname 
+--------
+(0 rows)
+
+ leads_untouched 
+-----------------
+               2
+(1 row)
+
+--- pre-check: uuid leads.id must refuse ---
+psql:../02_lead_archive_on_delete.sql:9: ERROR:  leads.id is uuid - script expects bigint/integer, not applied
+CONTEXT:  PL/pgSQL function inline_code_block line 3 at RAISE
+ should_be_null 
+----------------
+ 
+(1 row)
+
