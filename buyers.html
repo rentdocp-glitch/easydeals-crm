@@ -391,6 +391,8 @@ const PEND=['New','Contacted','Follow-up','Site Visit Scheduled'];
 const SRC=['99acres','Magicbricks','Housing.com','Website','Other'];
 const pill=(s,n)=>{const c=(BSC[s]||'#eef0f3|#4a5361').split('|');return `<span class="pill" style="background:${c[0]};color:${c[1]}">${esc(s)}${n!=null?' '+n:''}</span>`};
 const isSold=p=>/^sold/i.test(p.status||'');
+const isSoldED=p=>/^sold$/i.test((p.status||'').trim());
+const isOff=p=>isSold(p)||/^(under offer|not available|on hold|rented)/i.test(p.status||'');
 
 /* ---------- state ---------- */
 var fRep=false,BLIM=60;let OWN_N=0,CE=[],ME=null,PR=[],BL=[],OW=[],tab=(/^#(props|buyers|fu|deal|rep|team|un|access|mb)$/.test(location.hash)?location.hash.slice(1):'props'),openP=null,openB=null,q='',fSt='',fSrc='',fP='',pShow='active',editP=null,addB=false,hist={},dupOk=false,newFromLead=null;
@@ -449,7 +451,7 @@ function openDrawer(){
   const un=BL.filter(b=>!b.property_id).length;
   $('#drb').innerHTML=`<div class="di" onclick="location.href='./'"><span>↩ Main CRM (team)</span></div>
   <div class="ds">Buyers</div>
-  <div class="di" onclick="go('props')"><span>🏢 Properties</span><span class="cnt">${PR.filter(p=>!isSold(p)).length}</span></div>
+  <div class="di" onclick="go('props')"><span>🏢 Properties</span><span class="cnt">${PR.filter(p=>!isOff(p)).length}</span></div>
   <div class="di" onclick="go('buyers')"><span>🧑‍🤝‍🧑 Buyer Leads</span><span class="cnt">${BL.length}</span></div>
   <div class="di" onclick="go('team')"><span>👥 Assign work</span><span class="cnt ${(tPend('buyer')+tPend('prop'))?'hi':''}">${tPend('buyer')+tPend('prop')}</span></div>
   <div class="di" onclick="go('fu')"><span>🔁 Follow-up</span><span class="cnt hi">${fuList().length}</span></div>
@@ -575,7 +577,7 @@ VIEW.props=()=>{
   if(openP)return propDetail(P(openP));
   const t=today(),fu=fuList().length,un=BL.filter(b=>!b.property_id).length;
   const renewL=PR.filter(isRenew),feeL=PR.filter(feeDue),dueL=PR.filter(p=>dueOf(p)>0);
-  let list=pShow=='renew'?renewL:pShow=='fee'?feeL:pShow=='due'?dueL:PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):!isSold(p)));
+  let list=pShow=='renew'?renewL:pShow=='fee'?feeL:pShow=='due'?dueL:PR.filter(p=>pShow=='all'||(pShow=='sold'?isSold(p):pShow=='off'?(isOff(p)&&!isSold(p)):!isOff(p)));
   const zsel=pZ?pZ.split(',').filter(Boolean):[],asel=pA?pA.split(',').filter(Boolean):[];
   const zrows=[...ZA.zones.filter(z=>z.active).map(z=>[String(z.id),z.name]),['none','❓ Bina zone']].map(([k,l])=>[k,l,k==='none'?list.filter(p=>!p.zone_id).length:list.filter(p=>String(p.zone_id)===k).length]);
   const zlab=!zsel.length?'All zones ('+list.length+')':zrows.filter(r=>zsel.includes(r[0])).map(r=>r[1]).join(', ');
@@ -593,13 +595,13 @@ VIEW.props=()=>{
   return capCard+missedCard()+`<div class="grid">
    <div class="card stat"><div class="mu">Buyer leads</div><b>${BL.length}</b></div>
    <div class="card stat" onclick="go('fu')" style="cursor:pointer"><div class="mu">Today follow-up</div><b class="${fu?'er':''}">${fu}</b></div>
-   <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isSold(p)).length}</b></div>
+   <div class="card stat"><div class="mu">Active properties</div><b>${PR.filter(p=>!isOff(p)).length}</b></div>
    <div class="card stat" onclick="go('un')" style="cursor:pointer"><div class="mu">Unassigned</div><b class="${un?'wr':''}">${un}</b></div></div>
-  <div class="chips">${[['active','Active'],['sold','Sold'],['all','All']].concat(renewL.length||pShow=='renew'?[['renew','⏳ Renewal '+renewL.length]]:[]).concat(feeL.length||pShow=='fee'?[['fee','💰 Success fee pending '+feeL.length]]:[]).concat(dueL.length||pShow=='due'?[['due','💳 Package pending '+dueL.length]]:[]).map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ New</button></div>${zbar}
+  <div class="chips">${[['active','Active'],['off','⏸ Off market'],['sold','Sold'],['all','All']].concat(renewL.length||pShow=='renew'?[['renew','⏳ Renewal '+renewL.length]]:[]).concat(feeL.length||pShow=='fee'?[['fee','💰 Success fee pending '+feeL.length]]:[]).concat(dueL.length||pShow=='due'?[['due','💳 Package pending '+dueL.length]]:[]).map(c=>`<button class="${pShow==c[0]?'on':''}" onclick="pShow='${c[0]}';render()">${c[1]}</button>`).join('')}<button onclick="editP={};render()">➕ New</button></div>${zbar}
   <input placeholder="📞 Number or name: owner, ED-ID, project, area" inputmode="search" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{render();const i=$('#app input[inputmode=search]');if(i){i.focus();i.setSelectionRange(99,99)}},350)" style="margin-bottom:10px">
   ${list.map(({p,l})=>`<div class="card lc" onclick="openP='${esc(p.id)}';render();scrollTo(0,0)" style="cursor:pointer">
     <div class="row"><div style="flex:1;min-width:0"><div class="own">👤 <b>${esc(p.owner_name||'Owner ?')}</b><span class="ob">✅ Deal Closed Owner</span></div><div class="nm" style="font-size:15px">${esc(p.id)} · ${esc(p.project||'-')}</div></div><div style="text-align:right"><div class="big">${l.length}</div><div class="mu" style="font-size:11px">buyer leads</div></div></div>
-    <div class="mu">${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">Sold</b>':''}</div>
+    <div class="mu">${esc(p.bhk||'')} · ${esc(p.locality||'')} ${p.price?'· '+rs(p.price):''} ${isSold(p)?'· <b class="er">'+esc(p.status)+'</b>':isOff(p)?'· <b class="wr">'+esc(p.status)+'</b>'+((p.details||{}).recheck_date?' · ⏰ '+esc(p.details.recheck_date):''):''}</div>
     <div>${stPills(l)}</div>${portalRow(p)}${ownerActs(p)}</div>`).join('')||(bHits.length?'':'<div class="empty"><div class="ei">🏢</div><b>No owner found for this name/number</b></div>')}
   ${bHits.length?`<div class="sec">🧑 This number is in buyer leads (${bHits.length})</div>`+bHits.slice(0,20).map(b=>bCard(b,repeats())).join(''):''}`;
 };
@@ -627,7 +629,8 @@ function propForm(p){
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">${isNew?'➕ New Property':'✏️ '+esc(p.id)}</div>
   ${newFromLead?`<div class="mu">From owner lead: ${esc(newFromLead.name||'')} · ${esc(newFromLead.phone||'')}</div>`:''}
   <div class="form">
-  <div class="f2"><div><label>Property ID</label><input id="pf_id" value="${isNew?nextId():v('id')}" ${isNew?'':'disabled'}></div><div><label>Status</label><select id="pf_status">${['Available - Sale','Available - Rent','On Hold','Sold','Rented'].map(s=>`<option ${p.status==s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+  <div class="f2"><div><label>Property ID</label><input id="pf_id" value="${isNew?nextId():v('id')}" ${isNew?'':'disabled'}></div><div><label>Status</label><select id="pf_status">${['Available - Sale','Available - Rent','Under Offer','Not Available','On Hold','Sold','Sold - Outside','Rented'].map(s=>`<option ${p.status==s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+  <div class="f2"><div><label>Status reason / note</label><input id="pf_snote" placeholder="Not Available / Under Offer / Sold - Outside: reason" value="${esc((p.details||{}).status_note||'')}"></div><div><label>Recheck on (Not Available)</label><input type="date" id="pf_srecheck" value="${esc((p.details||{}).recheck_date||'')}"></div></div>
   <div class="f2">${f('owner_name','Owner name')}${f('owner_phone','Owner mobile (primary)')}</div><div class="f2">${f('owner_phone2','Owner mobile 2 (secondary, optional)')}</div><a href="javascript:void(0)" onclick="swapOw()" style="font-size:12px;display:inline-block;margin:2px 0 6px">⇄ Swap primary and secondary</a>
   ${f('project','Property / Project name')}
   <div class="f2">${f('bhk','BHK')}${f('ptype','Type (Flat / Villa / Shop)')}</div>
@@ -658,7 +661,7 @@ async function saveProp(isNew){
   ['sqft','price','plan_amount'].forEach(k=>{if(row[k]!=null)row[k]=+row[k]||null});
   if(zUI()){const z=await zpVal('p',isNew);if(z.err){$('#pf_err').innerHTML=`<div class="warn">${esc(z.err)}</div>`;return}if(!z.keep){row.locality=z.locality;row.area_id=z.area_id||null}}
   {const m=($('#pf_maps')||{}).value;if(m!=null){const old=(!isNew&&editP&&editP.details)||{},g=id=>(($('#'+id)||{}).value||'').trim()||null;
-    row.details=Object.assign({},old,{maps:m.trim()||null,service_start:g('pf_svc_start'),success_fee:+g('pf_sfee')||null,package_amount:+g('pf_pkg')||null,url_99acres:g('pf_u99'),url_magicbricks:g('pf_umb'),url_housing:g('pf_uhs')})}}
+    row.details=Object.assign({},old,{maps:m.trim()||null,service_start:g('pf_svc_start'),success_fee:+g('pf_sfee')||null,package_amount:+g('pf_pkg')||null,url_99acres:g('pf_u99'),url_magicbricks:g('pf_umb'),url_housing:g('pf_uhs'),status_note:g('pf_snote'),recheck_date:g('pf_srecheck')})}}
   const id=isNew?$('#pf_id').value.trim().toUpperCase():editP.id;
   if(!id||!row.project){$('#pf_err').innerHTML='<div class="warn">Property ID and project name are required.</div>';return}
   if(isNew){
@@ -731,14 +734,14 @@ const dueOf=p=>{const pk=+dd(p).package_amount||0;return pk?Math.max(0,pk-paidOf
 const dd=p=>p.details||{};
 const dmy=x=>{if(!x)return '';const d=new Date(String(x).slice(0,10)+'T00:00:00');return isNaN(d)?'':d.toLocaleDateString('en-GB')};
 const daysTo=x=>x?Math.round((new Date(String(x).slice(0,10)+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5):null;
-const isRenew=p=>{const n=daysTo(p.service_till);return !isSold(p)&&n!=null&&n<=15&&n>=-30};
-const feeDue=p=>isSold(p)&&dd(p).sf_status!='paid';
+const isRenew=p=>{const n=daysTo(p.service_till);return !isOff(p)&&n!=null&&n<=15&&n>=-30};
+const feeDue=p=>isSoldED(p)&&dd(p).sf_status!='paid';
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 async function pDet(p,extra){const d=Object.assign({},dd(p),extra);p.details=d;const {error}=await sb.from('properties').update({details:d}).eq('id',p.id);if(error)toast(error.message,1);return !error}
 function svcHtml(p){const d=dd(p),n=daysTo(p.service_till);
   const svc=p.service_till?`<div class="mu" style="margin-top:6px">📅 Service: ${dmy(d.service_start)||'?'} → ${dmy(p.service_till)} ${n==null?'':n<0?`<b class="er">· ${-n} days ago (ended)</b>`:n<=15?`<b class="wr">· ${n} days left (renewal)</b>`:`· ${n} days left`}</div>`:'<div class="mu" style="margin-top:6px">📅 Service date not filled · fill via Edit</div>';
   const wel=d.welcome_at?`<div class="mu">🎉 Welcome message sent: ${dmy(d.welcome_at)}</div>`:'';
-  const fee=isSold(p)||d.sf_status?`<div class="card" style="margin:8px 0 0;padding:10px;background:${d.sf_status=='paid'?'#e6f7ec':'#fff6e0'}"><b>💰 Success Fee ${d.success_fee?inr(d.success_fee):'(amount not filled)'}</b> · ${d.sf_status=='paid'?`✅ Mila ${dmy(d.sf_paid_at)}`:'⏳ Pending'}
+  const fee=isSoldED(p)||d.sf_status?`<div class="card" style="margin:8px 0 0;padding:10px;background:${d.sf_status=='paid'?'#e6f7ec':'#fff6e0'}"><b>💰 Success Fee ${d.success_fee?inr(d.success_fee):'(amount not filled)'}</b> · ${d.sf_status=='paid'?`✅ Mila ${dmy(d.sf_paid_at)}`:'⏳ Pending'}
     <div class="acts" style="margin-top:6px">${d.sf_status=='paid'?`<button onclick="feeSet('${esc(p.id)}',0)">By mistake? Do the rest</button>`:`<button class="g" onclick="feeSet('${esc(p.id)}',1)">✅ Success fee received</button>`}</div></div>`:'';
   const pk=+d.package_amount||0,paid=paidOf(p),due=dueOf(p);
   const pay=pk||paid?`<div class="card" style="margin:8px 0 0;padding:10px;background:${pk&&!due?'#e6f7ec':'#eef4ff'}"><b>💳 Package ${pk?inr(pk):'(total not filled)'}</b><div style="margin-top:4px">Received: <b>${inr(paid)}</b>${pk?` · Pending: <b class="${due?'er':''}">${inr(due)}</b>${due?'':' ✅ Poora mila'}`:''}</div>
@@ -865,7 +868,7 @@ const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location:
 const pMedia=p=>[[p.reel_url,'📱 Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>x[0]&&String(x[0]).trim()).map(x=>x[1]+': '+x[0]);
 function similarProps(p,b){
   const bhk=p&&p.bhk?String(p.bhk).match(/\d/):null,loc=p&&p.locality;
-  return PR.filter(x=>!isSold(x)&&(!p||x.id!=p.id)).map(x=>({x,s:(bhk&&String(x.bhk||'').includes(bhk[0])?2:0)+(loc&&x.locality==loc?1:0)+(x.reel_url||x.tour_url?0.5:0)})).sort((a,c)=>c.s-a.s).slice(0,3).map(o=>o.x);
+  return PR.filter(x=>!isOff(x)&&(!p||x.id!=p.id)).map(x=>({x,s:(bhk&&String(x.bhk||'').includes(bhk[0])?2:0)+(loc&&x.locality==loc?1:0)+(x.reel_url||x.tour_url?0.5:0)})).sort((a,c)=>c.s-a.s).slice(0,3).map(o=>o.x);
 }
 function waText(k,b){
   const p=P(b.property_id),nm=b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?' '+b.buyer_name.split(' ')[0]:'',hi=`Hello${nm},`,sign='Regards,\nTeam Easy Deals';
@@ -1025,7 +1028,7 @@ function addBForm(){
   return `<button onclick="addB=false;dupOk=false;render()" style="margin-bottom:10px">← Cancel</button>
   <div class="card"><div class="nm" style="font-size:18px;font-weight:800">➕ New buyer lead</div><div class="form">
   <div class="f2"><div><label>Buyer name</label><input id="ab_n"></div><div><label>Mobile</label><input id="ab_m" type="tel" inputmode="numeric"></div></div>
-  <div><label>Property</label><select id="ab_p"><option value="">Unassigned (add later)</option>${PR.filter(p=>!isSold(p)).map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>
+  <div><label>Property</label><select id="ab_p"><option value="">Unassigned (add later)</option>${PR.filter(p=>!isOff(p)).map(p=>`<option value="${esc(p.id)}" ${fP==p.id?'selected':''}>${esc(p.id+' · '+(p.project||''))}</option>`).join('')}</select></div>
   <div class="f2"><div><label>Portal</label><select id="ab_s">${SRC.map(s=>`<option>${s}</option>`).join('')}</select></div><div><label>Lead date</label><input id="ab_d" type="date" value="${today()}"></div></div>
   <div><label>Requirement</label><input id="ab_r" placeholder="2 BHK, budget 90 L"></div>
   <div><label>Remarks</label><textarea id="ab_x" rows="2"></textarea></div>
@@ -1047,7 +1050,7 @@ const fuList=()=>{const t=today();return BL.filter(b=>PEND.includes(b.status)&&b
 VIEW.fu=()=>{
   const rp=repeats(),t=today(),due=fuList().sort((a,b)=>String(a.next_fu).localeCompare(String(b.next_fu)));
   const vis=BL.filter(b=>b.status=='Site Visit Scheduled'&&b.visit_at&&b.visit_at.slice(0,10)>=t).sort((a,b)=>String(a.visit_at).localeCompare(String(b.visit_at)));
-  const fresh=BL.filter(b=>b.status=='New'&&!b.next_fu&&b.property_id&&!isSold(P(b.property_id)||{})&&!/not a buyer/i.test(b.remarks||'')).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).slice(0,15);
+  const fresh=BL.filter(b=>b.status=='New'&&!b.next_fu&&b.property_id&&!isOff(P(b.property_id)||{})&&!/not a buyer/i.test(b.remarks||'')).sort((a,b)=>String(b.lead_date).localeCompare(String(a.lead_date))).slice(0,15);
   return `<div class="sec">📅 Upcoming site visits (${vis.length})</div>${vis.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">No visit fixed.</div>'}
   <div class="sec">🔁 Today / overdue follow-up (${due.length})</div>${due.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">No follow-ups pending today 🎉</div>'}
   <div class="sec">🆕 New leads not yet spoken to (latest 15)</div>${fresh.map(b=>bCard(b,rp)).join('')||'<div class="mu" style="margin:0 2px">All leads have been spoken to.</div>'}`;
@@ -1263,14 +1266,14 @@ let EMP=null,TK='buyer',TP='',TF='none',TSEL=new Set(),TEM=new Set(),TLIM=60,RUL
 async function loadEmp(){try{const {data}=await sb.from('profiles').select('id,name,role');EMP=(data||[]).filter(p=>p.role!='admin')}catch(e){EMP=[]}render()}
 const empName=id=>{const e=(EMP||[]).find(x=>x.id==id);return e?(e.name||'Employee'):'?'};
 const aOf=x=>x.assignees||[];
-const tItems=()=>TK=='buyer'?BL:PR.filter(p=>!isSold(p));
+const tItems=()=>TK=='buyer'?BL:PR.filter(p=>!isOff(p));
 const tKey=x=>String(x.id);
 function tList(){let l=tItems().slice();l.sort(TK=='buyer'?(a,b)=>b.id-a.id:(a,b)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true}));
   if(TF=='none')l=l.filter(x=>!aOf(x).length);else if(TF!='all')l=l.filter(x=>aOf(x).includes(TF));
   if(TK=='buyer'&&TP)l=l.filter(x=>x.property_id==TP);
   if(q){const s=q.toLowerCase(),d=s.replace(/\D/g,'');l=l.filter(x=>(TK=='buyer'?[x.buyer_name,x.code,x.requirement,x.remarks,x.property_id,x.buyer_phone,(P(x.property_id)||{}).project]:[x.id,x.project,x.owner_name,x.locality,x.owner_phone]).join(' ').toLowerCase().includes(s)||(d.length>=4&&ph10(x.buyer_phone||x.owner_phone).includes(d)))}
   return l}
-const tPend=k=>(k=='buyer'?BL:PR.filter(p=>!isSold(p))).filter(x=>!aOf(x).length).length;
+const tPend=k=>(k=='buyer'?BL:PR.filter(p=>!isOff(p))).filter(x=>!aOf(x).length).length;
 function tUpd(){const l=tList(),n=l.filter(b=>TSEL.has(tKey(b))).length;const c=$('#tcnt');if(c)c.textContent=n+' selected';const a=$('#tall');if(a)a.checked=l.length>0&&n==l.length;
   document.querySelectorAll('.trow').forEach(r=>r.classList.toggle('tsel',TSEL.has(r.dataset.id)))}
 function tTog(id,v){v?TSEL.add(id):TSEL.delete(id);tUpd()}
@@ -1360,8 +1363,8 @@ function mkFromLead(id){
 /* ---------- report ---------- */
 let rSold=false;
 VIEW.rep=()=>{
-  const ps=PR.filter(p=>rSold||!isSold(p)).map(p=>{const l=leadsOf(p.id),c=countBy(l,'status');return {p,t:l.length,c,pen:l.filter(b=>PEND.includes(b.status)).length}}).sort((a,b)=>b.t-a.t);
-  const src=countBy(BL.filter(b=>rSold||!isSold(P(b.property_id)||{})),'source');
+  const ps=PR.filter(p=>rSold||!isOff(p)).map(p=>{const l=leadsOf(p.id),c=countBy(l,'status');return {p,t:l.length,c,pen:l.filter(b=>PEND.includes(b.status)).length}}).sort((a,b)=>b.t-a.t);
+  const src=countBy(BL.filter(b=>rSold||!isOff(P(b.property_id)||{})),'source');
   const H=['New','Contacted','Follow-up','Site Visit Scheduled','Site Visit Done','Deal Closed'],AB={'New':'New','Contacted':'Cont.','Follow-up':'F-up','Site Visit Scheduled':'Visit sch.','Site Visit Done':'Visit done','Deal Closed':'Closed'};
   return `<div class="chips"><button class="${rSold?'':'on'}" onclick="rSold=false;render()">Without Sold</button><button class="${rSold?'on':''}" onclick="rSold=true;render()">With Sold</button></div>
   <div class="card"><b>Portal-wise leads</b>${Object.entries(src).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="lr"><span>${esc(k||'-')}</span><b>${v}</b></div>`).join('')}</div>
