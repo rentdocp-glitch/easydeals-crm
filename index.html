@@ -1460,10 +1460,18 @@ const REPT={admin:[['ov','📊 Overview'],['tc','📞 Telecallers'],['fe','🚶 
 const repTabs=()=>{const l=REPT[ME.role];if(!l.find(t=>t[0]==repTab))repTab=l[0][0];return `<div class="chips" style="overflow-x:auto">${l.map(t=>`<button class="${repTab==t[0]?'on':''}" onclick="repTab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>`};
 const kpi=async()=>{const {data,error}=await sb.rpc('kpi',{since:sinceISO()});if(error)throw error;return data||[]};
 
+/* Save a file: Android app saves into Downloads through its bridge (WebView ignores normal blob downloads); browsers download normally. */
+async function saveBlobFile(name,mime,blob){
+  if(window.EDApp&&EDApp.saveFile){try{const b64=await new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(String(fr.result).split(',')[1]);fr.onerror=no;fr.readAsDataURL(blob)});if(EDApp.saveFile(name,mime,b64)==='ok')return}catch(e){}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+}
+const XLSXM='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const saveWb=(wb,name)=>saveBlobFile(name,XLSXM,new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:XLSXM}));
+async function needXLSX(){if(!window.XLSX){await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load the Excel library. Check your internet.'));document.head.appendChild(sc)})}}
 async function exportXlsx(btn,allTime){
-  const old=btn.textContent;btn.disabled=true;btn.textContent='⏳ Building Excel…';
+  const old=btn.innerHTML;btn.disabled=true;btn.textContent='⏳ Building Excel…';
   try{
-    if(!window.XLSX){await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load the Excel library — check your internet'));document.head.appendChild(sc)})}
+    await needXLSX();
     let all=[],from=0;
     for(;;){const {data,error}=await sb.from('leads').select('*').order('created_at',{ascending:true}).range(from,from+999);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<1000)break;from+=1000}
     const r0=RANGE;if(allTime)RANGE='all';let rows;try{rows=await kpi()}finally{RANGE=r0}
@@ -1484,10 +1492,33 @@ async function exportXlsx(btn,allTime){
     add('Field Exec KPI',feS,[16,14,10,8,9,9,14,10,8,12,13,13]);
     add('Lead workload',wl,[18,8,6,10,10,10,16,14,18,14,12,14]);
     add('All Leads',leads,[5,18,13,30,7,7,22,10,11,16,12,12,13,13,13,13,34,20]);
-    XLSX.writeFile(wb,'EasyDeals_KPI_'+isoToday()+'.xlsx');
+    await saveWb(wb,'EasyDeals_KPI_'+isoToday()+'.xlsx');
     toast&&toast('✅ Excel downloaded ('+all.length+' leads)');
-  }catch(e){alert('Excel error: '+(e.message||e))}
-  btn.disabled=false;btn.textContent=old;
+  }catch(e){toast('Excel error: '+(e.message||e),1)}
+  btn.disabled=false;btn.innerHTML=old;
+}
+/* Full backup (admin): every CRM table, read with the admin's own login. Read-only, nothing is changed.
+   Gives 2 files: .json (exact copy, for restore) and .xlsx (easy to open). */
+const BK_TABLES=['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares','dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history','invoices','assign_rules','app_settings','wa_settings','wa_messages'];
+async function fullBackup(btn){
+  if(!ME||ME.role!='admin')return toast('Only admin can take a full backup',1);
+  const old=btn.innerHTML;btn.style.pointerEvents='none';
+  const out={_meta:{app:'EasyDeals CRM',taken_at:new Date().toISOString(),by:ME.name||'',tables:{}}},bad=[];
+  try{
+    for(const t of BK_TABLES){
+      btn.textContent='⏳ Backup: '+t+'…';
+      try{const rows=[];for(let f=0;;f+=1000){const {data,error}=await sb.from(t).select('*').range(f,f+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break}
+        out[t]=rows;out._meta.tables[t]=rows.length}catch(e){bad.push(t+': '+(e.message||e));out._meta.tables[t]='ERROR '+(e.message||e)}
+    }
+    const stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    await saveBlobFile('EasyDeals_FullBackup_'+stamp+'.json','application/json',new Blob([JSON.stringify(out)],{type:'application/json'}));
+    try{await needXLSX();const wb=XLSX.utils.book_new();const cell=v=>v==null?'':typeof v=='object'?JSON.stringify(v).slice(0,32000):typeof v=='string'?v.slice(0,32000):v;
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(Object.entries(out._meta.tables).map(([k,v])=>({Table:k,Rows:v}))),'Summary');
+      for(const t of BK_TABLES){const rows=out[t];if(!rows||!rows.length)continue;XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.map(r=>{const o={};for(const k in r)o[k]=cell(r[k]);return o})),t.slice(0,31))}
+      await new Promise(r=>setTimeout(r,700));await saveWb(wb,'EasyDeals_FullBackup_'+stamp+'.xlsx')}catch(e){bad.push('Excel: '+(e.message||e))}
+    const n=Object.values(out._meta.tables).filter(v=>typeof v=='number').reduce((a,b)=>a+b,0);
+    toast(bad.length?'Backup saved ('+n+' rows), but some tables failed: '+bad.join(' | '):'✅ Full backup saved ('+n+' rows). Keep the files safe (Google Drive).',bad.length?1:0);
+  }finally{btn.innerHTML=old;btn.style.pointerEvents=''}
 }
 const rangeNote='<p class="mu" style="margin:0 2px 10px">Calls, data given, meetings, attended and deals follow the selected period (by the date each happened). Pending / overdue / unused data are live totals.</p>';
 const tcFunnel=r=>funnel([['Data given',+r.given],['Data touched',+r.touched],['Meetings fixed',+r.meet],['Attended',+r.att],['Deals closed',+r.deal]]);
@@ -1600,7 +1631,7 @@ function drawerBody(C){
   if(MODE=='rm'&&ME.role!='admin')return `<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>👤 <b>Back to Owner work</b></span><span>›</span></div><div class="ds">Relationship Manager</div>`+list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+`<div class="di" onclick="toggleRing()"><span>🔔 New lead sound</span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`;
   const rmBtn=ME.canRM?`<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>🤝 <b>Open RM (buyers)</b> <span class="mu">· Relationship Manager</span></span><span>›</span></div>`:'';
   return `<div class="di" onclick="go('${list[0][0]}')"><span>🏠 Home</span></div>`+rmBtn+
-    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();aiSwitch()"><span>🤖 <b>AI RM (WhatsApp)</b> <span class="mu">· on/off + daily limit</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div>`:'')+
+    (ME.role=='admin'?`<div class="di" onclick="location.href='buyers.html'" style="background:#fff7e6"><span>⭐ <b>Properties & Buyers</b> <span class="mu">· Phase 2 (admin only)</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="closeDrawer();aiSwitch()"><span>🤖 <b>AI RM (WhatsApp)</b> <span class="mu">· on/off + daily limit</span></span><span>›</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="go('rep')"><span>📈 Team Report (KPI)</span></div>`:'')+(ME.role=='admin'?`<div class="di" onclick="exportXlsx(this,true)"><span>⬇️ Download Excel <span class="mu">· KPI + all leads</span></span></div><div class="di" onclick="fullBackup(this)"><span>💾 <b>Full backup</b> <span class="mu">· all data, JSON + Excel</span></span></div>`:'')+
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
