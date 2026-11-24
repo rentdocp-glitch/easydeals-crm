@@ -332,6 +332,28 @@ html{background:var(--bg)}
 .tbl td:first-child,.tbl th:first-child{white-space:normal;min-width:120px;position:sticky;left:0;background:#fff;z-index:1}
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
 .oacts a{white-space:nowrap;font-size:13.5px;display:flex;align-items:center;justify-content:center;min-height:42px}
+/* --- lead card actions: main row (Call / WhatsApp / Status) + light second row --- */
+.acts.acts1{display:grid;grid-template-columns:1.4fr auto 1fr;gap:8px;margin-top:10px}
+.acts.acts1>*{min-height:44px;margin:0}
+.acts.acts1 .stb{font-weight:700;color:var(--pr);background:#fff}
+.acts2{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.acts2 .gh{background:transparent;border:1px solid transparent;box-shadow:none;color:#475569;font-size:13px;font-weight:600;padding:6px 10px;min-height:36px;border-radius:10px}
+.acts2 .gh:hover{background:#f1f5f9;border-color:var(--bd)}
+.acts2 .gh.r{color:var(--er)}
+.cmp .acts2{display:none}
+/* --- RM filter chips wrap instead of hiding off-screen --- */
+.rmchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.rmchips button{min-height:38px}
+/* --- bottom sheets (Number history etc.) --- */
+.sheetov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s ease}
+.sheet{background:#fff;color:var(--tx);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(15,23,42,.25)}
+.sheet::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:#cbd5e1;margin:2px auto 10px}
+.sheet button,.sheet .btn{min-height:42px}
+@media(min-width:700px){.sheetov{align-items:center}.sheet{border-radius:20px;max-height:80vh}}
+/* --- backup reminder + current drawer item --- */
+.bkr{display:flex;flex-direction:column;gap:2px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:var(--r);padding:12px 14px;margin-bottom:12px;cursor:pointer}
+.bkr span{font-size:12.5px;color:#9a3412}
+.di.on{background:#eef4ff;color:var(--pr);font-weight:700}
 @media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
 </style>
 </head><body>
@@ -341,7 +363,7 @@ html{background:var(--bg)}
 <div id="ov" onclick="closeDrawer()"></div>
 <aside id="dr"><div class="dh"><div class="av">A</div><div><b id="dnm">Admin</b><div class="mu">Buyers (admin only)</div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
 <div id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script>
 <script>
 const SB_URL='https://sfvpslsexobukgerkixi.supabase.co';
 const SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';

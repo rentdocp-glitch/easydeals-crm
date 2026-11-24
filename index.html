@@ -308,6 +308,28 @@ html{background:var(--bg)}
 .tbl td:first-child,.tbl th:first-child{white-space:normal;min-width:120px;position:sticky;left:0;background:#fff;z-index:1}
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
 .oacts a{white-space:nowrap;font-size:13.5px;display:flex;align-items:center;justify-content:center;min-height:42px}
+/* --- lead card actions: main row (Call / WhatsApp / Status) + light second row --- */
+.acts.acts1{display:grid;grid-template-columns:1.4fr auto 1fr;gap:8px;margin-top:10px}
+.acts.acts1>*{min-height:44px;margin:0}
+.acts.acts1 .stb{font-weight:700;color:var(--pr);background:#fff}
+.acts2{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.acts2 .gh{background:transparent;border:1px solid transparent;box-shadow:none;color:#475569;font-size:13px;font-weight:600;padding:6px 10px;min-height:36px;border-radius:10px}
+.acts2 .gh:hover{background:#f1f5f9;border-color:var(--bd)}
+.acts2 .gh.r{color:var(--er)}
+.cmp .acts2{display:none}
+/* --- RM filter chips wrap instead of hiding off-screen --- */
+.rmchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.rmchips button{min-height:38px}
+/* --- bottom sheets (Number history etc.) --- */
+.sheetov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s ease}
+.sheet{background:#fff;color:var(--tx);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(15,23,42,.25)}
+.sheet::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:#cbd5e1;margin:2px auto 10px}
+.sheet button,.sheet .btn{min-height:42px}
+@media(min-width:700px){.sheetov{align-items:center}.sheet{border-radius:20px;max-height:80vh}}
+/* --- backup reminder + current drawer item --- */
+.bkr{display:flex;flex-direction:column;gap:2px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:var(--r);padding:12px 14px;margin-bottom:12px;cursor:pointer}
+.bkr span{font-size:12.5px;color:#9a3412}
+.di.on{background:#eef4ff;color:var(--pr);font-weight:700}
 @media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
 </style>
 </head><body>
@@ -317,7 +339,7 @@ html{background:var(--bg)}
 <div id="ov" onclick="closeDrawer()"></div>
 <aside id="dr"><div class="dh"><div class="av" id="dav"></div><div><b id="dnm"></b><div class="mu" id="drl"></div></div><button class="x" onclick="closeDrawer()">✕</button></div><div id="drb"></div><div class="dbot"><div style="min-width:0;flex:1"><div class="em" id="dem"></div></div><button class="r" onclick="logout()">⎋ Logout</button></div></aside>
 <div id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js"></script>
 <script>
 const SB_URL='https://sfvpslsexobukgerkixi.supabase.co';
 const SB_KEY='sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa';
@@ -382,6 +404,7 @@ try{history.replaceState({tab:'__root'},'')}catch(e){}
 window.addEventListener('popstate',e=>{
   if(!ME)return;
   const st=e.state||{};
+  {const pop=document.querySelector('#nhv,#aiov');if(pop){pop.remove();try{history.pushState({tab},'')}catch(x){}return}}
   if(openId||openK||noteId||showAdd){ // close the open form first, stay on this tab
     openId=null;openK=null;noteId=null;showAdd=false;clearInterval(tint);t0=null;
     try{history.pushState({tab},'')}catch(x){}
@@ -533,11 +556,13 @@ function actions(l){
   const b=[];
   b.push(`<button class="cl" onclick="openForm(${l.id},'call')">📞 Call</button>`);
   b.push(`<a class="btn ic wi" title="WhatsApp" href="javascript:void(0)" onclick="waSheet('lead',${l.id})"><svg viewBox="0 0 32 32" width="22" height="22" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.56 4.19 1.62 6.01L4 28l7.17-1.88a12.03 12.03 0 0 0 4.87 1.02h.01C22.68 27.14 28 21.76 28 15.12 28 8.4 22.68 3 16.04 3zm0 22.1h-.01a10 10 0 0 1-5.1-1.4l-.37-.22-3.8 1 1.02-3.7-.24-.38a9.95 9.95 0 0 1-1.52-5.3c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.98 0 5.5-4.5 10-10.03 10zm5.5-7.48c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.68-1.64-.93-2.25-.25-.58-.5-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.23 5.13 4.53.72.3 1.28.5 1.72.64.72.23 1.37.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35z"/></svg></a>`);
-  b.push(`<button onclick="openForm(${l.id},'status')">Status</button>`);
-  if(ME.role!='admin')b.push(`<button class="ic" title="Transfer / Tag" onclick="openForm(${l.id},'share')">🔁</button>`);
-  b.push(`<button class="ic" title="Edit" onclick="openForm(${l.id},'edit')">✏️</button>`);
-  if(ME.role=='admin')b.push(`<button class="ic r" title="Delete" onclick="openForm(${l.id},'del')">🗑</button>`);
-  return `<div class="acts">${b.join('')}</div>`;
+  b.push(`<button class="stb" onclick="openForm(${l.id},'status')">✓ Status</button>`);
+  // Secondary actions in a lighter second row, so the main row has only Call / WhatsApp / Status.
+  const s2=[];
+  if(ME.role!='admin')s2.push(`<button class="gh" aria-label="Transfer or tag" onclick="openForm(${l.id},'share')">🔁 Transfer / Tag</button>`);
+  s2.push(`<button class="gh" aria-label="Edit lead" onclick="openForm(${l.id},'edit')">✏️ Edit</button>`);
+  if(ME.role=='admin')s2.push(`<button class="gh r" aria-label="Delete lead" onclick="openForm(${l.id},'del')">🗑 Delete</button>`);
+  return `<div class="acts acts1">${b.join('')}</div><div class="acts2">${s2.join('')}</div>`;
 }
 const stOpts=()=>'<option value="">— Select status —</option>'+myStatuses().map(s=>`<option value="${s}">${ST[s]}</option>`).join('');
 const feOpts=sel=>Object.values(P).filter(p=>p.role=='fe').map(f=>`<option value="${f.id}" ${f.id==sel?'selected':''}>${esc(f.name||f.id)}</option>`).join('');
@@ -849,8 +874,8 @@ async function numHist(ph){
   const old=document.getElementById('nhv');if(old)old.remove();
   const ov=document.createElement('div');ov.id='nhv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
-  ov.onclick=function(e){if(e.target===ov)ov.remove()};
-  ov.innerHTML='<div style="background:#fff;color:#111;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px"><div class="mu">Loading history…</div></div>';
+  ov.onclick=function(e){if(e.target===ov)ov.remove()};ov.className='sheetov';
+  ov.innerHTML='<div class="sheet"><div class="mu">Loading history…</div></div>';
   document.body.appendChild(ov);const box=ov.firstChild;
   const like='%'+ph,lk2='*'+ph;
   const q=p=>Promise.resolve(p).then(r=>r&&r.data?r.data:[],()=>[]);
@@ -995,7 +1020,7 @@ VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
   const props=Object.keys(BUYP).sort((x,y)=>String(x).localeCompare(String(y),undefined,{numeric:true}));
   return `<div class="card" style="margin-bottom:10px"><b>🤝 Relationship Manager</b> <span class="mu">· buyers assigned to you</span>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="tag">Open ${open}</span><span class="tag">Worked today ${done}</span><span class="tag">Not worked yet ${BUYL.filter(b=>!b.last_fu&&!closed(b)).length}</span></div></div>
-  <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">${chip('today','⚡ Today',cnt(today))}${chip('all','All',cnt(()=>true))}${chip('new','New',cnt(isNew))}${chip('due','Follow-up due',cnt(due))}${chip('visit','📅 Visits',cnt(vis))}${chip('won','✅ Deals',cnt(b=>b.status=='Deal Closed'))}</div>
+  <div class="rmchips">${chip('today','⚡ Today',cnt(today))}${chip('all','All',cnt(()=>true))}${chip('new','New',cnt(isNew))}${chip('due','Follow-up due',cnt(due))}${chip('visit','📅 Visits',cnt(vis))}${chip('won','✅ Deals',cnt(b=>b.status=='Deal Closed'))}</div>
   ${props.length>1?`<select onchange="buyProp=this.value;render()" style="margin-bottom:10px"><option value="">All properties</option>${props.map(id=>`<option value="${esc(id)}" ${buyProp==id?'selected':''}>${esc(id+' · '+((BUYP[id]||{}).project||''))} (${BUYL.filter(b=>b.property_id==id).length})</option>`).join('')}</select>`:''}`+
   (l.map(b=>buyCard(b,due(b))).join('')||'<div class="card"><div class="mu">Nothing here. Leads assigned by admin will appear here.</div></div>');
 };
@@ -1723,6 +1748,17 @@ document.body.classList.toggle('cmp',CMP);
 function toggleCmp(){CMP=!CMP;try{localStorage.setItem('cmp',CMP?'1':'0')}catch(e){}document.body.classList.toggle('cmp',CMP);closeDrawer();render()}
 let qvOpen=false;
 function toggleQV(){qvOpen=!qvOpen;$('#qv').style.display=qvOpen?'block':'none';$('#qva').textContent=qvOpen?'▾':'▸'}
+/* Drawer menu grouped by work type (same tabs, same order inside each group; nothing removed). */
+const DGRP={fe:[['Meetings',['today','asg','done','fcalls']],['Leads by stage',['fu','pros','tag','deal','ni','na']],['Tools',['rep','lk','props']]],
+  telecaller:[['Daily work',['call','fu','pros','meet']],['Leads by stage',['tag','deal']],['Tools',['rep','lk','props']]]};
+function drawerMenu(list){
+  const g=DGRP[ME.role],di=t=>`<div class="di${t[0]==tab?' on':''}" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`;
+  if(!g)return `<div class="ds">Menu</div>`+list.map(di).join('');
+  const used=new Set();let h='';
+  g.forEach(([name,ids])=>{const items=ids.map(id=>list.find(t=>t[0]==id)).filter(Boolean);items.forEach(t=>used.add(t[0]));if(items.length)h+=`<div class="ds">${name}</div>`+items.map(di).join('')});
+  const rest=list.filter(t=>!used.has(t[0]));if(rest.length)h+=`<div class="ds">More</div>`+rest.map(di).join('');
+  return h;
+}
 function drawerBody(C){
   const list=TABS[ME.role]||[];
   if(MODE=='rm'&&ME.role!='admin')return `<div class="di" onclick="toggleMode()" style="background:#eaf1ff"><span>👤 <b>Back to Owner work</b></span><span>›</span></div><div class="ds">Relationship Manager</div>`+list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+`<div class="di" onclick="toggleRing()"><span>🔔 New lead sound</span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`;
@@ -1732,8 +1768,7 @@ function drawerBody(C){
     `<div class="di" onclick="toggleQV()"><span>📋 Status Quick View <span class="mu">· ${ME.role=='fe'?'your leads':'whole team'}</span></span><span id="qva">${qvOpen?'▾':'▸'}</span></div>`+
     `<div id="qv" style="display:${qvOpen?'block':'none'};background:#f6f8fb">`+
     QV.map(([k,i])=>`<div class="di" onclick="viewStatus('${k}')"><span>${i} ${ST[k]}</span><span class="cnt ${k=='followup'?'hi':k=='deal_closed'?'gd':''}">${C?C[k]:'…'}</span></div>`).join('')+`</div>`+
-    `<div class="ds">Menu</div>`+
-    list.map(t=>`<div class="di" onclick="go('${t[0]}')"><span>${t[1]}</span></div>`).join('')+
+    drawerMenu(list)+
     `<div class="di" onclick="toggleCmp()"><span>▤ Compact view <span class="mu">· more leads per screen</span></span><span class="cnt ${CMP?'hi':''}">${CMP?'ON':'OFF'}</span></div>`+
     `<div class="di" onclick="toggleRing()"><span>🔔 New lead sound <span class="mu">· when CRM is open</span></span><span class="cnt ${ringState()=='ON'?'hi':''}">${ringState()}</span></div>`+
     (instEv?`<div class="di" onclick="doInstall();closeDrawer()"><span>📲 Install app</span></div>`:'');
