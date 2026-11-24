@@ -1,5 +1,7 @@
 # Proposed database changes (NOT applied)
 
+> **Applied to live on 2026-11-24/25 (IST)** with Ashok's approval: 01 (run by Ashok), 02 and 03 (run by Claude in the SQL editor). Backup tables `bk_leads_20261124`, `bk_profiles_20261124` taken first. Verified after each: triggers/functions present, RLS on, anon cannot read, users cannot write the new tables, role guard blocks self-promotion (rolled-back test).
+
 Files in this folder have **not** been run on the live Supabase project. Each one needs Ashok's approval first.
 
 How to run one (after approval):
