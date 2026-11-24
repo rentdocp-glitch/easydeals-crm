@@ -36,7 +36,10 @@ Run on a throwaway local PostgreSQL 16 with a fake Supabase layer (`auth.uid()` 
 | – | Run all 3 rollback blocks | PASS: triggers gone, leads untouched |
 | – | Pre-check on a DB where `leads.id` is uuid | PASS: script stops, nothing created |
 
-## Must confirm on live DB before running (read-only, via `00_schema_export_readonly.sql`)
+## Must confirm on live DB before running
+
+**Checked on the live DB on 2026-11-24 (read-only): all 5 points OK.** See `supabase/live_inspection_2026-11-24.md`. Note: live `profiles` RLS already allows only admins to edit, so 01 is an extra lock, not an urgent fix.
+
 
 1. `leads.id` is bigint/integer (scripts 02 and 03 stop by themselves if not).
 2. `public.ed_is_admin()` exists (from `phase2_1_setup_tables.sql`).

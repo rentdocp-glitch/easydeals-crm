@@ -19,7 +19,8 @@
 
 var TABLES = ['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares',
   'dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history',
-  'invoices','assign_rules','app_settings','wa_settings','wa_messages',
+  'invoices','assign_rules','app_settings','wa_settings','wa_messages','blocked_leads','lead_ingest_log',
+  // NOT backed up on purpose: device_keys, ingest_keys (login keys), *_bak_* / bk_* (old one-off copies)
   // added only if the SQL fixes are applied; missing tables are skipped and listed in the report
   'lead_archive','lead_status_log'];
 var OPTIONAL = {lead_archive:1, lead_status_log:1};
