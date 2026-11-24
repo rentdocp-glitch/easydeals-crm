@@ -247,6 +247,62 @@ select{appearance:auto}
 #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));text-align:center;line-height:1.4}
 .note{max-height:160px;overflow:auto}
 @media(max-width:380px){header b{font-size:15px}header button{width:40px;height:40px}header #mdb{padding:0 8px;font-size:12px}}
+/* --- status colours (badges + card accent). DB values unchanged; colour only. --- */
+.tag.st-new{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+.tag.st-ringing{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.tag.st-callback,.tag.st-followup{background:#fefce8;color:#854d0e;border-color:#fde68a}
+.tag.st-prospect{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}
+.tag.st-meeting_assigned{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+.tag.st-meeting_done,.tag.st-online_meet_done{background:#ecfeff;color:#155e75;border-color:#a5f3fc}
+.tag.st-deal_closed{background:#dcfce7;color:#166534;border-color:#86efac}
+.tag.st-not_interested{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.tag.st-not_available{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+.lc{border-left:4px solid #cbd5e1}
+.lc.ls-new{border-left-color:#818cf8}.lc.ls-ringing{border-left-color:#fb923c}.lc.ls-callback,.lc.ls-followup{border-left-color:#facc15}
+.lc.ls-prospect{border-left-color:#a78bfa}.lc.ls-meeting_assigned{border-left-color:#38bdf8}.lc.ls-meeting_done,.lc.ls-online_meet_done{border-left-color:#22d3ee}
+.lc.ls-deal_closed{border-left-color:#22c55e}.lc.ls-not_interested{border-left-color:#f87171}.lc.ls-not_available{border-left-color:#94a3b8}
+/* --- lead card density --- */
+.lc .nm{font-size:16.5px}
+.lc .wh{font-size:13.5px}
+.lc .acts{gap:6px}
+.lc .acts>button:not(.ic),.lc .acts>a.btn:not(.ic){flex:1 1 auto}
+/* --- forms: Save / Cancel stay reachable above the bottom bar --- */
+.form>.acts:last-child,.form>button.p:last-of-type{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:4;background:linear-gradient(180deg,rgba(255,255,255,0),#fff 35%);padding:10px 0 4px;margin-top:4px}
+.form>.acts:last-child button{flex:1}
+.form label{margin-top:2px;margin-bottom:-2px}
+/* --- needs-attention panel --- */
+.attg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.att{border:1px solid var(--bd);border-radius:12px;padding:10px;background:#f8fafc;cursor:pointer;min-width:0}
+.att b{display:block;font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.att span{display:block;font-size:12px;font-weight:600;color:#334155;line-height:1.25;margin-top:2px}
+.att small{display:block;font-size:11px;color:var(--mu)}
+.att.er{background:#fef2f2;border-color:#fecaca}.att.er b{color:#b91c1c}
+.att.wr{background:#fffbeb;border-color:#fde68a}.att.wr b{color:#b45309}
+.att:active{transform:scale(.97)}
+@media(max-width:360px){.attg{grid-template-columns:repeat(2,1fr)}}
+/* --- tables, chips, overflow safety --- */
+html,body{overflow-x:hidden}
+.tbl,table{max-width:100%}
+.tw,.card:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chips{scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+img{max-width:100%}
+/* --- motion: short and subtle (no long slide on every refresh) --- */
+#app>*{animation:fade .18s ease both!important}
+/* --- login --- */
+.login{display:grid;gap:12px}
+.login input{min-height:48px;font-size:16px}
+.login button.p{min-height:50px;font-size:16px}
+/* --- desktop / tablet: left navigation rail instead of bottom bar --- */
+@media(min-width:1024px){
+ body:has(#nav[style*="flex"]){padding-bottom:24px;padding-left:96px}
+ nav#nav{top:0;bottom:0;left:0;right:auto;width:96px;max-width:none;transform:none;flex-direction:column;justify-content:flex-start;gap:4px;border-radius:0;border:0;border-right:1px solid var(--bd);padding:12px 8px 16px;box-shadow:none;background:#fff}
+ nav#nav{overflow-y:auto}nav#nav button{flex:none;min-height:58px;padding:6px 2px}nav#nav .nl{text-align:center;line-height:1.2}
+ nav#nav button.on::before{top:50%;left:0;width:3px;height:26px;margin:-13px 0 0;border-radius:0 4px 4px 0}
+ #toast{bottom:28px}
+ .form>.acts:last-child,.form>button.p:last-of-type{bottom:0}
+ main{max-width:1180px}
+}
+@media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
 </style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button id="bk" onclick="history.back()" aria-label="Back" style="display:none">←</button><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button id="mdb" onclick="toggleMode()" style="display:none;font-weight:700"></button><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
@@ -271,7 +327,7 @@ const FES=['meeting_done','prospect','followup','not_interested','not_available'
 const ALLS=Object.keys(ST).filter(k=>k!='new');
 const myStatuses=()=>ME.role=='fe'?FES:ME.role=='telecaller'?TCS:ALLS;
 const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
-const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
+const tag=s=>`<span class="tag st-${esc(s)} ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
 let DR={id:'',day:''};let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc=[],fBhk=[],fSt=[],msOpen='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
 
 function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200);unbusy()}
@@ -349,7 +405,8 @@ async function render(){
   if(tab!='st'&&tab!='rep'&&tab!='daily'&&!((tab=='xfer'||tab=='dups'||tab=='xlog'||tab=='dreq')&&ME.role=='admin')&&!(tab=='fs'&&ME.role=='fe')&&!list.find(t=>t[0]==tab))tab=list[0][0];
   const NAVX=MODE=='rm'&&ME.role!='admin'?{telecaller:['buy','rfu','rvis'],fe:['buy','rfu','rvis']}:{admin:['calls','leads','team'],telecaller:['call','fu','meet'],fe:['today','fu','fcalls']};
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
-  $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
+  const WIDE=window.matchMedia&&matchMedia('(min-width:1024px)').matches;
+  $('#nav').innerHTML=WIDE?nv(list[0][0],'🏠 Home',tab==list[0][0])+list.slice(1).map(t=>nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily'))).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):''):nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(MODE=='rm'&&ME.role!='admin'?'Relationship Manager':(ROLE[ME.role]||ME.role));
   {const mb=$('#mdb');if(mb){mb.style.display=ME.canRM?'inline-block':'none';mb.textContent=MODE=='rm'?'👤 Owner':'🤝 RM';mb.title=MODE=='rm'?'Switch to owner lead work':'Switch to RM (buyers) work'}}
   {const bk=$('#bk');if(bk)bk.style.display=(tab!=list[0][0]||openId||noteId||showAdd)?'inline-block':'none'}
@@ -452,7 +509,7 @@ function leadCard(l,cs){
   const chips=[l.bhk,l.sqft?l.sqft+' sqft':'',fp(l)].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
   const where=[l.property,l.locality].filter(Boolean).map(esc).join(' · ');
   const meta=[fe?'FE: '+esc(fe):'',tc?'TC: '+esc(tc):'',''].filter(Boolean).join(' · ');
-  return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${l.dup_of?`<div class="mu" style="margin:4px 0;padding:4px 8px;border-radius:8px;background:#fdecec;color:#b42318;font-weight:700">🔁 DUPLICATE of #${l.dup_of}${l.dup_reason?' · '+esc(l.dup_reason):''}</div>`:''}${dealBtn(l)}
+  return `<div class="card lc ls-${esc(l.status)}"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>${dcBanner(l)}${l.dup_of?`<div class="mu" style="margin:4px 0;padding:4px 8px;border-radius:8px;background:#fdecec;color:#b42318;font-weight:700">🔁 DUPLICATE of #${l.dup_of}${l.dup_reason?' · '+esc(l.dup_reason):''}</div>`:''}${dealBtn(l)}
   ${where?`<div class="wh">🏢 ${where}</div>`:''}
   ${chips?`<div class="chp cp">${chips}</div>`:''}
   ${followLine(l)}${meetLine(l)}
@@ -891,7 +948,7 @@ async function lookupAny(){
     const chips=[l.bhk,l.price].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
     const who=[l.tc_name?'Telecaller: <b>'+esc(l.tc_name)+'</b>':'',l.fe_name?'Field Exec: <b>'+esc(l.fe_name)+'</b>':''].filter(Boolean).join(' · ')||'Not assigned yet';
     const mt=l.meeting_date?`<div class="fol">📅 Meeting: <b>${new Date(l.meeting_date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</b>${l.meeting_time?' · <b>'+fmtT(l.meeting_time.slice(0,5))+'</b>':''}</div>`:'';
-    return `<div class="card lc"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>
+    return `<div class="card lc ls-${esc(l.status)}"><div class="row"><div style="min-width:0"><div class="nm">${esc(l.name||'-')}</div><div class="ph"><a class="t" href="tel:${esc(l.phone)}">${esc(l.phone||'')}</a>${l.phone2?' <a class="t" href="tel:'+esc(l.phone2)+'">'+esc(l.phone2)+'</a>':''}</div></div>${tag(l.status)}</div>
     ${(l.property||l.locality)?`<div class="wh">🏢 ${[l.property,l.locality].filter(Boolean).map(esc).join(' · ')}</div>`:''}
     ${chips?`<div class="chp cp">${chips}</div>`:''}${mt}
     <div class="mu cp">👤 ${who}</div></div>`}).join('');
@@ -1106,12 +1163,24 @@ VIEW['admin:dash']=async()=>{
   const talk=calls.reduce((a,c)=>a+(c.duration_sec||0),0);
   const by={};calls.forEach(c=>{const b=by[c.by_id]=by[c.by_id]||{n:0,t:0,m:0};b.n++;b.t+=c.duration_sec||0;if(isMeet(c))b.m++});
   const stat=(a,b,k)=>`<div class="card stat"${k?` style="cursor:pointer" onclick="viewSt='${k}';go('st')"`:''}><span class="mu">${a}</span><b>${b}</b></div>`;
-  const dco=await dcCard();
-  return rangeChips()+dco+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
+  const [dco,att]=await Promise.all([dcCard(),attnCard()]);
+  return att+rangeChips()+dco+`<div class="grid">${stat('Calls',calls.length)}${stat('Talk time',fmt(talk))}${stat('Meetings assigned',calls.filter(isMeet).length)}</div>
   <div class="grid">${stat('Total leads',total)}${Object.entries(ST).map(([k,v])=>stat(v,C[k],k)).join('')}</div>
   <div class="card"><b>📲 Incoming call? Enter the number</b><div class="f2" style="grid-template-columns:1fr auto;margin-top:8px"><input id="ln" type="tel" placeholder="Mobile number" onkeydown="if(event.key=='Enter')lookup()"><button class="p" onclick="lookup()">Look up</button></div><div id="lk"></div></div>
   <div class="card"><b>Telecaller performance</b>${Object.entries(by).map(([id,b])=>lr(`<b>${esc(P[id]?.name||'?')}</b><br><span class="mu">${b.n} calls · ${b.m} meetings</span>`,`${fmt(b.t)}<br><span class="mu">talk time</span>`)).join('')||'<p class="mu">No calls in this period</p>'}</div>`;
 };
+/* Admin "Needs attention" panel: live counts straight from the database (no estimates). */
+async function attnCard(){
+  const td=isoToday(),hc=q=>q.then(r=>r.error?null:(r.count||0),()=>null),L=()=>sb.from('leads').select('id',{count:'exact',head:true}),B=()=>sb.from('buyer_leads').select('id',{count:'exact',head:true});
+  const [unTc,newL,od,mt,bNew,bUn,bNoP]=await Promise.all([
+    hc(L().is('tc_id',null).eq('status','new')),hc(L().eq('status','new')),
+    hc(L().in('status',['followup','callback']).lt('follow_date',td)),
+    hc(L().eq('status','meeting_assigned').eq('meeting_date',td)),
+    hc(B().eq('status','New')),hc(B().eq('assignees','{}')),hc(B().is('property_id',null))]);
+  const it=(n,lab,sub,cls,click)=>n==null?'':`<div class="att ${n?cls:''}"${click?` onclick="${click}" role="button" tabindex="0"`:''}><b>${n}</b><span>${lab}</span>${sub?`<small>${sub}</small>`:''}</div>`;
+  return `<div class="card attn"><div class="row" style="align-items:center"><b>🎯 Needs attention</b><span class="mu">live · ${new Date().toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</span></div>
+  <div class="attg">${it(od,'Overdue follow-ups','owner leads','er',"viewSt='followup';go('st')")}${it(mt,'Meetings today','assigned','wr',"viewSt='meeting_assigned';go('st')")}${it(unTc,'New leads, no telecaller','of '+(newL==null?'?':newL)+' new','wr',"go('team')")}${it(bNew,'Buyers still New','not contacted','wr',"location.href='buyers.html'")}${it(bUn,'Buyers unassigned','no RM','er',"location.href='buyers.html'")}${it(bNoP,'Buyers without property','link needed','er',"location.href='buyers.html'")}</div></div>`;
+}
 async function lookup(){
   const n=ph10($('#ln').value);if(n.length<10){$('#lk').innerHTML='<p class="er">Enter a 10-digit number</p>';return}
   const {data}=await sb.from('leads').select('*').eq('phone',n).limit(10);

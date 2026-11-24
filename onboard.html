@@ -255,6 +255,62 @@ select{appearance:auto}
 #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));text-align:center;line-height:1.4}
 .note{max-height:160px;overflow:auto}
 @media(max-width:380px){header b{font-size:15px}header button{width:40px;height:40px}header #mdb{padding:0 8px;font-size:12px}}
+/* --- status colours (badges + card accent). DB values unchanged; colour only. --- */
+.tag.st-new{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+.tag.st-ringing{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.tag.st-callback,.tag.st-followup{background:#fefce8;color:#854d0e;border-color:#fde68a}
+.tag.st-prospect{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}
+.tag.st-meeting_assigned{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+.tag.st-meeting_done,.tag.st-online_meet_done{background:#ecfeff;color:#155e75;border-color:#a5f3fc}
+.tag.st-deal_closed{background:#dcfce7;color:#166534;border-color:#86efac}
+.tag.st-not_interested{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.tag.st-not_available{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+.lc{border-left:4px solid #cbd5e1}
+.lc.ls-new{border-left-color:#818cf8}.lc.ls-ringing{border-left-color:#fb923c}.lc.ls-callback,.lc.ls-followup{border-left-color:#facc15}
+.lc.ls-prospect{border-left-color:#a78bfa}.lc.ls-meeting_assigned{border-left-color:#38bdf8}.lc.ls-meeting_done,.lc.ls-online_meet_done{border-left-color:#22d3ee}
+.lc.ls-deal_closed{border-left-color:#22c55e}.lc.ls-not_interested{border-left-color:#f87171}.lc.ls-not_available{border-left-color:#94a3b8}
+/* --- lead card density --- */
+.lc .nm{font-size:16.5px}
+.lc .wh{font-size:13.5px}
+.lc .acts{gap:6px}
+.lc .acts>button:not(.ic),.lc .acts>a.btn:not(.ic){flex:1 1 auto}
+/* --- forms: Save / Cancel stay reachable above the bottom bar --- */
+.form>.acts:last-child,.form>button.p:last-of-type{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:4;background:linear-gradient(180deg,rgba(255,255,255,0),#fff 35%);padding:10px 0 4px;margin-top:4px}
+.form>.acts:last-child button{flex:1}
+.form label{margin-top:2px;margin-bottom:-2px}
+/* --- needs-attention panel --- */
+.attg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.att{border:1px solid var(--bd);border-radius:12px;padding:10px;background:#f8fafc;cursor:pointer;min-width:0}
+.att b{display:block;font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.att span{display:block;font-size:12px;font-weight:600;color:#334155;line-height:1.25;margin-top:2px}
+.att small{display:block;font-size:11px;color:var(--mu)}
+.att.er{background:#fef2f2;border-color:#fecaca}.att.er b{color:#b91c1c}
+.att.wr{background:#fffbeb;border-color:#fde68a}.att.wr b{color:#b45309}
+.att:active{transform:scale(.97)}
+@media(max-width:360px){.attg{grid-template-columns:repeat(2,1fr)}}
+/* --- tables, chips, overflow safety --- */
+html,body{overflow-x:hidden}
+.tbl,table{max-width:100%}
+.tw,.card:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chips{scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+img{max-width:100%}
+/* --- motion: short and subtle (no long slide on every refresh) --- */
+#app>*{animation:fade .18s ease both!important}
+/* --- login --- */
+.login{display:grid;gap:12px}
+.login input{min-height:48px;font-size:16px}
+.login button.p{min-height:50px;font-size:16px}
+/* --- desktop / tablet: left navigation rail instead of bottom bar --- */
+@media(min-width:1024px){
+ body:has(#nav[style*="flex"]){padding-bottom:24px;padding-left:96px}
+ nav#nav{top:0;bottom:0;left:0;right:auto;width:96px;max-width:none;transform:none;flex-direction:column;justify-content:flex-start;gap:4px;border-radius:0;border:0;border-right:1px solid var(--bd);padding:12px 8px 16px;box-shadow:none;background:#fff}
+ nav#nav{overflow-y:auto}nav#nav button{flex:none;min-height:58px;padding:6px 2px}nav#nav .nl{text-align:center;line-height:1.2}
+ nav#nav button.on::before{top:50%;left:0;width:3px;height:26px;margin:-13px 0 0;border-radius:0 4px 4px 0}
+ #toast{bottom:28px}
+ .form>.acts:last-child,.form>button.p:last-of-type{bottom:0}
+ main{max-width:1180px}
+}
+@media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
 </style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button onclick="location.href='./'" aria-label="Back">↩</button><div><b>📝 Property Onboarding</b><br><span id="who"></span></div></div><div></div></header>
