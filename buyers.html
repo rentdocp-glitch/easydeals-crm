@@ -326,6 +326,12 @@ img{max-width:100%}
  .form>.acts:last-child,.form>button.p:last-of-type{bottom:0}
  main{max-width:1180px}
 }
+html{background:var(--bg)}
+/* --- tables: readable headers, horizontal scroll instead of squashed columns --- */
+.tbl th,.tbl td{white-space:nowrap}
+.tbl td:first-child,.tbl th:first-child{white-space:normal;min-width:120px;position:sticky;left:0;background:#fff;z-index:1}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.oacts a{white-space:nowrap;font-size:13.5px;display:flex;align-items:center;justify-content:center;min-height:42px}
 @media(min-width:1400px){#app{grid-template-columns:1fr 1fr 1fr}}
 </style>
 </head><body>
@@ -959,9 +965,13 @@ async function loadHist(id){const {data}=await sb.from('buyer_history').select('
 async function saveB(id){
   const b=BL.find(x=>x.id==id),st=$('#bs_st').value,nf=$('#bs_nf').value||null,va=$('#bs_va').value,pid=$('#bs_p').value||null,note=$('#bs_note').value.trim();
   const upd={status:st,next_fu:nf,visit_at:va?new Date(va).toISOString():null,property_id:pid};
+  // Business rule: a buyer belongs to the property they enquired about. Changing it is only for fixing a wrong link.
+  const pchg=(b.property_id||null)!==(pid||null)&&b.property_id;
+  if(pchg&&!confirm('This buyer enquired about '+b.property_id+'. Change the property ONLY to correct a wrong link, never to offer another property. Change to '+(pid||'no property')+'?'))return;
+  const pnote=pchg?'Property link corrected: '+b.property_id+' → '+(pid||'none'):'';
   if(note||st!=b.status)upd.last_fu=today();
   const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
-  if(note||st!=b.status){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+b.status+' → '+st)})}
+  if(note||st!=b.status||pchg){const h=await sb.from('buyer_history').insert({buyer_id:id,status:st,note:[note||(st!=b.status?'Status: '+b.status+' → '+st:''),pnote].filter(Boolean).join(' · ')});if(h.error){Object.assign(b,upd);delete hist[id];openB=null;render();return toast('Saved, but history note failed: '+h.error.message,1)}}
   Object.assign(b,upd);delete hist[id];openB=null;toast('Saved ✅');render();
 }
 function filtB(list){
@@ -1098,7 +1108,7 @@ VIEW.mb=()=>{
 async function mbRead(files){
   files=[...(files||[])];if(!files.length)return;toast('Reading files…');
   try{
-    const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||'')));
+    const have=new Set(BL.flatMap(b=>[ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''),...(b.listing_id?[ph10(b.buyer_phone)+'|'+b.listing_id]:[])]));
     const rows=[],seen=new Set(),info=[];
     for(const f of files){
       const a=await bReadRows(f),d=bDetect(a);
@@ -1123,7 +1133,7 @@ async function mbMap(src,mbid,pid){
   toast(info.label+' '+mbid+' → '+pid+' ✅');render();
 }
 function mbRecalc(){
-  const have=new Set(BL.map(b=>ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''))),seen=new Set();
+  const have=new Set(BL.flatMap(b=>[ph10(b.buyer_phone)+'|'+(b.property_id||b.listing_id||''),...(b.listing_id?[ph10(b.buyer_phone)+'|'+b.listing_id]:[])])),seen=new Set();
   MBP.rows.forEach(r=>{const pr=mbFind(r.mbid,r.src);r.pid=pr?pr.id:null;const key=r.phone+'|'+(pr?pr.id:r.mbid);r.dup=have.has(key)||seen.has(key);seen.add(key)});
 }
 async function mbNew(src,mbid){
