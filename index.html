@@ -218,6 +218,36 @@ a{color:var(--pr2)}
 .zteam{margin-top:8px;padding:8px 10px;border-radius:10px;background:#eef4ff;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sugl{margin-top:8px;border:1px solid #e3e8f0;border-radius:12px;overflow:hidden;background:#fff}.sugi{padding:9px 11px;border-bottom:1px solid #eef1f6;cursor:pointer}.sugi:last-child{border-bottom:0}.sugi:active{background:#eef4ff}.sugi mark{background:#fde68a;padding:0 1px;border-radius:3px}
 </style>
+<style id="ui3">
+/* ===== UI v3 (Nov 2026): mobile layout fixes + consistency. Overrides only; logic unchanged. ===== */
+header{gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top,0px))}
+header .hl{flex:1;min-width:0;gap:8px}
+header .hl>div:last-child{min-width:0;flex:1}
+header b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;line-height:1.25}
+header br{display:none}
+#who{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
+header>div:last-child{flex:none;display:flex;gap:6px!important}
+header button{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;font-size:19px;flex:none;padding:0}
+header #mdb{width:auto;padding:0 11px;font-size:13px;white-space:nowrap}
+/* KPI tiles: compact, no decorative blob */
+.card.stat::after{display:none}
+.grid .stat,.card.stat{padding:12px 14px}
+.stat b{font-size:24px;line-height:1.15}
+.stat .mu,.card.stat .mu{font-size:10.5px;line-height:1.3}
+/* busy (double-tap guard) */
+button.busy,a.btn.busy{opacity:.6;pointer-events:none;position:relative}
+button.busy::after,a.btn.busy::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;vertical-align:-1px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* touch targets + text safety */
+.acts button,.acts .btn{min-height:40px}
+.card,.lc{overflow-wrap:anywhere}
+.tag{line-height:1.5}
+input[type=date],input[type=time],input[type=datetime-local]{min-height:44px}
+select{appearance:auto}
+#toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));text-align:center;line-height:1.4}
+.note{max-height:160px;overflow:auto}
+@media(max-width:380px){header b{font-size:15px}header button{width:40px;height:40px}header #mdb{padding:0 8px;font-size:12px}}
+</style>
 </head><body>
 <header id="hdr" style="display:none"><div class="hl"><button id="bk" onclick="history.back()" aria-label="Back" style="display:none">←</button><button onclick="openDrawer()" aria-label="Menu">☰</button><div><b>🏠 EasyDeals CRM</b><br><span id="who"></span></div></div><div style="display:flex;gap:8px"><button id="mdb" onclick="toggleMode()" style="display:none;font-weight:700"></button><button onclick="bellGo()" aria-label="Meetings due" title="Meetings due today or overdue">🔔<span id="bc" class="bd" style="display:none"></span></button><button onclick="render()" aria-label="Refresh">⟳</button></div></header>
 <main id="app"></main>
@@ -244,7 +274,13 @@ const ROLE={admin:'Admin',telecaller:'Telecaller',fe:'Field Exec'};
 const tag=s=>`<span class="tag ${s=='deal_closed'?'ok':s=='not_interested'?'er':'wr'}">${ST[s]||esc(s)}</span>`;
 let DR={id:'',day:''};let ME=null,P={},tab='',openId=null,openK=null,noteId=null,q='',RANGE='today',showAdd=false,LEADS={},poll=null,t0=null,tint=null,instEv=null,fLoc=[],fBhk=[],fSt=[],msOpen='',FILT={loc:[],bhk:[],t:0},showF=false,viewSt='followup';
 
-function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200)}
+function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3200);unbusy()}
+/* Double-tap guard: a save/action button cannot fire twice. It unlocks when the result toast shows, the screen redraws, a confirm is cancelled, or after 8 s. */
+const BUSYRX=/^\s*(save\w*|reqDup|decDup|doTransfer|doTag|doMerge|doImport|doDelete|addLead|xGo|xUndo|nhSave|buySave|dcDone|rSave|payAdd|mbImport|invSave|tAssign)\(/;
+function unbusy(b){(b?[b]:document.querySelectorAll('[data-busy]')).forEach(x=>{delete x.dataset.busy;x.classList.remove('busy')})}
+document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('button,a.btn');if(!b)return;if(!BUSYRX.test(b.getAttribute('onclick')||''))return;if(b.dataset.busy){e.stopImmediatePropagation();e.preventDefault();return}b.dataset.busy='1';b.classList.add('busy');setTimeout(()=>unbusy(b),8000)},true);
+{const _cf=window.confirm.bind(window);window.confirm=m=>{const r=_cf(m);if(!r)unbusy();return r}}
+
 const clean=s=>String(s||'').replace(/[,()%*]/g,' ').trim();
 const ph10=s=>String(s||'').replace(/\D/g,'').slice(-10);
 
@@ -315,7 +351,7 @@ async function render(){
   const nv=(id,lab,on)=>{const i=lab.indexOf(' ');return `<button class="${on?'on':''}" onclick="go('${id}')"><span class="ni">${lab.slice(0,i)}</span><span class="nl">${lab.slice(i+1)}</span></button>`};
   $('#nav').innerHTML=nv(list[0][0],'🏠 Home',tab==list[0][0])+(NAVX[ME.role]||[]).map(id=>{const t=list.find(x=>x[0]==id);return t?nv(t[0],t[1],tab==t[0]||(t[0]=='team'&&tab=='daily')):''}).join('')+(ME.role=='admin'?nv('rep','📈 KPI',tab=='rep'):'');
   $('#who').textContent=(ME.name||'')+' · '+(MODE=='rm'&&ME.role!='admin'?'Relationship Manager':(ROLE[ME.role]||ME.role));
-  {const mb=$('#mdb');if(mb){mb.style.display=ME.canRM?'inline-block':'none';mb.textContent=MODE=='rm'?'👤 Owner work':'🤝 RM'}}
+  {const mb=$('#mdb');if(mb){mb.style.display=ME.canRM?'inline-block':'none';mb.textContent=MODE=='rm'?'👤 Owner':'🤝 RM';mb.title=MODE=='rm'?'Switch to owner lead work':'Switch to RM (buyers) work'}}
   {const bk=$('#bk');if(bk)bk.style.display=(tab!=list[0][0]||openId||noteId||showAdd)?'inline-block':'none'}
   updateBell();
   const rid=++RID,busy=openId||noteId||showAdd;
@@ -336,7 +372,7 @@ async function doInstall(){if(!instEv)return;instEv.prompt();await instEv.userCh
 /* ---------- helpers ---------- */
 async function pageAll(build){
   const a=await build().range(0,999);if(a.error)throw a.error;let out=a.data;if(out.length<1000)return out;
-  for(let f=1000;f<=20000;f+=4000){
+  for(let f=1000;f<=2000000;f+=4000){
     const rs=await Promise.all([0,1,2,3].map(i=>build().range(f+i*1000,f+i*1000+999)));let end=false;
     for(const r of rs){if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<1000){end=true;break}}
     if(end)break;
@@ -368,13 +404,25 @@ function parsePrice(s){
   if(u)return v;
   return v>=100000?Math.round(v/1000)/100:null;
 }
+/* Notes keep history: a new note is added on top with date + name. Old notes are never replaced. */
+const noteStamp=()=>new Date().toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+' · '+((ME&&ME.name)||'');
+async function withNote(id,txt){
+  txt=String(txt||'').trim();if(!txt)return null;
+  let cur=(LEADS[id]&&LEADS[id].remarks)||'';
+  try{const r=await sb.from('leads').select('remarks').eq('id',id).single();if(!r.error&&r.data)cur=r.data.remarks||''}catch(e){}
+  return noteStamp()+': '+txt+(cur?'\n'+cur:'');
+}
+const oldNotes=l=>l&&l.remarks?`<div class="note" style="max-height:132px;overflow:auto;margin-top:0"><div class="mu" style="font-weight:700;margin-bottom:2px">Earlier notes (kept)</div>${esc(l.remarks)}</div>`:'';
 function noteBlock(l){
-  if(noteId==l.id)return `<div class="form"><textarea id="nt" rows="3" placeholder="Write a note...">${esc(l.remarks||'')}</textarea><div class="acts" style="margin-top:0"><button class="g sm" onclick="saveNote(${l.id})">💾 Save</button><button class="sm" onclick="noteId=null;render()">Cancel</button></div></div>`;
+  if(noteId==l.id)return `<div class="form"><label>Add a note</label><textarea id="nt" rows="3" placeholder="Write a new note. Earlier notes stay saved."></textarea>${oldNotes(l)}<div class="acts" style="margin-top:0"><button class="g sm" onclick="saveNote(${l.id})">💾 Save note</button><button class="sm" onclick="noteId=null;render()">Cancel</button></div></div>`;
   return l.remarks?`<div class="note" onclick="noteId=${l.id};openId=null;openK=null;render()">📝 ${esc(l.remarks)}</div>`:'';
 }
 async function saveNote(id){
-  const {error}=await sb.from('leads').update({remarks:$('#nt').value.trim()}).eq('id',id);
-  if(error)return toast(error.message,1);noteId=null;toast('Note saved ✅');render();
+  const txt=$('#nt').value.trim();if(!txt)return toast('Write a note first',1);
+  const remarks=await withNote(id,txt);
+  const {data,error}=await sb.from('leads').update({remarks}).eq('id',id).select('id');
+  if(error)return toast(error.message,1);if(!data||!data.length)return toast('Could not save the note (no permission)',1);
+  noteId=null;toast('Note saved ✅');render();
 }
 
 /* ---------- lead card + actions ---------- */
@@ -452,16 +500,17 @@ function statusUpd(l,st){
 }
 function statusForm(l){
   return `<div class="form"><label>Change status</label><select id="sst" ${onSt}>${stOpts()}</select>${ME.role!='fe'?meetBox(l):''}${fuBox(l)}
-  <label>Note (optional)</label><textarea id="sn" rows="2" placeholder="Write a note...">${esc(l.remarks||'')}</textarea>
+  <label>Add a note (optional)</label><textarea id="sn" rows="2" placeholder="New note. Earlier notes stay saved."></textarea>${oldNotes(l)}
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveStatus(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveStatus(id){
   const l=LEADS[id],st=$('#sst').value;
   if(!st)return toast('Select a status',1);
   const u=statusUpd(l,st);if(u.err)return toast(u.err,1);
-  const sn=$('#sn');if(sn&&sn.value.trim()!==(l.remarks||''))u.upd.remarks=sn.value.trim();
-  const {error}=await sb.from('leads').update(u.upd).eq('id',id);
+  const sn=$('#sn');if(sn&&sn.value.trim())u.upd.remarks=await withNote(id,sn.value);
+  const {data,error}=await sb.from('leads').update(u.upd).eq('id',id).select('id');
   if(error)return toast(error.message,1);
+  if(!data||!data.length)return toast('Could not save. You may not have access to this lead now. Refresh and try again.',1);
   openId=null;openK=null;toast('Status updated ✅');render();
 }
 function assignForm(l){
@@ -488,7 +537,7 @@ function editForm(l){
   ${zUI()?zonePicker('e',l.locality)+`<label>Address / landmark</label><input id="ead" value="${v(l.address)}">`:`<label>Area / Address</label><input id="el" value="${v(l.locality)}">`}
   <div class="f2"><div><label>BHK</label><input id="eb" value="${v(l.bhk)}"></div><div><label>Area (sqft)</label><input id="es" type="number" value="${v(l.sqft)}"></div></div>
   <label>Price</label><input id="ec" value="${v(fp(l))}" placeholder="85 L or 1.2 Cr">
-  <label>Notes</label><textarea id="em" rows="2">${v(l.remarks)}</textarea>
+  <label>All notes (full text, edit only to correct a mistake)</label><textarea id="em" rows="3">${v(l.remarks)}</textarea>
   <label>Assign / hand over to</label><select id="easg"><option value="">— No change —</option>${asgGrp('fe','Field Executives',l.fe_id)}${asgGrp('telecaller','Telecallers',l.tc_id)}</select>
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveEdit(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
@@ -740,7 +789,7 @@ async function numHist(ph){
     q(sb.from('message_log').select('by_id,channel,direction,body,at,source').eq('phone',ph).order('at',{ascending:false}).limit(80)),
     q(sb.from('leads').select('name,property').ilike('phone',like).limit(1)),
     q(sb.from('properties').select('id,owner_name,project').or('owner_phone.ilike.'+lk2+',owner_phone2.ilike.'+lk2).limit(1)),
-    q(sb.from('buyer_leads').select('buyer_name,project').ilike('buyer_phone',like).limit(1))]);
+    q(sb.from('buyer_leads').select('buyer_name,property_id').ilike('buyer_phone',like).order('id',{ascending:false}).limit(1))]);
   const nmOf=id=>(P[id]&&P[id].name)||'';const items=[];
   dc.forEach(c=>items.push({at:c.started_at,k:'call',dir:c.direction,sec:c.duration_sec||0,by:nmOf(c.by_id)}));
   cl.forEach(c=>items.push({at:c.created_at,k:'call',dir:'out',sec:c.duration_sec||0,by:nmOf(c.by_id),man:1}));
@@ -748,7 +797,7 @@ async function numHist(ph){
   ml.forEach(m=>items.push({at:m.at,k:m.channel,dir:m.direction,body:m.body,by:nmOf(m.by_id),src:m.source}));
   items.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const nm=(ld[0]&&ld[0].name)||(pr[0]&&pr[0].owner_name&&('Owner: '+pr[0].owner_name))||(bl[0]&&bl[0].buyer_name&&('Buyer: '+bl[0].buyer_name))||'Unknown number';
-  const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].project)||'';
+  const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].property_id&&('Enquiry for '+bl[0].property_id))||'';
   const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
   const row=i=>{const tm=new Date(i.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});const ex=i.k==='call'&&i.sec?' · talked '+fmt(i.sec):'';const bd=i.body?esc(i.body):(i.k==='wa'&&i.src==='crm'?'Chat opened from CRM':'');return '<div style="padding:8px 0;border-top:1px solid #eef1f6"><div style="font-weight:600;color:'+(i.dir==='missed'?'#dc2626':'#111')+'">'+lab(i)+'</div><div class="mu">'+tm+(i.by?' · '+esc(i.by):'')+ex+(i.man?' · timer':'')+'</div>'+(bd?'<div style="margin-top:2px">'+bd+'</div>':'')+'</div>'};
   box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:17px;font-weight:700">'+esc(nm)+'</div><div class="mu">'+esc(ph)+(sub?' · '+esc(sub):'')+'</div></div><button onclick="document.getElementById(\'nhv\').remove()">✕</button></div>'
@@ -772,7 +821,7 @@ function callForm(l){if(SYNC===null){SYNC=false;chkSync()}
   <div id="tmr" class="mu">Tap "Start call" to run a timer, then "End call" to fill the talk time below. You can also type it by hand.</div>`}
   <div class="f2"><div><label>Talk time: minutes</label><input id="mi" type="number" min="0" value="${autoTT(l).m}"></div><div><label>Talk time: seconds</label><input id="se" type="number" min="0" max="59" value="${autoTT(l).s}"></div></div>
   <label>Call result / status</label><select id="sst" ${onSt}>${stOpts()}</select>${meetBox(l)}${fuBox(l)}
-  <textarea id="cn" rows="2" placeholder="Notes (optional)">${esc(l.remarks||'')}</textarea>
+  <label>Add a note (optional)</label><textarea id="cn" rows="2" placeholder="New note. Earlier notes stay saved."></textarea>${oldNotes(l)}
   <div class="acts" style="margin-top:0"><button class="g" onclick="saveCall(${l.id})">💾 Save</button><button onclick="closeForm()">Cancel</button></div></div>`;
 }
 async function saveCall(id){
@@ -780,11 +829,12 @@ async function saveCall(id){
   if(!st)return toast('Select a call result / status',1);
   const u=statusUpd(l,st);if(u.err)return toast(u.err,1);
   const nt=$('#cn').value.trim();
-  if(nt!==(l.remarks||''))u.upd.remarks=nt;
+  if(nt)u.upd.remarks=await withNote(id,nt);
   const {error}=await sb.from('calls').insert({lead_id:id,phone:l.phone,by_id:ME.id,duration_sec:dur,outcome:ST[st]});
   if(error)return toast(error.message,1);
-  const {error:e2}=await sb.from('leads').update(u.upd).eq('id',id);
-  if(e2)return toast(e2.message,1);
+  const {data:d2,error:e2}=await sb.from('leads').update(u.upd).eq('id',id).select('id');
+  if(e2)return toast('Call saved, but status not updated: '+e2.message,1);
+  if(!d2||!d2.length)return toast('Call saved, but status not updated (no access to this lead now). Refresh and try again.',1);
   clearInterval(tint);t0=null;openId=null;openK=null;toast('Saved ✅');render();
 }
 
@@ -900,8 +950,9 @@ async function buySave(id){
   const st=$('#by_st').value,nf=$('#by_nf').value||null,va=$('#by_va').value,note=$('#by_note').value.trim();
   const upd={status:st,next_fu:nf,visit_at:va?new Date(va).toISOString():null};
   if(note||st!=(b.status||'New'))upd.last_fu=buyToday();
-  const {error}=await sb.from('buyer_leads').update(upd).eq('id',id);if(error)return toast(error.message,1);
-  if(note||st!=(b.status||'New')){await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+(b.status||'New')+' → '+st)})}
+  const {data:bd,error}=await sb.from('buyer_leads').update(upd).eq('id',id).select('id');if(error)return toast(error.message,1);
+  if(!bd||!bd.length)return toast('Could not save (no access to this buyer now). Refresh and try again.',1);
+  if(note||st!=(b.status||'New')){const h=await sb.from('buyer_history').insert({buyer_id:id,status:st,note:note||('Status: '+(b.status||'New')+' → '+st)});if(h.error){buyOpen=null;toast('Status saved, but the note was not saved: '+h.error.message,1);return render()}}
   buyOpen=null;toast('Saved ✅');render();
 }
 
@@ -1022,7 +1073,7 @@ function gxHead(ns,withSearch){return (withSearch?searchBar('Name, number, socie
 let DCM={},DCT=0,AF={f:null,t:null,od:false,html:''};
 const dph=s=>String(s||'').replace(/\D/g,'').slice(-10);
 const nrm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-async function dcLoad(){DCT=Date.now();try{const rows=await pageAll(()=>sb.from('leads').select('id,phone,name,property,locality,bhk,tc_id,fe_id').eq('status','deal_closed'));const ed={};window.DCED=ed;try{const r=await sb.from('properties').select('lead_id,ed_id');(r.data||[]).forEach(x=>{if(x.lead_id)ed[x.lead_id]=x.ed_id})}catch(e){}const m={};(rows||[]).forEach(x=>{const k=dph(x.phone);if(k.length<10)return;x.ed=ed[x.id]||'';(m[k]=m[k]||[]).push(x)});DCM=m}catch(e){}}
+async function dcLoad(){DCT=Date.now();try{const rows=await pageAll(()=>sb.from('leads').select('id,phone,name,property,locality,bhk,tc_id,fe_id').eq('status','deal_closed'));const ed={};window.DCED=ed;try{const r=await sb.from('properties').select('id,owner_lead_id');(r.data||[]).forEach(x=>{if(x.owner_lead_id)ed[x.owner_lead_id]=x.id})}catch(e){}const m={};(rows||[]).forEach(x=>{const k=dph(x.phone);if(k.length<10)return;x.ed=ed[x.id]||'';(m[k]=m[k]||[]).push(x)});DCM=m}catch(e){}}
 function dealBtn(l){if(l.status!=='deal_closed')return '';const ed=(window.DCED||{})[l.id];if(ed)return '<div style="background:#e6f7ec;color:#166534;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px">✅ Details filled · '+esc(ed)+'</div>';return '<div style="background:#fff7e0;color:#92400e;border-radius:8px;padding:8px 10px;margin:8px 0 6px;font-size:13px">Property details are pending. Please fill in the owner details.</div><a href="onboard.html?lead='+encodeURIComponent(l.id)+'" style="display:block;text-align:center;background:#1f4e78;color:#fff;border-radius:8px;padding:10px;font-size:14px;text-decoration:none;margin-bottom:6px">📝 Fill property details</a>'}
 function dcBanner(l){if(l.status==='deal_closed')return '';const a=(DCM[dph(l.phone)]||[]).filter(x=>x.id!==l.id);if(!a.length)return '';const sp=nrm(l.property);const same=sp?a.find(x=>nrm(x.property)===sp):null;const x=same||a[0];const who=[x.fe_id&&P[x.fe_id]?P[x.fe_id].name:'',x.tc_id&&P[x.tc_id]?P[x.tc_id].name:''].filter(Boolean)[0]||'';const nm=(x.ed?esc(x.ed)+' · ':'')+esc([x.property,x.locality].filter(Boolean).join(', ')||'-')+(x.bhk?' · '+esc(x.bhk):'');
 if(same)return '<div style="background:#e6f7ec;border:2px solid #1f9d55;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;color:#0f5a28">✅ <b>ALREADY DEAL CLOSED</b><br>'+nm+(who?'<br><span style="opacity:.8">Closed by '+esc(who)+'</span>':'')+'<br><b>⚠️ Same property, do not call again</b></div>';
