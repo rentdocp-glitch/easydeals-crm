@@ -2088,7 +2088,7 @@ window.aiSwitch=async function(){
 <script>
 /* AI RM Phase 1: draft shown to the RM, sent only on the RM's tap. Server (wa-send) re-checks every safety rule. */
 /* Properties where AI RM must not message buyers (Ashok, 25 Nov 2026). Same list is enforced in wa-send. */
-var AI_OFF_PROPS=['ED-003','ED-008','ED-014','ED-015'];
+var AI_OFF_PROPS=['ED-003','ED-008','ED-010','ED-014','ED-015'];
 window.aiDraft=function(id){
   var b=(typeof BUYL!=='undefined'?BUYL:[]).find(function(x){return x.id==id});if(!b)return toast('Buyer not found',1);
   var p=(typeof BUYP!=='undefined'?BUYP:{})[b.property_id];

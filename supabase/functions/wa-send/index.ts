@@ -17,7 +17,7 @@ const TEMPLATES: Record<string, { n: number; text: string }> = {
 const STOP_RE = /\b(stop|unsubscribe|band\s*kar(o|do)?|band\s*kr(o|do)?)\b/i;
 // Properties whose buyers must NOT get AI RM messages (Ashok, 25 Nov 2026). A property can also be blocked
 // without a code change by setting properties.details.ai_off = true.
-const AI_OFF_PROPS = new Set(["ED-003", "ED-008", "ED-014", "ED-015"]);
+const AI_OFF_PROPS = new Set(["ED-003", "ED-008", "ED-010", "ED-014", "ED-015"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
