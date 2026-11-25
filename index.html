@@ -1003,10 +1003,10 @@ let MYP=[];
 async function rmLoad(){
   const {data,error}=await sb.from('buyer_leads').select('*').contains('assignees',[ME.id]).order('id',{ascending:false}).limit(1000);
   if(error)throw error;BUYL=data||[];
-  let mp=[];try{const r=await sb.from('properties').select('id,project,locality,bhk,price').contains('assignees',[ME.id]);mp=r.data||[]}catch(e){}
+  let mp=[];try{const r=await sb.from('properties').select('id,project,locality,bhk,price,details').contains('assignees',[ME.id]);mp=r.data||[]}catch(e){}
   MYP=mp;const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean).concat(mp.map(p=>p.id)))];BUYP={};mp.forEach(p=>BUYP[p.id]=p);
   const miss=ids.filter(id=>!BUYP[id]);
-  if(miss.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price').in('id',miss);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
+  if(miss.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price,details').in('id',miss);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
 }
 VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
   await rmLoad();
@@ -2087,10 +2087,13 @@ window.aiSwitch=async function(){
 </script>
 <script>
 /* AI RM Phase 1: draft shown to the RM, sent only on the RM's tap. Server (wa-send) re-checks every safety rule. */
+/* Properties where AI RM must not message buyers (Ashok, 25 Nov 2026). Same list is enforced in wa-send. */
+var AI_OFF_PROPS=['ED-003','ED-008','ED-014','ED-015'];
 window.aiDraft=function(id){
   var b=(typeof BUYL!=='undefined'?BUYL:[]).find(function(x){return x.id==id});if(!b)return toast('Buyer not found',1);
   var p=(typeof BUYP!=='undefined'?BUYP:{})[b.property_id];
   if(!p)return toast('Is buyer ki property linked nahi hai, draft nahi ban sakta',1);
+  var aiOff=AI_OFF_PROPS.indexOf(String(p.id))>=0||!!((p.details||{}).ai_off);
   var worked=!!b.last_fu&&!/^new$/i.test(b.status||'');
   var tpl=worked?'ed_followup_v2':'ed_welcome_v2';
   var first=String(b.buyer_name||'Sir/Madam').trim().split(/\s+/)[0];first=first.charAt(0).toUpperCase()+first.slice(1);
@@ -2107,12 +2110,24 @@ window.aiDraft=function(id){
    '<div style="font-size:12px;color:#666;margin-bottom:8px">'+e(b.buyer_name||'Buyer')+' · '+e(p.id)+' · template: '+tpl+'</div>'+
    '<div style="background:#f4f4f5;border-radius:10px;padding:10px;font-size:14px;line-height:1.45;white-space:pre-wrap">'+e(txt)+'</div>'+
    '<div style="font-size:12px;color:#777;margin:8px 0">Message approved Meta template se jayega. Master switch band ho, limit bhar gayi ho, 9 AM-8 PM ke bahar ho, buyer ne STOP likha ho, ya aaj message ja chuka ho to nahi jayega.</div>'+
+   (aiOff?'<div style="background:#fde8e8;color:#b42318;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px;font-weight:700">⛔ Is property ('+e(p.id)+') par AI RM band hai. Message nahi jayega.</div>':'')+
+   ((typeof ME!=='undefined'&&ME.role=='admin')?'<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:6px 0 8px"><input type="checkbox" id="ai_pon" style="width:18px;height:18px"'+(aiOff?'':' checked')+'> AI RM is property par chalu</label>':'')+
    '<div id="ai_msg" style="font-size:13px;margin-bottom:8px"></div>'+
    '<div style="display:flex;gap:8px"><button id="ai_send" style="flex:1;padding:10px;font-weight:700;background:#581c87;color:#fff;border:0;border-radius:8px">Send via AI RM</button>'+
    '<button id="ai_cp" style="flex:1;padding:10px;border:1px solid #ccc;background:#fff;border-radius:8px">Copy text</button>'+
    '<button id="ai_x" style="padding:10px;border:1px solid #ccc;background:#fff;border-radius:8px">✖</button></div></div>';
   document.body.appendChild(d);
   document.getElementById('ai_x').onclick=function(){d.remove()};
+  if(aiOff){var sbtn=document.getElementById('ai_send');sbtn.disabled=true;sbtn.style.opacity='.5'}
+  var pon=document.getElementById('ai_pon');
+  if(pon)pon.onchange=async function(){
+    var on=this.checked,cb=this;
+    if(on&&AI_OFF_PROPS.indexOf(String(p.id))>=0){cb.checked=false;return toast('Ye property code me band hai (Ashok ka order). Developer se kholna hoga.',1)}
+    var nd=Object.assign({},p.details||{});if(on)delete nd.ai_off;else nd.ai_off=true;
+    var q=await sb.from('properties').update({details:nd}).eq('id',p.id);
+    if(q.error){cb.checked=!on;return toast(q.error.message,1)}
+    p.details=nd;toast(on?'AI RM chalu ✅':'AI RM band ⛔');d.remove();
+  };
   document.getElementById('ai_cp').onclick=function(){try{navigator.clipboard.writeText(txt);toast('Copied')}catch(x){toast('Copy nahi hua',1)}};
   document.getElementById('ai_send').onclick=async function(){
     var btn=this,m=document.getElementById('ai_msg');btn.disabled=true;btn.textContent='Checking…';
