@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f4e78">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon-192.png">
+<title>Easy Deals AI Hub</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e2e5ea;--pr:#1f4e78;--ok:#15803d;--wr:#b45309;--er:#b91c1c;--hot:#c2410c;--warm:#b45309;--cold:#475569;--rev:#7c3aed}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{position:sticky;top:0;z-index:5;background:var(--pr);color:#fff;padding:10px 12px 0}
+.hr{display:flex;align-items:center;justify-content:space-between;gap:8px}
+header h1{font-size:17px;margin:0}
+.mode{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:99px;background:#fde68a;color:#78350f;white-space:nowrap}
+.mode.live{background:#bbf7d0;color:#14532d}
+#tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 0 0;scrollbar-width:none}
+#tabs::-webkit-scrollbar{display:none}
+#tabs button{flex:0 0 auto;border:0;background:rgba(255,255,255,.14);color:#fff;padding:8px 11px;border-radius:10px 10px 0 0;font-size:13.5px;position:relative}
+#tabs button.on{background:var(--bg);color:var(--pr);font-weight:700}
+.bd{background:#ef4444;color:#fff;border-radius:99px;font-size:10.5px;padding:1px 6px;margin-left:4px;font-weight:700}
+main{max-width:920px;margin:auto;padding:12px 12px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}
+.kpi .n{font-size:24px;font-weight:800;line-height:1.1}.kpi .l{font-size:12.5px;color:var(--mu)}
+.kpi.dna .n{font-size:12px;color:var(--mu);font-weight:700}
+.mu{color:var(--mu);font-size:13px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px;border:1px solid currentColor;white-space:nowrap}
+.HOT{color:var(--hot)}.WARM{color:var(--warm)}.COLD{color:var(--cold)}.REV{color:var(--rev)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.chips button{border:1px solid var(--bd);background:#fff;border-radius:99px;padding:6px 11px;font-size:13px}
+.chips button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+button.p,button.s,button.d{border:0;border-radius:9px;padding:9px 12px;font-weight:700;font-size:13.5px;min-height:40px}
+button.p{background:var(--pr);color:#fff}button.s{background:#e8eef5;color:var(--pr)}button.d{background:#fee2e2;color:var(--er)}
+button:disabled{opacity:.5}
+pre,.draft{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:10px;font:13.5px/1.45 system-ui,sans-serif;margin:8px 0}
+ul{margin:6px 0;padding-left:20px}
+.bar{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:8px}
+.bar div{flex:1;background:#93c5fd;border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.bar div span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10px;color:var(--mu)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ok{color:var(--ok)}.er{color:var(--er)}.wr{color:var(--wr)}
+.lock{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:10px;padding:10px;font-size:13.5px}
+.warnbox{background:#fffbeb;border:1px solid #fde68a;color:#78350f;border-radius:10px;padding:10px;font-size:13.5px;margin-bottom:10px}
+input[type=number],input[type=text]{border:1px solid var(--bd);border-radius:8px;padding:8px;font-size:15px;width:140px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;font-size:14px;max-width:90%}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+details summary{cursor:pointer;color:var(--pr);font-weight:600;font-size:13.5px;margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hr"><h1>🤖 Easy Deals AI Hub</h1><span id="mode" class="mode">…</span></div>
+  <div id="tabs"></div>
+</header>
+<main id="app"><div class="card">Loading…</div></main>
+<div id="toast"></div>
+<script src="aihub/engine.js"></script>
+<script src="aihub/mock-data.js"></script>
+<script>
+'use strict';
+/* Phase 1 safety contract (enforced by tests/aihub_engine.test.mjs):
+   - This page only READS from Supabase (select). No insert/update/delete/upsert, no Edge Function calls.
+   - It never sends WhatsApp, never calls, never changes a lead. Drafts live in this browser only.
+   - Mock mode (default) uses fake data. Live mode needs an admin login and is read-only. */
+const E=window.AIHUB;
+const qs=new URLSearchParams(location.search);
+const LIVE=qs.get('live')==='1';
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+const SKEY='aihub_v1_'+(LIVE?'live':'mock');
+let S=load(),DATA=null,R={},TAB=qs.get('tab')||'dash',F={buyer:'HOT',owner:'top',appr:'pending'};
+function load(){try{return Object.assign({queue:[],activity:[],errors:[],processed:{},settings:{walletInr:500}},JSON.parse(localStorage.getItem(SKEY)||'{}'))}catch(e){return{queue:[],activity:[],errors:[],processed:{},settings:{walletInr:500}}}}
+function save(){try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){err('Could not save local data: '+e.message)}}
+function err(m){S.errors.unshift({at:new Date().toISOString(),msg:String(m)});S.errors.length=Math.min(S.errors.length,200);save()}
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',2600)}
+window.addEventListener('error',e=>err('JS: '+e.message));
+
+const TABS=[['dash','📊 Dashboard'],['owner','🏠 Owner AI'],['buyer','🧑‍💼 Buyer RM AI'],['mkt','📣 Marketing'],['report','📝 Daily Report'],['appr','✅ Approvals'],['act','🕘 Activity'],['cost','💰 Cost & Health'],['set','⚙️ Settings']];
+function tabs(){const p=S.queue.filter(q=>q.status==='pending').length;
+  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="${k==TAB?'on':''}" onclick="go('${k}')">${l}${k=='appr'&&p?`<span class="bd">${p}</span>`:''}</button>`).join('')}
+function go(t){TAB=t;history.replaceState(null,'','?'+(LIVE?'live=1&':'')+'tab='+t);render();window.scrollTo(0,0)}
+
+/* ---------- data ---------- */
+async function getData(){
+  if(!LIVE)return AIHUB_MOCK.build();
+  // Live = read-only. Uses the same login as the CRM (same site). Admin only.
+  if(!window.supabase)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js';s.onload=ok;s.onerror=()=>no(new Error('Supabase library failed to load'));document.head.appendChild(s)});
+  const sb=supabase.createClient('https://sfvpslsexobukgerkixi.supabase.co','sb_publishable_YckWE6w7_PM9Q8ysBM-XFg_KBQwYDEa');
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)throw new Error('LOGIN: Please log in to the CRM first as admin, then reopen this page.');
+  const me=await sb.from('profiles').select('id,role').eq('id',session.user.id).single();
+  if(!me.data||me.data.role!=='admin')throw new Error('ADMIN: The AI Hub is admin-only.');
+  const cols={leads:'id,name,phone,property,locality,bhk,price_l,status,tc_id,fe_id,meeting_date,meeting_time,follow_date,follow_time,created_at,status_at,deal_at,remarks',
+    buyer_leads:'id,code,lead_date,property_id,source,buyer_name,buyer_phone,requirement,status,next_fu,last_fu,visit_at,remarks,created_at,updated_at',
+    properties:'id,project,bhk,locality,price,final_price,carpet,sqft,status,date_added,created_at,tour_url,reel_url,video_url,photos_url,photos,plan,service_till',
+    buyer_history:'id,buyer_id,at,status,note',profiles:'id,name,role',calls:'id,lead_id,by_id,duration_sec,created_at',
+    lead_ingest_log:'id,at,source,outcome',wa_messages:'id,direction,wa_phone,status,body,created_at',wa_settings:'id,enabled,daily_cap'};
+  const since30=new Date(Date.now()-30*864e5).toISOString();
+  const d={_errors:{}};
+  await Promise.all(Object.entries(cols).map(async([t,c])=>{
+    try{let all=[],from=0;for(;;){let q=sb.from(t).select(c).range(from,from+999);
+        if(t=='calls'||t=='lead_ingest_log'||t=='wa_messages')q=q.gte(t=='lead_ingest_log'?'at':'created_at',since30);
+        const r=await q;if(r.error)throw r.error;all=all.concat(r.data||[]);if(!r.data||r.data.length<1000||from>40000)break;from+=1000}
+      d[t]=all}catch(e){d._errors[t]=e.message||String(e);err('Read '+t+': '+(e.message||e))}}));
+  return d;
+}
+function compute(){const o={now:Date.now()};R.buyers=E.buyerAgent(DATA,o);R.owners=E.ownerAgent(DATA,o);R.mkt=E.marketingAgent(DATA,o);R.rep=E.founderReport(DATA,o);R.cost=E.costStatus(DATA,S.settings);R.health=E.health(DATA,o)}
+
+/* ---------- queue ---------- */
+function queue(agent,kind,x){const r=E.enqueue(S,{agent,entityKind:kind,entityId:x.id,title:(kind=='buyer'?'Buyer ':'Owner ')+(x.name||x.code||x.id)+(x.propertyLabel?' · '+x.propertyLabel:x.property?' · '+x.property:''),text:x.draft,fp:x.fp,phoneMasked:x.phoneMasked});
+  save();toast(r.added?'Added to approval queue':'Already in queue');tabs();render()}
+function queueAll(){let n=0;R.buyers.filter(b=>b.cls=='HOT'&&b.draft&&!b.dupOf).forEach(b=>{if(E.enqueue(S,{agent:'Buyer RM AI',entityKind:'buyer',entityId:b.id,title:'Buyer '+(b.name||b.code)+' · '+b.propertyLabel,text:b.draft,fp:b.fp,phoneMasked:b.phoneMasked}).added)n++});save();toast(n+' HOT drafts added');tabs();render()}
+function decide(id,d){try{E.decide(S,id,d,'admin');save();toast(d=='approved'?'Approved. Copy and send manually.':'Rejected');tabs();render()}catch(e){err(e.message);toast(e.message)}}
+async function copy(id){const q=S.queue.find(x=>x.id===id);if(!q)return;try{await navigator.clipboard.writeText(q.text);E.log(S,'Copied draft: '+q.title);save();toast('Copied')}catch(e){toast('Copy failed: select the text manually')}}
+async function copyReport(){try{await navigator.clipboard.writeText(E.reportText(R.rep));toast('Report copied')}catch(e){toast('Copy failed')}}
+
+/* ---------- views ---------- */
+const clsTag=c=>`<span class="tag ${c=='NEEDS REVIEW'?'REV':c}">${esc(c)}</span>`;
+const kpi=(n,l)=>typeof n=='number'?`<div class="kpi"><div class="n">${n}</div><div class="l">${esc(l)}</div></div>`:`<div class="kpi dna"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`;
+const V={};
+V.dash=()=>{const r=R.rep,p=S.queue.filter(q=>q.status=='pending').length;
+  return `<div class="lock">🔒 <b>Safe mode (Phase 1).</b> Read-only. Drafts only. Nothing is sent, called, published or changed in the CRM.</div><br>
+  <div class="grid">${kpi(r.newBuyers,'New buyer enquiries today')}${kpi(r.hotBuyers,'HOT buyers')}${kpi(r.notContacted,'Buyers not contacted')}${kpi(r.visitRequests,'Visit requests')}${kpi(r.followToday,'Follow-ups due today')}${kpi(r.followOverdue,'Overdue follow-ups')}${kpi(r.ownerAttention,'Owner leads needing attention')}${kpi(r.meetingsScheduled,'Meetings scheduled')}${kpi(r.meetingsPending,'Meetings pending update')}${kpi(p,'Drafts waiting approval')}</div><br>
+  <div class="card"><b>Agents</b><table><tr><th>Agent</th><th>Status</th><th>Output</th></tr>
+  <tr><td>🏠 Owner Service AI</td><td class="ok">Ready</td><td>${R.owners.length} active owner leads ranked</td></tr>
+  <tr><td>🧑‍💼 Buyer RM AI</td><td class="ok">Ready</td><td>${R.buyers.filter(b=>!b.dupOf).length} buyers classified, ${R.buyers.filter(b=>b.dupOf).length} duplicates held</td></tr>
+  <tr><td>📣 Marketing Monitor AI</td><td class="ok">Ready</td><td>${R.mkt.properties.length} live listings checked</td></tr>
+  <tr><td>📝 Founder Daily Report AI</td><td class="ok">Ready</td><td>Today's report prepared</td></tr></table></div>
+  ${r.problems.length?`<div class="warnbox"><b>Problems</b><ul>${r.problems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+  <div class="card"><b>Recommended founder actions</b><ol>${r.actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`};
+V.buyer=()=>{const f=F.buyer,all=R.buyers;
+  const cnt=k=>k=='DUP'?all.filter(b=>b.dupOf).length:k=='UNANS'?all.filter(b=>b.unanswered&&!b.dupOf).length:all.filter(b=>b.cls==k&&!b.dupOf).length;
+  const list=all.filter(b=>f=='DUP'?b.dupOf:f=='UNANS'?(b.unanswered&&!b.dupOf):(b.cls==f&&!b.dupOf));
+  return `<div class="chips">${['HOT','WARM','COLD','NEEDS REVIEW','UNANS','DUP'].map(k=>`<button class="${f==k?'on':''}" onclick="F.buyer='${k}';render()">${k=='UNANS'?'Not contacted':k=='DUP'?'Duplicates':k} (${cnt(k)})</button>`).join('')}</div>
+  ${f=='HOT'?`<div class="btns" style="margin-bottom:10px"><button class="s" onclick="queueAll()">➕ Queue all HOT drafts</button></div>`:''}
+  <div class="mu" style="margin-bottom:8px">Rule: a buyer is only ever messaged about the property they enquired about. Phone numbers are masked.</div>
+  ${list.length?list.slice(0,150).map(b=>`<div class="card"><div class="row"><div><b>${esc(b.name||b.code)}</b> <span class="mu">${esc(b.code)} · ${esc(b.phoneMasked)} · ${esc(b.source)}</span><br>
+    <span class="mu">Property:</span> ${b.propertyId?`<b>${esc(b.propertyId)}</b> ${esc(b.propertyLabel)}`:'<span class="er">not linked</span>'} · <span class="mu">${esc(b.status)}${b.ageDays!=null?' · '+b.ageDays+'d old':''}</span></div>${clsTag(b.cls)}</div>
+    <div class="mu">Why: ${esc(b.reasons.join('; '))}</div>
+    <div>👉 <b>${esc(b.nextAction)}</b></div>
+    ${b.draft?`<details><summary>WhatsApp draft (${esc(b.draftType)})</summary><div class="draft">${esc(b.draft)}</div></details><div class="btns"><button class="p" onclick="queue('Buyer RM AI','buyer',R.buyers.find(x=>x.id==${+b.id}))">Send to approval queue</button></div>`:`<div class="mu">No draft: ${esc(b.draftBlocked||'')}</div>`}
+  </div>`).join(''):'<div class="card mu">Nothing here.</div>'}`};
+V.owner=()=>{const f=F.owner,all=R.owners;
+  const fl={top:o=>true,hp:o=>o.highPotential,cb:o=>o.pendingCallback,mt:o=>o.meetingOpportunity||o.status=='meeting_assigned',od:o=>o.followDate&&o.why.some(w=>/overdue/.test(w))};
+  const nm={top:'Priority',hp:'High potential',cb:'Callbacks',mt:'Meetings',od:'Overdue'};
+  const list=all.filter(fl[f]);
+  return `<div class="chips">${Object.keys(fl).map(k=>`<button class="${f==k?'on':''}" onclick="F.owner='${k}';render()">${nm[k]} (${all.filter(fl[k]).length})</button>`).join('')}</div>
+  <div class="mu" style="margin-bottom:8px">Suggestions only. The AI never changes a lead status or contacts an owner.</div>
+  ${list.slice(0,150).map(o=>`<div class="card"><div class="row"><div><b>${esc(o.name||'#'+o.id)}</b> <span class="mu">· ${esc(o.phoneMasked)} · ${esc(o.statusLabel)}</span><br><span class="mu">${esc([o.property,o.locality].filter(Boolean).join(', '))}${o.telecaller?' · TC: '+esc(o.telecaller):''}${o.fe?' · FE: '+esc(o.fe):''}</span></div><span class="tag ${o.score>=60?'HOT':o.score>=35?'WARM':'COLD'}">${o.score}</span></div>
+    ${o.why.length?`<div class="mu">Why: ${esc(o.why.join('; '))}</div>`:''}
+    <div>👉 <b>${esc(o.nextAction)}</b></div>
+    <div class="mu">Summary: ${esc(o.summary)}</div>
+    <details><summary>Call suggestions</summary><ul>${o.callScript.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
+    <details><summary>WhatsApp draft</summary><div class="draft">${esc(o.draft)}</div></details>
+    <div class="btns"><button class="p" onclick="queue('Owner Service AI','owner',R.owners.find(x=>x.id==${+o.id}))">Send to approval queue</button></div></div>`).join('')||'<div class="card mu">Nothing here.</div>'}`};
+V.mkt=()=>{const m=R.mkt,days=Object.entries(m.dailyLeads),mx=Math.max(1,...days.map(d=>d[1]));
+  return `<div class="card"><b>Buyer enquiries, last 14 days</b><div class="bar">${days.map(([d,n])=>`<div style="height:${n/mx*100}%" title="${esc(d)}: ${n}"><span>${n}</span></div>`).join('')}</div><div class="row mu"><span>${esc(days[0][0])}</span><span>${esc(days[days.length-1][0])}</span></div></div>
+  <div class="card"><b>Source mix (30 days)</b><div>${Object.entries(m.sources30).map(([k,v])=>`<span class="tag" style="margin:3px">${esc(k)}: ${v}</span>`).join('')||'<span class="mu">No enquiries</span>'}</div>
+  <div class="mu" style="margin-top:6px">Instagram: ${esc(m.social.instagram)} · Facebook: ${esc(m.social.facebook)} · YouTube: ${esc(m.social.youtube)} · Ad spend: ${esc(m.social.adSpend)}</div></div>
+  <div class="card"><b>Content and campaign ideas</b> <span class="mu">(suggestions, nothing is published)</span><ul>${m.ideas.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+  <div class="card"><b>Listings</b> <span class="mu">(lowest enquiries first)</span><table><tr><th>Property</th><th>7d</th><th>30d</th><th>Total</th><th>Visits</th></tr>
+  ${m.properties.map(p=>`<tr><td><b>${esc(p.id)}</b> ${esc(p.label)}${p.flags.length?`<div class="${p.low?'er':'wr'}" style="font-size:12px">${esc(p.flags.join(' · '))}</div>`:''}${p.ideas.length?`<div class="mu" style="font-size:12px">💡 ${esc(p.ideas.join(' '))}</div>`:''}<div class="mu" style="font-size:12px">🎬 ${esc(p.reel)}</div></td><td>${p.last7}</td><td>${p.last30}</td><td>${p.total}</td><td>${p.visits}</td></tr>`).join('')}</table></div>`};
+V.report=()=>`<div class="card"><div class="row"><b>Founder Daily Report</b><button class="s" onclick="copyReport()">📋 Copy</button></div><pre>${esc(E.reportText(R.rep))}</pre>
+  <div class="mu">Prepared automatically each time this page opens. Not sent anywhere (no paid notifications). Metrics that the CRM does not have show DATA NOT AVAILABLE.</div></div>`;
+V.appr=()=>{const f=F.appr,list=S.queue.filter(q=>q.status==f);
+  return `<div class="lock">Approving a draft does <b>not</b> send it. After approval, copy the text and send it yourself from the team's WhatsApp. Auto-send is locked OFF.</div><br>
+  <div class="chips">${['pending','approved','rejected'].map(k=>`<button class="${f==k?'on':''}" onclick="F.appr='${k}';render()">${k[0].toUpperCase()+k.slice(1)} (${S.queue.filter(q=>q.status==k).length})</button>`).join('')}</div>
+  ${list.map(q=>`<div class="card"><div class="row"><div><b>${esc(q.title)}</b><div class="mu">${esc(q.agent)} · ${esc(q.phoneMasked||'')} · ${new Date(q.createdAt).toLocaleString('en-IN')}</div></div><span class="tag">${esc(q.status)}</span></div>
+    <div class="draft">${esc(q.text)}</div>
+    <div class="btns">${q.status=='pending'?`<button class="p" onclick="decide('${esc(q.id)}','approved')">✅ Approve</button><button class="d" onclick="decide('${esc(q.id)}','rejected')">✖ Reject</button>`:''}${q.status=='approved'?`<button class="s" onclick="copy('${esc(q.id)}')">📋 Copy text</button>`:''}</div></div>`).join('')||'<div class="card mu">No drafts here.</div>'}`};
+V.act=()=>`<div class="card"><b>Activity history</b> <span class="mu">(this browser)</span>${S.activity.length?`<table>${S.activity.slice(0,200).map(a=>`<tr><td class="mu" style="white-space:nowrap">${new Date(a.at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(a.msg)}</td></tr>`).join('')}</table>`:'<div class="mu">No activity yet.</div>'}</div>`;
+V.cost=()=>{const c=R.cost;
+  return `<div class="grid">${kpi(c.additionalBudget,'Extra budget used (₹)')}${kpi(c.walletInr,'Meta WhatsApp wallet (₹, manual)')}${kpi(c.waOutSent,'WhatsApp sent (loaded period)')}${kpi(c.waOutFailed,'WhatsApp failed (loaded period)')}</div><br>
+  <div class="lock">WhatsApp master switch in CRM: <b>${c.waMasterSwitch===true?'ON':c.waMasterSwitch===false?'OFF':esc(c.waMasterSwitch)}</b> · AI Hub auto-send: <b>OFF (locked)</b> · Auto-recharge: not touched</div><br>
+  <div class="card"><b>Services</b><table><tr><th>Service</th><th>Plan</th><th>₹/month</th></tr>${c.services.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.plan)}</td><td>${s.cost}</td></tr>`).join('')}</table><div class="mu" style="margin-top:6px">${esc(c.walletSource)}.</div></div>
+  <div class="card"><b>System health</b><table>${R.health.map(h=>`<tr><td>${h.ok?'<span class="ok">✔</span>':'<span class="er">✖</span>'} ${esc(h.check)}</td><td class="mu">${esc(h.detail)}</td></tr>`).join('')}</table></div>`};
+V.set=()=>`<div class="card"><b>Mode</b><div class="mu">${LIVE?'LIVE (read-only, admin login)':'MOCK (fake test data)'}</div><div class="btns">${LIVE?'<button class="s" onclick="location.href=\'aihub.html\'">Switch to mock data</button>':'<button class="s" onclick="location.href=\'aihub.html?live=1\'">Switch to live (read-only)</button>'}</div></div>
+  <div class="card"><b>Meta WhatsApp wallet (₹)</b><div class="mu">Enter the balance you see in Meta Business. Used for the cost card only.</div><div class="btns"><input type="number" id="wal" value="${+S.settings.walletInr||0}" min="0"><button class="p" onclick="S.settings.walletInr=Math.max(0,+$('#wal').value||0);E.log(S,'Wallet set to ₹'+S.settings.walletInr);save();compute();toast('Saved')">Save</button></div></div>
+  <div class="card"><b>Locked in Phase 1</b><ul><li>WhatsApp auto-send: OFF</li><li>Calling automation: OFF</li><li>CRM writes: none</li><li>Paid AI models: none</li><li>Publishing posts / editing listings: OFF</li></ul></div>
+  <div class="card"><b>Error log</b>${S.errors.length?`<table>${S.errors.slice(0,100).map(e=>`<tr><td class="mu" style="white-space:nowrap">${new Date(e.at).toLocaleString('en-IN')}</td><td>${esc(e.msg)}</td></tr>`).join('')}</table>`:'<div class="mu">No errors.</div>'}</div>
+  <div class="card"><b>Local data</b><div class="mu">Queue, activity and errors are stored only in this browser.</div><div class="btns"><button class="d" onclick="if(confirm('Clear AI Hub drafts, activity and errors in this browser?')){localStorage.removeItem(SKEY);S=load();tabs();render();toast('Cleared')}">Clear local AI data</button></div></div>`;
+
+function render(){tabs();try{$('#app').innerHTML=(V[TAB]||V.dash)()}catch(e){err('Render '+TAB+': '+e.message);$('#app').innerHTML='<div class="card er">Something went wrong: '+esc(e.message)+'</div>'}}
+
+(async()=>{
+  $('#mode').textContent=LIVE?'LIVE · read-only':'MOCK DATA';if(LIVE)$('#mode').classList.add('live');
+  try{DATA=await getData();compute();E.log(S,'Agents ran on '+(LIVE?'live (read-only)':'mock')+' data');save();render()}
+  catch(e){err(e.message);tabs();$('#app').innerHTML=`<div class="card"><b class="er">Could not load.</b><div>${esc(e.message.replace(/^(LOGIN|ADMIN): /,''))}</div><div class="btns"><button class="s" onclick="location.href='aihub.html'">Open with mock data</button></div></div>`}
+})();
+</script>
+</body></html>
