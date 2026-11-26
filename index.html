@@ -1869,8 +1869,8 @@ function pitch(p,name){
   return L.join('\n');
 }
 /* ---------- WhatsApp templates (buyer lead) ---------- */
-const WT=[['details','🏡 Property details'],['noans','📵 Call not answered'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 After visit'],['similar','🏘 More options']];
-const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'similar','Deal Closed':'after'})[b.status]||'details';
+const WT=[['details','🏡 Property details'],['noans','📵 Call not answered'],['fu','🔁 Follow-up'],['visit','📅 Visit confirm'],['remind','⏰ Visit reminder'],['after','🙏 After visit'],['thanks','🙏 Not interested (thank you)']];
+const WTdef=b=>({'New':'details','Contacted':'details','Follow-up':'fu','Site Visit Scheduled':'visit','Site Visit Done':'after','Not Interested':'thanks','Deal Closed':'after'})[b.status]||'details';
 let waB=null,waK=null,WS=new Set(),wqDays=7,wqOn=false,wqDone=0,WQS=new Set();
 const wqKey=b=>ph10(b.buyer_phone)+'|'+(b.property_id||'');
 function wqList(){
@@ -1905,25 +1905,22 @@ function wqOpen(){wqOn=true;wqDone=0;wqShow()}
 const pShort=p=>{const n=x=>x!=null&&String(x).trim()!=='';const sale=!/rent/i.test(p.status||'')&&p.intent!='Rent';return `${[p.bhk,(p.ptype&&p.ptype!='Flat')?p.ptype:'Flat'].filter(n).join(' ')} · ${p.project||''}${n(p.locality)?', '+p.locality:''}${sale&&p.price?' · '+rs(p.price).replace(/ L$/,' Lakh'):p.rent?' · ₹'+Number(p.rent).toLocaleString('en-IN')+'/month':''}`};
 const pLoc=p=>{const d=p.details||{};const L=[];if(d.maps)L.push('📍 Location: '+d.maps);else L.push('📍 '+[p.project,p.locality].filter(Boolean).join(', '));if(p.landmark)L.push('🧭 Near '+p.landmark);return L};
 const pMedia=p=>[[p.reel_url,'📱 Reel'],[p.tour_url,'🎥 Virtual tour'],[p.video_url,'▶️ YouTube']].filter(x=>x[0]&&String(x[0]).trim()).map(x=>x[1]+': '+x[0]);
-function similarProps(p,b){
-  const bhk=p&&p.bhk?String(p.bhk).match(/\d/):null,loc=p&&p.locality;
-  return PR.filter(x=>!isSold(x)&&(!p||x.id!=p.id)).map(x=>({x,s:(bhk&&String(x.bhk||'').includes(bhk[0])?2:0)+(loc&&x.locality==loc?1:0)+(x.reel_url||x.tour_url?0.5:0)})).sort((a,c)=>c.s-a.s).slice(0,3).map(o=>o.x);
-}
+/* similarProps (cross-selling other properties) removed: buyers are only messaged about their own enquiry property. */
 function waText(k,b){
   const p=P(b.property_id),nm=b.buyer_name&&!/^buyer$/i.test(b.buyer_name)?' '+b.buyer_name.split(' ')[0]:'',hi=`Hello${nm},`,sign='Regards,\nTeam Easy Deals';
   const vt=b.visit_at?new Date(b.visit_at):null,vd=vt?vt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}):'(date)',vh=vt?vt.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}).toUpperCase():'(time)';
-  if(!p&&k!='noans'&&k!='similar')return `${hi}\nThank you for your property enquiry with Easy Deals. Please share your preferred location and budget, and we will send you matching options.\n\n${sign}`;
+  if(!p&&k!='noans')return `${hi}\nThank you for your property enquiry with Easy Deals. Could you please tell us which property you enquired about, so that we can share its details?\n\n${sign}`;
   if(k=='details')return pitch(p,nm.trim());
   if(k=='noans')return `${hi}\nThis is Easy Deals. You recently enquired${b.source?' on '+b.source:''} about ${p?'*'+pShort(p)+'*':'a property'}. We tried calling you but could not connect.\n\nPlease let us know a convenient time to call, or simply reply "DETAILS" and we will share complete information here.\n\n${sign}`;
   if(k=='fu'){const m=pMedia(p);return `${hi}\nJust a quick follow-up: *${pShort(p)}* is still available.\n${m.length?'\n'+m.join('\n')+'\n':''}\nWould you like to visit the property this week? Weekend visits can also be arranged. Please reply with a convenient day and time.\n\n${sign}`}
   if(k=='visit')return `${hi}\n✅ *Your site visit is confirmed*\n\n🏡 ${pShort(p)}\n📅 ${vd}, ${vh}\n${pLoc(p).join('\n')}\n\nOur team member will meet you at the property. Kindly message us when you are on your way, and let us know in advance if your plans change.\n\n${sign}`;
   if(k=='remind')return `${hi}\nA friendly reminder of your site visit today at ${vh}.\n\n🏡 ${pShort(p)}\n${pLoc(p).join('\n')}\n\nPlease reply "YES" to confirm, or let us know if you would like to reschedule.\n\n${sign}`;
-  if(k=='after')return `${hi}\nThank you for visiting ${p.project||'the property'}. We hope you liked it.\n\nPlease share your feedback by replying with a number:\n1️⃣ I liked it, let's discuss further\n2️⃣ I would like to discuss the price\n3️⃣ I want to visit again with family\n4️⃣ Please show me other options\n\n${sign}`;
-  if(k=='similar'){const L=similarProps(p,b);if(!L.length)return `${hi}\nWe will share new properties matching your requirement as soon as they are available.\n\n${sign}`;
-    const nums=['1️⃣','2️⃣','3️⃣'];return `${hi}\nBased on your requirement, here are a few more options you may like:\n\n`+L.map((x,i)=>`${nums[i]} *${pShort(x)}*${pMedia(x).length?'\n   '+pMedia(x)[0]:''}`).join('\n\n')+`\n\nIf any of these interest you, just reply with its number and we will share full details and arrange a visit.\n\n${sign}`}
+  if(k=='after')return `${hi}\nThank you for visiting ${p.project||'the property'}. We hope you liked it.\n\nPlease share your feedback by replying with a number:\n1️⃣ I liked it, let's discuss further\n2️⃣ I would like to discuss the price\n3️⃣ I want to visit again with family\n4️⃣ I am not interested in this property\n\n${sign}`;
+  // No cross-selling: a buyer is only ever messaged about the property they enquired about.
+  if(k=='thanks')return `${hi}\nThank you for letting us know. If you would like to reconsider *${pShort(p)}* later, just reply here and we will be happy to help.\n\n${sign}`;
   return pitch(p,nm.trim());
 }
-var BL_T=[['details','Property details'],['noans','No answer'],['fu','Follow-up'],['visit','Visit confirmed'],['remind','Visit reminder'],['missed','Visit missed'],['after','After visit'],['price','Price discussion'],['similar','Similar properties'],['last','Last follow-up']];
+var BL_T=[['details','Property details'],['noans','No answer'],['fu','Follow-up'],['visit','Visit confirmed'],['remind','Visit reminder'],['missed','Visit missed'],['after','After visit'],['price','Price discussion'],['last','Last follow-up']];
 var first=function(s){return String(s||'').trim().split(/\s+/)[0]||''};
 function fdate(d){try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}catch(e){return '(date)'}}
 function ftime(t){if(!t)return '(time)';var h=+t.slice(0,2),m=t.slice(3,5),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap}

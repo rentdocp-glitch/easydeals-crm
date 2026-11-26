@@ -23,7 +23,12 @@ Step 1 is done (live since 25 Nov 2026). Every step below needs Ashok's **explic
 - Take a backup (admin menu → 💾 Full backup).
 - Run `supabase/proposed/04_ai_hub_tables.sql` (adds 2 admin-only tables, nothing else). Rollback block is in the file.
 
-## Step 4 (optional, later): Security fixes from the private security report (needs approval each)
+## Step 4: Security fixes (needs approval each)
+- 4a. Run `supabase/proposed/05_security_hardening.sql` in the SQL editor (permissions only; rollback block inside). Then run the CHECK query in the file: it must list only `call_missed, caller_id, ingest_lead`.
+- 4b. Redeploy Edge Function `wa-send` with Verify JWT ON (same code). The CRM already sends the login token, so nothing else changes.
+
+## Step 1c: No-cross-selling fix for the team app (needs approval: team-app change)
+- Merge the `ai-hub-buyer-guard` pull request. Changes the buyer WhatsApp template list in `index.html` and `buyers.html` ("🏘 More options" → "🙏 Not interested (thank you)"), bumps `sw.js` to v31 so phones get it.
 
 ## Step 5 (only if you decide to spend): WhatsApp API sending
 - Turn the existing `wa-send` master switch on with a low daily cap, after you approve templates and cost. Not part of Phase 1.
