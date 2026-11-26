@@ -1712,6 +1712,7 @@ function mFlt(x){MF=x;render()}
 function mRg(on){MR.on=on;MF=null;if(on&&!MR.f){const t0=isoToday();MR.f=t0.slice(0,8)+'01';MR.t=t0}render()}
 function mSetR(k,v){if(!v)return;MR[k]=v;if(MR.f>MR.t){if(k==='f')MR.t=v;else MR.f=v}render()}
 const mPend=['meeting_assigned','followup','callback'],mDone=['meeting_done','online_meet_done','deal_closed'];
+let ODV=false;
 VIEW['fe:today']=async()=>{
   const t=isoToday(),rg=MR.on,d=mDate||t;
   let data,late=[];
@@ -1737,8 +1738,8 @@ VIEW['fe:today']=async()=>{
   return searchBar('Owner name or number',0,1)+`<div class="card" style="padding:10px"><div style="display:flex;gap:6px;margin-bottom:8px"><button class="${rg?'':'p'}" onclick="mRg(false)" style="flex:1;min-height:40px">Single day</button><button class="${rg?'p':''}" onclick="mRg(true)" style="flex:1;min-height:40px">Date range</button></div>${rg?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><div class="mu">From</div><input type="date" value="${MR.f}" onchange="mSetR('f',this.value)" style="min-height:44px;width:100%"></div><div><div class="mu">To</div><input type="date" value="${MR.t}" onchange="mSetR('t',this.value)" style="min-height:44px;width:100%"></div></div>`:`<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center"><button onclick="setMD('${shiftDate(d,-1)}')" style="min-height:44px">‹</button><input type="date" value="${d}" onchange="setMD(this.value)" style="min-height:44px"><button onclick="setMD('${shiftDate(d,1)}')" style="min-height:44px">›</button><button class="${d===t?'p':''}" onclick="setMD('${t}')" style="min-height:44px">Today</button></div>`}</div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr)"><div onclick="mFlt('all')" style="${sel('all')}">${tile(lab==='Today'?'Meetings':lab,data.length)}</div><div onclick="mFlt('done')" style="${sel('done')}">${tile('Done',done,'',done?'ok':'')}</div><div onclick="mFlt('pend')" style="${sel('pend')}">${tile('Pending',pen,'',pen?'wr':'')}</div></div>
   <div class="mu" style="margin:4px 2px">Showing ${{all:'all',done:'done',pend:'pending'}[fl]} leads (${show.length})</div>`+
-  (late.length&&fl!=='done'?`<div class="mu" style="margin:6px 2px"><b class="er">⚠️ Pending from earlier days (${late.length})</b></div>`+late.map(l=>leadCard(l,hs[l.id]||[])).join(''):'')+
-  (show.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(rg?'No leads in this range.':(d===t&&fl==='pend')?'No pending tasks for today.':'No leads in this list.'));
+  (show.map(l=>leadCard(l,hs[l.id]||[])).join('')||empty(rg?'No leads in this range.':(d===t&&fl==='pend')?'No pending tasks for today.':'No leads in this list.'))+
+  (late.length?`<button class="${ODV?'p':''}" onclick="ODV=!ODV;render()" style="width:100%;min-height:46px;margin:12px 0 6px;border:1px solid #dc2626;color:${ODV?'#fff':'#b91c1c'};${ODV?'background:#dc2626':''}">⚠️ Overdue meetings (${late.length}) ${ODV?'▾':'▸'}</button>`+(ODV?late.map(l=>leadCard(l,hs[l.id]||[])).join(''):''):'');
 };
 const QV=[['followup','🔁'],['prospect','⭐'],['deal_closed','✅'],['meeting_assigned','📅'],['meeting_done','☑️'],['online_meet_done','💻'],['callback','📲'],['ringing','🔔'],['not_interested','❌'],['not_available','🚫'],['new','🆕']];
 let CMP=false;try{CMP=localStorage.getItem('cmp')=='1'}catch(e){}
