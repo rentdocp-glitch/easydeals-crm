@@ -68,11 +68,11 @@ details summary{cursor:pointer;color:var(--pr);font-weight:600;font-size:13.5px;
    - Mock mode (default) uses fake data. Live mode needs an admin login and is read-only. */
 const E=window.AIHUB;
 const qs=new URLSearchParams(location.search);
-const LIVE=qs.get('live')==='1';
+const LIVE=qs.get('mock')!=='1'; // live CRM data by default; ?mock=1 = fake test data
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=s=>document.querySelector(s);
 const SKEY='aihub_v1_'+(LIVE?'live':'mock');
-let S=load(),DATA=null,R={},TAB=qs.get('tab')||'dash',F={buyer:'HOT',owner:'top',appr:'pending'};
+let S=load(),DATA=null,R={},TAB=qs.get('tab')||'dash',F={buyer:'HOT',owner:'top',appr:'pending'},LIM={buyer:150,owner:150},PREV=null,LOADED_AT=null,LOADING=false;
 function load(){try{return Object.assign({queue:[],activity:[],errors:[],processed:{},settings:{walletInr:500}},JSON.parse(localStorage.getItem(SKEY)||'{}'))}catch(e){return{queue:[],activity:[],errors:[],processed:{},settings:{walletInr:500}}}}
 function save(){try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){err('Could not save local data: '+e.message)}}
 function err(m){S.errors.unshift({at:new Date().toISOString(),msg:String(m)});S.errors.length=Math.min(S.errors.length,200);save()}
@@ -82,7 +82,7 @@ window.addEventListener('error',e=>err('JS: '+e.message));
 const TABS=[['dash','📊 Dashboard'],['owner','🏠 Owner AI'],['buyer','🧑‍💼 Buyer RM AI'],['mkt','📣 Marketing'],['report','📝 Daily Report'],['appr','✅ Approvals'],['act','🕘 Activity'],['cost','💰 Cost & Health'],['set','⚙️ Settings']];
 function tabs(){const p=S.queue.filter(q=>q.status==='pending').length;
   $('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="${k==TAB?'on':''}" onclick="go('${k}')">${l}${k=='appr'&&p?`<span class="bd">${p}</span>`:''}</button>`).join('')}
-function go(t){TAB=t;history.replaceState(null,'','?'+(LIVE?'live=1&':'')+'tab='+t);render();window.scrollTo(0,0)}
+function go(t){TAB=t;history.replaceState(null,'','?'+(LIVE?'':'mock=1&')+'tab='+t);render();window.scrollTo(0,0)}
 
 /* ---------- data ---------- */
 async function getData(){
@@ -103,12 +103,12 @@ async function getData(){
   const d={_errors:{}};
   await Promise.all(Object.entries(cols).map(async([t,c])=>{
     try{let all=[],from=0;for(;;){let q=sb.from(t).select(c).range(from,from+999);
-        if(t=='calls'||t=='lead_ingest_log'||t=='wa_messages')q=q.gte(t=='lead_ingest_log'?'at':'created_at',since30);
-        const r=await q;if(r.error)throw r.error;all=all.concat(r.data||[]);if(!r.data||r.data.length<1000||from>40000)break;from+=1000}
+        if(t=='calls'||t=='lead_ingest_log')q=q.gte(t=='lead_ingest_log'?'at':'created_at',since30);
+        const r=await q;if(r.error)throw r.error;all=all.concat(r.data||[]);if(!r.data||r.data.length<1000)break;if(from>=500000){d._errors[t+'_truncated']='Stopped after 500,000 rows';err('Read '+t+': stopped after 500,000 rows');break}from+=1000}
       d[t]=all}catch(e){d._errors[t]=e.message||String(e);err('Read '+t+': '+(e.message||e))}}));
   return d;
 }
-function compute(){const o={now:Date.now()};R.buyers=E.buyerAgent(DATA,o);R.owners=E.ownerAgent(DATA,o);R.mkt=E.marketingAgent(DATA,o);R.rep=E.founderReport(DATA,o);R.cost=E.costStatus(DATA,S.settings);R.health=E.health(DATA,o)}
+function compute(){const o={now:Date.now(),lastSeenBuyerId:PREV?PREV.b:null,lastSeenLeadId:PREV?PREV.l:null};R.buyers=E.buyerAgent(DATA,o);R.owners=E.ownerAgent(DATA,o);R.mkt=E.marketingAgent(DATA,o);R.rep=E.founderReport(DATA,o);R.cost=E.costStatus(DATA,S.settings);R.health=E.health(DATA,o)}
 
 /* ---------- queue ---------- */
 function queue(agent,kind,x){const r=E.enqueue(S,{agent,entityKind:kind,entityId:x.id,title:(kind=='buyer'?'Buyer ':'Owner ')+(x.name||x.code||x.id)+(x.propertyLabel?' · '+x.propertyLabel:x.property?' · '+x.property:''),text:x.draft,fp:x.fp,phoneMasked:x.phoneMasked});
@@ -124,7 +124,8 @@ const kpi=(n,l)=>typeof n=='number'?`<div class="kpi"><div class="n">${n}</div><
 const V={};
 V.dash=()=>{const r=R.rep,p=S.queue.filter(q=>q.status=='pending').length;
   return `<div class="lock">🔒 <b>Safe mode (Phase 1).</b> Read-only. Drafts only. Nothing is sent, called, published or changed in the CRM.</div><br>
-  <div class="grid">${kpi(r.newBuyers,'New buyer enquiries today')}${kpi(r.hotBuyers,'HOT buyers')}${kpi(r.notContacted,'Buyers not contacted')}${kpi(r.visitRequests,'Visit requests')}${kpi(r.followToday,'Follow-ups due today')}${kpi(r.followOverdue,'Overdue follow-ups')}${kpi(r.ownerAttention,'Owner leads needing attention')}${kpi(r.meetingsScheduled,'Meetings scheduled')}${kpi(r.meetingsPending,'Meetings pending update')}${kpi(p,'Drafts waiting approval')}</div><br>
+  <div class="mu" style="margin-bottom:6px">Data refreshed ${LOADED_AT?LOADED_AT.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'—'} · updates every 2 min · latest enquiry ${typeof r.latestEnquiryAt=='string'&&r.latestEnquiryAt!=='DATA NOT AVAILABLE'?esc(new Date(r.latestEnquiryAt).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})):'—'}</div>
+  <div class="grid">${kpi(r.newSinceLastVisit,'New since your last visit')}${kpi(r.newBuyers,'New buyer enquiries today')}${kpi(r.hotBuyers,'HOT buyers')}${kpi(r.notContacted,'Buyers not contacted')}${kpi(r.visitRequests,'Visit requests')}${kpi(r.followToday,'Follow-ups due today')}${kpi(r.followOverdue,'Overdue follow-ups')}${kpi(r.ownerAttention,'Owner leads needing attention')}${kpi(r.meetingsScheduled,'Meetings scheduled')}${kpi(r.meetingsPending,'Meetings pending update')}${kpi(p,'Drafts waiting approval')}</div><br>
   <div class="card"><b>Agents</b><table><tr><th>Agent</th><th>Status</th><th>Output</th></tr>
   <tr><td>🏠 Owner Service AI</td><td class="ok">Ready</td><td>${R.owners.length} active owner leads ranked</td></tr>
   <tr><td>🧑‍💼 Buyer RM AI</td><td class="ok">Ready</td><td>${R.buyers.filter(b=>!b.dupOf).length} buyers classified, ${R.buyers.filter(b=>b.dupOf).length} duplicates held</td></tr>
@@ -133,30 +134,32 @@ V.dash=()=>{const r=R.rep,p=S.queue.filter(q=>q.status=='pending').length;
   ${r.problems.length?`<div class="warnbox"><b>Problems</b><ul>${r.problems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
   <div class="card"><b>Recommended founder actions</b><ol>${r.actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`};
 V.buyer=()=>{const f=F.buyer,all=R.buyers;
-  const cnt=k=>k=='DUP'?all.filter(b=>b.dupOf).length:k=='UNANS'?all.filter(b=>b.unanswered&&!b.dupOf).length:all.filter(b=>b.cls==k&&!b.dupOf).length;
-  const list=all.filter(b=>f=='DUP'?b.dupOf:f=='UNANS'?(b.unanswered&&!b.dupOf):(b.cls==f&&!b.dupOf));
-  return `<div class="chips">${['HOT','WARM','COLD','NEEDS REVIEW','UNANS','DUP'].map(k=>`<button class="${f==k?'on':''}" onclick="F.buyer='${k}';render()">${k=='UNANS'?'Not contacted':k=='DUP'?'Duplicates':k} (${cnt(k)})</button>`).join('')}</div>
+  const pick=k=>k=='DUP'?(b=>b.dupOf):k=='UNANS'?(b=>b.unanswered&&!b.dupOf):k=='NEW'?(b=>b.isNew&&!b.dupOf):(b=>b.cls==k&&!b.dupOf);
+  const cnt=k=>all.filter(pick(k)).length;
+  const list=all.filter(pick(f));
+  return `<div class="chips">${['NEW','HOT','WARM','COLD','NEEDS REVIEW','UNANS','DUP'].map(k=>`<button class="${f==k?'on':''}" onclick="F.buyer='${k}';LIM.buyer=150;render()">${k=='NEW'?'🆕 New':k=='UNANS'?'Not contacted':k=='DUP'?'Duplicates':k} (${cnt(k)})</button>`).join('')}</div>
+  <div class="mu" style="margin-bottom:8px">Newest enquiries first. ${PREV?'🆕 = arrived since your last visit.':'First visit on this device: 🆕 starts from the next visit.'}</div>
   ${f=='HOT'?`<div class="btns" style="margin-bottom:10px"><button class="s" onclick="queueAll()">➕ Queue all HOT drafts</button></div>`:''}
   <div class="mu" style="margin-bottom:8px">Rule: a buyer is only ever messaged about the property they enquired about. Phone numbers are masked.</div>
-  ${list.length?list.slice(0,150).map(b=>`<div class="card"><div class="row"><div><b>${esc(b.name||b.code)}</b> <span class="mu">${esc(b.code)} · ${esc(b.phoneMasked)} · ${esc(b.source)}</span><br>
+  ${list.length?list.slice(0,LIM.buyer).map(b=>`<div class="card"><div class="row"><div>${b.isNew?'🆕 ':''}<b>${esc(b.name||b.code)}</b> <span class="mu">${esc(b.code)} · ${esc(b.phoneMasked)} · ${esc(b.source)}</span><br>
     <span class="mu">Property:</span> ${b.propertyId?`<b>${esc(b.propertyId)}</b> ${esc(b.propertyLabel)}`:'<span class="er">not linked</span>'} · <span class="mu">${esc(b.status)}${b.ageDays!=null?' · '+b.ageDays+'d old':''}</span></div>${clsTag(b.cls)}</div>
     <div class="mu">Why: ${esc(b.reasons.join('; '))}</div>
     <div>👉 <b>${esc(b.nextAction)}</b></div>
     ${b.draft?`<details><summary>WhatsApp draft (${esc(b.draftType)})</summary><div class="draft">${esc(b.draft)}</div></details><div class="btns"><button class="p" onclick="queue('Buyer RM AI','buyer',R.buyers.find(x=>x.id==${+b.id}))">Send to approval queue</button></div>`:`<div class="mu">No draft: ${esc(b.draftBlocked||'')}</div>`}
-  </div>`).join(''):'<div class="card mu">Nothing here.</div>'}`};
+  </div>`).join('')+(list.length>LIM.buyer?`<button class="s" style="width:100%" onclick="LIM.buyer+=150;render()">Show more (${list.length-LIM.buyer} left)</button>`:''):'<div class="card mu">Nothing here.</div>'}`};
 V.owner=()=>{const f=F.owner,all=R.owners;
   const fl={top:o=>true,hp:o=>o.highPotential,cb:o=>o.pendingCallback,mt:o=>o.meetingOpportunity||o.status=='meeting_assigned',od:o=>o.followDate&&o.why.some(w=>/overdue/.test(w))};
   const nm={top:'Priority',hp:'High potential',cb:'Callbacks',mt:'Meetings',od:'Overdue'};
   const list=all.filter(fl[f]);
   return `<div class="chips">${Object.keys(fl).map(k=>`<button class="${f==k?'on':''}" onclick="F.owner='${k}';render()">${nm[k]} (${all.filter(fl[k]).length})</button>`).join('')}</div>
   <div class="mu" style="margin-bottom:8px">Suggestions only. The AI never changes a lead status or contacts an owner.</div>
-  ${list.slice(0,150).map(o=>`<div class="card"><div class="row"><div><b>${esc(o.name||'#'+o.id)}</b> <span class="mu">· ${esc(o.phoneMasked)} · ${esc(o.statusLabel)}</span><br><span class="mu">${esc([o.property,o.locality].filter(Boolean).join(', '))}${o.telecaller?' · TC: '+esc(o.telecaller):''}${o.fe?' · FE: '+esc(o.fe):''}</span></div><span class="tag ${o.score>=60?'HOT':o.score>=35?'WARM':'COLD'}">${o.score}</span></div>
+  ${list.slice(0,LIM.owner).map(o=>`<div class="card"><div class="row"><div><b>${esc(o.name||'#'+o.id)}</b> <span class="mu">· ${esc(o.phoneMasked)} · ${esc(o.statusLabel)}</span><br><span class="mu">${esc([o.property,o.locality].filter(Boolean).join(', '))}${o.telecaller?' · TC: '+esc(o.telecaller):''}${o.fe?' · FE: '+esc(o.fe):''}</span></div><span class="tag ${o.score>=60?'HOT':o.score>=35?'WARM':'COLD'}">${o.score}</span></div>
     ${o.why.length?`<div class="mu">Why: ${esc(o.why.join('; '))}</div>`:''}
     <div>👉 <b>${esc(o.nextAction)}</b></div>
     <div class="mu">Summary: ${esc(o.summary)}</div>
     <details><summary>Call suggestions</summary><ul>${o.callScript.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
     <details><summary>WhatsApp draft</summary><div class="draft">${esc(o.draft)}</div></details>
-    <div class="btns"><button class="p" onclick="queue('Owner Service AI','owner',R.owners.find(x=>x.id==${+o.id}))">Send to approval queue</button></div></div>`).join('')||'<div class="card mu">Nothing here.</div>'}`};
+    <div class="btns"><button class="p" onclick="queue('Owner Service AI','owner',R.owners.find(x=>x.id==${+o.id}))">Send to approval queue</button></div></div>`).join('')+(list.length>LIM.owner?`<button class="s" style="width:100%" onclick="LIM.owner+=150;render()">Show more (${list.length-LIM.owner} left)</button>`:'')||'<div class="card mu">Nothing here.</div>'}`};
 V.mkt=()=>{const m=R.mkt,days=Object.entries(m.dailyLeads),mx=Math.max(1,...days.map(d=>d[1]));
   return `<div class="card"><b>Buyer enquiries, last 14 days</b><div class="bar">${days.map(([d,n])=>`<div style="height:${n/mx*100}%" title="${esc(d)}: ${n}"><span>${n}</span></div>`).join('')}</div><div class="row mu"><span>${esc(days[0][0])}</span><span>${esc(days[days.length-1][0])}</span></div></div>
   <div class="card"><b>Source mix (30 days)</b><div>${Object.entries(m.sources30).map(([k,v])=>`<span class="tag" style="margin:3px">${esc(k)}: ${v}</span>`).join('')||'<span class="mu">No enquiries</span>'}</div>
@@ -178,7 +181,7 @@ V.cost=()=>{const c=R.cost;
   <div class="lock">WhatsApp master switch in CRM: <b>${c.waMasterSwitch===true?'ON':c.waMasterSwitch===false?'OFF':esc(c.waMasterSwitch)}</b> · AI Hub auto-send: <b>OFF (locked)</b> · Auto-recharge: not touched</div><br>
   <div class="card"><b>Services</b><table><tr><th>Service</th><th>Plan</th><th>₹/month</th></tr>${c.services.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.plan)}</td><td>${s.cost}</td></tr>`).join('')}</table><div class="mu" style="margin-top:6px">${esc(c.walletSource)}.</div></div>
   <div class="card"><b>System health</b><table>${R.health.map(h=>`<tr><td>${h.ok?'<span class="ok">✔</span>':'<span class="er">✖</span>'} ${esc(h.check)}</td><td class="mu">${esc(h.detail)}</td></tr>`).join('')}</table></div>`};
-V.set=()=>`<div class="card"><b>Mode</b><div class="mu">${LIVE?'LIVE (read-only, admin login)':'MOCK (fake test data)'}</div><div class="btns">${LIVE?'<button class="s" onclick="location.href=\'aihub.html\'">Switch to mock data</button>':'<button class="s" onclick="location.href=\'aihub.html?live=1\'">Switch to live (read-only)</button>'}</div></div>
+V.set=()=>`<div class="card"><b>Mode</b><div class="mu">${LIVE?'LIVE (read-only, admin login)':'MOCK (fake test data)'}</div><div class="btns">${LIVE?'<button class="s" onclick="location.href=\'aihub.html?mock=1\'">Switch to mock data</button>':'<button class="s" onclick="location.href=\'aihub.html\'">Switch to live (read-only)</button>'}</div></div>
   <div class="card"><b>Meta WhatsApp wallet (₹)</b><div class="mu">Enter the balance you see in Meta Business. Used for the cost card only.</div><div class="btns"><input type="number" id="wal" value="${+S.settings.walletInr||0}" min="0"><button class="p" onclick="S.settings.walletInr=Math.max(0,+$('#wal').value||0);E.log(S,'Wallet set to ₹'+S.settings.walletInr);save();compute();toast('Saved')">Save</button></div></div>
   <div class="card"><b>Locked in Phase 1</b><ul><li>WhatsApp auto-send: OFF</li><li>Calling automation: OFF</li><li>CRM writes: none</li><li>Paid AI models: none</li><li>Publishing posts / editing listings: OFF</li></ul></div>
   <div class="card"><b>Error log</b>${S.errors.length?`<table>${S.errors.slice(0,100).map(e=>`<tr><td class="mu" style="white-space:nowrap">${new Date(e.at).toLocaleString('en-IN')}</td><td>${esc(e.msg)}</td></tr>`).join('')}</table>`:'<div class="mu">No errors.</div>'}</div>
@@ -186,10 +189,23 @@ V.set=()=>`<div class="card"><b>Mode</b><div class="mu">${LIVE?'LIVE (read-only,
 
 function render(){tabs();try{$('#app').innerHTML=(V[TAB]||V.dash)()}catch(e){err('Render '+TAB+': '+e.message);$('#app').innerHTML='<div class="card er">Something went wrong: '+esc(e.message)+'</div>'}}
 
+async function refresh(manual){
+  if(LOADING)return;LOADING=true;const btn=$('#rf');if(btn)btn.textContent='…';
+  try{DATA=await getData();LOADED_AT=new Date();
+    const mb=Math.max(0,...(DATA.buyer_leads||[]).map(b=>+b.id||0)),ml=Math.max(0,...(DATA.leads||[]).map(l=>+l.id||0));
+    if(PREV===null){PREV=S.seen||null;S.seen={b:mb,l:ml};if(PREV&&F.buyer==='HOT'&&(DATA.buyer_leads||[]).some(b=>b.id>PREV.b))F.buyer='NEW'}
+    compute();if(manual||!R._logged){E.log(S,'Agents ran on '+(LIVE?'live (read-only)':'test')+' data: '+(DATA.buyer_leads||[]).length+' buyers, '+(DATA.leads||[]).length+' owner leads');R._logged=1}
+    save();const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)))render();if(manual)toast('Updated')}
+  catch(e){err(e.message);if(!R.buyers){tabs();$('#app').innerHTML=`<div class="card"><b class="er">Could not load.</b><div>${esc(e.message.replace(/^(LOGIN|ADMIN): /,''))}</div><div class="btns"><button class="s" onclick="location.href='aihub.html?mock=1'">Open with test data</button></div></div>`}else toast('Refresh failed, showing last data')}
+  finally{LOADING=false;if(btn)btn.textContent='⟳'}
+}
 (async()=>{
-  $('#mode').textContent=LIVE?'LIVE · read-only':'MOCK DATA';if(LIVE)$('#mode').classList.add('live');
-  try{DATA=await getData();compute();E.log(S,'Agents ran on '+(LIVE?'live (read-only)':'mock')+' data');save();render()}
-  catch(e){err(e.message);tabs();$('#app').innerHTML=`<div class="card"><b class="er">Could not load.</b><div>${esc(e.message.replace(/^(LOGIN|ADMIN): /,''))}</div><div class="btns"><button class="s" onclick="location.href='aihub.html'">Open with mock data</button></div></div>`}
+  $('#mode').textContent=LIVE?'LIVE · read-only':'TEST DATA';if(LIVE)$('#mode').classList.add('live');
+  $('#mode').insertAdjacentHTML('beforebegin','<button id="rf" onclick="refresh(true)" title="Refresh now" style="background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;width:36px;height:30px;font-size:17px;margin-left:auto;margin-right:6px">⟳</button>');
+  await refresh(false);
+  // New portal enquiries appear on their own: re-read the CRM every 2 minutes while the page is open and visible.
+  setInterval(()=>{if(!document.hidden)refresh(false)},120000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&LOADED_AT&&Date.now()-LOADED_AT>60000)refresh(false)});
 })();
 </script>
 </body></html>

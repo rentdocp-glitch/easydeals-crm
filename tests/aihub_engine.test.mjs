@@ -144,3 +144,46 @@ test('buyer: old enquiry on a sold property is COLD, no draft, never redirected'
   const b = byId(E.buyerAgent(d, { now: NOW }), 99);
   assert.equal(b.cls, 'COLD'); assert.equal(b.draft, null); assert.match(b.nextAction, /Do not offer other listings/);
 });
+
+/* ---- Live, growing data (added 26 Nov 2026) ---- */
+test('growing data: new enquiries are flagged as new since last visit and listed first', () => {
+  const d = data();
+  d.buyer_leads.push({ id: 500, buyer_name: 'Fresh Lead', buyer_phone: '9000000500', property_id: 'ED-T01', status: 'New', created_at: new Date(NOW - 60000).toISOString() });
+  const B = E.buyerAgent(d, { now: NOW, lastSeenBuyerId: 13 });
+  assert.equal(B[0].id, 500, 'newest enquiry must be first');
+  assert.deepEqual(B.filter((b) => b.isNew).map((b) => b.id), [500]);
+  for (let i = 1; i < B.length; i++) assert.ok(String(B[i - 1].createdAt) >= String(B[i].createdAt));
+  const r = E.founderReport(d, { now: NOW, lastSeenBuyerId: 13 });
+  assert.equal(r.newSinceLastVisit, 1);
+  assert.equal(E.founderReport(d, { now: NOW }).newSinceLastVisit, E.DNA, 'first visit: unknown, not zero');
+});
+test('growing data: a later edit to a lead does not create a second draft for the same message', () => {
+  const S = {};
+  const d = data();
+  const b1 = E.buyerAgent(d, { now: NOW }).find((x) => x.id === 1);
+  assert.equal(E.enqueue(S, { title: 't', text: b1.draft, fp: b1.fp }).added, true);
+  d.buyer_leads.find((x) => x.id === 1).updated_at = new Date(NOW).toISOString();
+  const b2 = E.buyerAgent(d, { now: NOW }).find((x) => x.id === 1);
+  assert.equal(b2.fp, b1.fp);
+  assert.equal(E.enqueue(S, { title: 't', text: b2.draft, fp: b2.fp }).added, false);
+});
+test('growing data: a STOP reply of any age blocks drafts (no date window)', () => {
+  const d = data();
+  d.wa_messages.push({ direction: 'in', wa_phone: '9000000001', body: 'stop', created_at: new Date(NOW - 200 * 864e5).toISOString() });
+  const b = E.buyerAgent(d, { now: NOW }).find((x) => x.id === 1);
+  assert.equal(b.cls, 'NEEDS REVIEW'); assert.equal(b.draft, null);
+});
+test('scale: 60,000 buyer leads and 60,000 owner leads run in under 5 seconds', () => {
+  const d = data();
+  const t = new Date(NOW).getTime();
+  for (let i = 0; i < 60000; i++) {
+    d.buyer_leads.push({ id: 1000 + i, buyer_name: 'Load ' + i, buyer_phone: '9' + String(100000000 + (i % 40000)), property_id: ['ED-T01', 'ED-T02', 'ED-T04', null][i % 4], status: ['New', 'Contacted', 'Follow-up'][i % 3], created_at: new Date(t - (i % 400) * 3600000).toISOString() });
+    d.leads.push({ id: 1000 + i, name: 'Load ' + i, phone: '9' + String(200000000 + i), status: ['new', 'followup', 'callback', 'prospect', 'ringing'][i % 5], follow_date: E.istDay(t - (i % 9) * 864e5), created_at: new Date(t - (i % 300) * 864e5).toISOString() });
+  }
+  const t0 = Date.now();
+  const B = E.buyerAgent(d, { now: NOW }), O = E.ownerAgent(d, { now: NOW }); E.marketingAgent(d, { now: NOW }); E.founderReport(d, { now: NOW });
+  const ms = Date.now() - t0;
+  assert.ok(B.length > 60000 && O.length > 60000);
+  assert.ok(B.some((b) => b.dupOf), 'repeat phones must be detected as duplicates');
+  assert.ok(ms < 5000, 'took ' + ms + ' ms');
+});

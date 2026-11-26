@@ -51,7 +51,7 @@
     const firstOf = new Map(), repeats = new Map();
     rows.forEach((b) => { const k = ph10(b.buyer_phone) + '|' + (b.property_id || '-'); if (!firstOf.has(k)) firstOf.set(k, b.id); else repeats.set(k, (repeats.get(k) || 1) + 1); });
 
-    return rows.map((b) => {
+    const out = rows.map((b) => {
       const key = ph10(b.buyer_phone) + '|' + (b.property_id || '-');
       const dupOf = firstOf.get(key) !== b.id ? firstOf.get(key) : null;
       const enquiries = repeats.get(key) || 1;
@@ -136,9 +136,13 @@
         id: b.id, code: b.code || ('#' + b.id), name: b.buyer_name || '', phoneMasked: mask(b.buyer_phone), source: b.source || '', status,
         propertyId: b.property_id || null, propertyLabel: label, cls, reasons, visitRequest: visitReq, callbackRequest: callbackReq,
         unanswered, ageDays: age, lastTouchDays: lastTouch, dupOf, enquiries, optedOut, nextAction: next, draft, draftType, draftBlocked,
-        fp: 'buyer:' + b.id + ':' + (draftType || '-') + ':' + (b.updated_at || b.created_at || ''),
+        fp: 'buyer:' + b.id + ':' + (draftType || '-'),
+        isNew: opts.lastSeenBuyerId != null && b.id > opts.lastSeenBuyerId,
+        createdAt: b.created_at || b.lead_date || '',
       };
     });
+    // Newest enquiries first, so fresh leads are never buried under the backlog.
+    return out.sort((x, y) => String(y.createdAt).localeCompare(String(x.createdAt)) || y.id - x.id);
   }
 
   /* ---------- AGENT 1: OWNER SERVICE AI ---------- */
@@ -200,9 +204,10 @@
         telecaller: people.get(l.tc_id) || '', fe: people.get(l.fe_id) || '', score, why, pendingCallback, meetingOpportunity, highPotential,
         followDate: l.follow_date || null, meetingDate: l.meeting_date || null, calls: calls.length, lastCallDays: lastCall,
         summary: notes.length ? notes.slice(-3).join(' · ') : 'No notes yet.', nextAction: next, callScript: script, draft,
-        fp: 'owner:' + l.id + ':' + l.status + ':' + (l.status_at || ''),
+        fp: 'owner:' + l.id + ':' + l.status,
+        isNew: opts.lastSeenLeadId != null && l.id > opts.lastSeenLeadId,
       };
-    }).sort((a, b) => b.score - a.score);
+    }).sort((a, b) => b.score - a.score || b.id - a.id);
   }
 
   /* ---------- AGENT 3: MARKETING MONITOR AI ---------- */
@@ -295,6 +300,8 @@
       deals7: v('leads', () => leads.filter((l) => l.status === 'deal_closed' && daysAgo(l.status_at || l.deal_at, now) <= 7).length),
       team: has('calls') && (data.calls || []).length ? (Object.keys(team).length ? team : 'No calls logged today') : DNA,
       marketing: has('properties') ? { lowListings: M.low.length, enquiries7: M.properties.reduce((s, p) => s + p.last7, 0), social: DNA } : DNA,
+      newSinceLastVisit: opts.lastSeenBuyerId != null ? primary.filter((b) => b.isNew).length : DNA,
+      latestEnquiryAt: (data.buyer_leads || []).reduce((m, b) => (String(b.created_at || '') > m ? String(b.created_at) : m), '') || DNA,
       problems, opportunities: [], actions: [],
     };
     const topOwners = O.filter((o) => o.highPotential).slice(0, 3);

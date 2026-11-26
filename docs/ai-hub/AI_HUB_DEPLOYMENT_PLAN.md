@@ -1,6 +1,6 @@
 # AI_HUB_DEPLOYMENT_PLAN.md
 
-Nothing is deployed. Every step below needs Ashok's **explicit approval**.
+Step 1 is done (live since 25 Nov 2026). Every step below needs Ashok's **explicit approval**.
 
 ## Step 0: Review (now)
 - Review the pull request `ai-hub-phase1` (new files only, no existing file changed except `supabase/proposed/README.md`, which is docs).
@@ -11,6 +11,10 @@ Nothing is deployed. Every step below needs Ashok's **explicit approval**.
 - Impact: one new page. The team app (`index.html`), `buyers.html`, `onboard.html`, `sw.js`, the database and WhatsApp are unchanged. The page is not linked from the team menu, so the team does not see it.
 - Use: log in to the CRM as admin, then open `/easydeals-crm/aihub.html?live=1`.
 - Rollback: revert the merge commit (the page disappears). No data to undo.
+
+## Step 1b: Live-data update (needs approval: "deploy")
+- Merge the `ai-hub-live-data` pull request. Only `aihub.html`, `aihub/engine.js` and the tests change. After this, `aihub.html` opens on live data by default (`?mock=1` for test data).
+- Rollback: revert that merge commit.
 
 ## Step 2 (optional): Admin menu link (needs approval: team-app change)
 - Add a "🤖 AI Hub" item in the **admin-only** drawer of `index.html`. Bump the `sw.js` cache version.
