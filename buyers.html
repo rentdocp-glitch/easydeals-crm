@@ -1231,7 +1231,7 @@ function ownerUpd(id,k){
   var p=PR.find(function(x){return x.id===id});if(!p)return;k=k||'nol';
   var o=document.getElementById('oum');if(!o){o=document.createElement('div');o.id='oum';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
   var ow=ph10(p.owner_phone),n=BL.filter(function(l){return l.property_id===id}).length;
-  var live=[];String(p.portal_status||'').split('|').forEach(function(s){var m=s.split(':');if(m.length>1&&/^\s*live/i.test(m[1]))live.push(m[0].trim())});
+  var live=['99acres','Housing','Magicbricks'];String(p.portal_status||'').split('|').forEach(function(s){var m=s.split(':');if(m.length>1&&/^\s*(expired|deactivated|not active|removed)/i.test(m[1])){var i=live.findIndex(function(x){return x.toLowerCase()===m[0].trim().toLowerCase()});if(i>-1)live.splice(i,1)}});
   var pt=live.length?live.join(', ').replace(/, ([^,]*)$/,' and $1'):'your selected property portals';
   var days=p.date_added?Math.max(0,Math.floor((Date.now()-new Date(p.date_added+'T00:00:00').getTime())/864e5)):null;
   var nm=(p.owner_name||'').trim().split(/\s+/)[0],hi='Namaste '+(nm?nm+' ji':'Sir/Madam')+',\n\n';
