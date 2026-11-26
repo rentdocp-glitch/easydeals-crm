@@ -473,7 +473,7 @@ function closeDrawer(){$('#dr').classList.remove('open');$('#ov').style.display=
 const VIEW={};
 
 /* ---------- properties ---------- */
-const PORT=[['99acres','id_99acres','99acres'],['Magicbricks','id_magicbricks','MB'],['Housing','id_housing','Housing'],['Social','id_social','Social Media']];
+const PORT=[['99acres','id_99acres','99acres'],['Magicbricks','id_magicbricks','MB'],['Housing','id_housing','Housing'],['Social','id_social','Social Media'],['Platform','id_platform','Easy Deals Platform']];
 function pStat(p,name,idk){return ['live','✓ Live','Posted on all portals']}
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
 const ownerActs=p=>{const ow=ph10(p.owner_phone),o2=ph10(p.owner_phone2);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="c omb" href="javascript:void(0)" onclick="oaMore(this)">More ▾</a></div><div class="oacts oamore" onclick="event.stopPropagation()" style="display:none">${o2?'<a class="c" href="tel:'+o2+'">Call 2</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91'+o2+'">WhatsApp 2</a>':''}<a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Send leads</a><a class="w" href="javascript:void(0)" onclick="invOpen('${esc(p.id)}')">🧾 Invoice</a><a class="w" href="javascript:void(0)" onclick="ownerUpd('${esc(p.id)}')">📊 Owner update</a></div>`:'<div class="mu er" style="margin-top:6px">Owner mobile is missing · add it from Edit</div>'};
@@ -1227,7 +1227,7 @@ function ownerUpd(id,k){
   var p=PR.find(function(x){return x.id===id});if(!p)return;k=k||'nol';
   var o=document.getElementById('oum');if(!o){o=document.createElement('div');o.id='oum';o.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(o)}
   var ow=ph10(p.owner_phone),n=BL.filter(function(l){return l.property_id===id}).length;
-  var live=['99acres','Housing','Magicbricks','Social Media'];
+  var live=['99acres','Housing','Magicbricks','Social Media','Easy Deals Platform'];
   var pt=live.length?live.join(', ').replace(/, ([^,]*)$/,' and $1'):'your selected property portals';
   var days=p.date_added?Math.max(0,Math.floor((Date.now()-new Date(p.date_added+'T00:00:00').getTime())/864e5)):null;
   var nm=(p.owner_name||'').trim().split(/\s+/)[0],hi='Namaste '+(nm?nm+' ji':'Sir/Madam')+',\n\n';
