@@ -475,10 +475,8 @@ const VIEW={};
 /* ---------- properties ---------- */
 const PORT=[['99acres','id_99acres','99acres'],['Magicbricks','id_magicbricks','MB'],['Housing','id_housing','Housing']];
 function pStat(p,name,idk){const m=String(p.portal_status||'').match(new RegExp(name+'\\s*:\\s*([^|]+)','i'));const t=m?m[1].trim():'';
-  if(/^live/i.test(t))return ['live','✓ Live',t];
-  if(/not checked/i.test(t)||(!t&&p[idk]))return ['unk','? Not checked',t||'ID exists, live check not done'];
-  if(/not listed/i.test(t)||!p[idk])return ['no','✗ Not listed',t||'No listing on this portal'];
-  return ['off','✗ '+t.split(' ')[0],t]}
+  if(/^(expired|deactivated|not active|removed)/i.test(t))return ['off','✗ '+t.split(' ')[0],t];
+  return ['live','✓ Live',t||'Posted on all portals (default)']}
 const portalRow=p=>`<div class="pt">${PORT.map(([n,k,lab])=>{const [c,txt,ti]=pStat(p,n,k);return `<span class="ps ${c}" title="${esc(ti)}">${lab} ${txt}</span>`}).join('')}</div>`;
 const ownerActs=p=>{const ow=ph10(p.owner_phone),o2=ph10(p.owner_phone2);return ow?`<div class="oacts" onclick="event.stopPropagation()"><a class="c" href="tel:${ow}">📞 Owner call</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91${ow}">WhatsApp</a><a class="c omb" href="javascript:void(0)" onclick="oaMore(this)">More ▾</a></div><div class="oacts oamore" onclick="event.stopPropagation()" style="display:none">${o2?'<a class="c" href="tel:'+o2+'">Call 2</a><a class="w" target="_blank" rel="noopener" href="https://wa.me/91'+o2+'">WhatsApp 2</a>':''}<a class="w" href="javascript:void(0)" onclick="ownerLeads('${esc(p.id)}')">📤 Send leads</a><a class="w" href="javascript:void(0)" onclick="invOpen('${esc(p.id)}')">🧾 Invoice</a><a class="w" href="javascript:void(0)" onclick="ownerUpd('${esc(p.id)}')">📊 Owner update</a></div>`:'<div class="mu er" style="margin-top:6px">Owner mobile is missing · add it from Edit</div>'};
 function oaMore(a){const m=a.closest('.oacts').nextElementSibling;const open=m.style.display=='none';m.style.display=open?'flex':'none';a.textContent=open?'Less ▴':'More ▾'}
