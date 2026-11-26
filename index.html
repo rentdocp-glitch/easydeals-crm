@@ -884,10 +884,13 @@ async function numHist(ph){
     q(sb.from('calls').select('by_id,duration_sec,created_at').ilike('phone',like).order('created_at',{ascending:false}).limit(60)),
     q(sb.from('call_events').select('user_id,at,missed').eq('phone',ph).order('at',{ascending:false}).limit(60)),
     q(sb.from('message_log').select('by_id,channel,direction,body,at,source').eq('phone',ph).order('at',{ascending:false}).limit(80)),
-    q(sb.from('leads').select('name,property').ilike('phone',like).limit(1)),
+    q(sb.from('leads').select('id,name,property').ilike('phone',like).limit(1)),
     q(sb.from('properties').select('id,owner_name,project').or('owner_phone.ilike.'+lk2+',owner_phone2.ilike.'+lk2).limit(1)),
     q(sb.from('buyer_leads').select('buyer_name,property_id').ilike('buyer_phone',like).order('id',{ascending:false}).limit(1))]);
   const nmOf=id=>(P[id]&&P[id].name)||'';const items=[];
+  /* status changes (lead_status_log, written by the database on every status change). Read-only; empty if not allowed. */
+  const sl=ld[0]&&ld[0].id?await q(sb.from('lead_status_log').select('old_status,new_status,by_id,at').eq('lead_id',ld[0].id).order('at',{ascending:false}).limit(60)):[];
+  sl.forEach(x=>items.push({at:x.at,k:'st',body:(ST[x.old_status]||x.old_status||'—')+' → '+(ST[x.new_status]||x.new_status||'—'),by:nmOf(x.by_id)}));
   dc.forEach(c=>items.push({at:c.started_at,k:'call',dir:c.direction,sec:c.duration_sec||0,by:nmOf(c.by_id)}));
   cl.forEach(c=>items.push({at:c.created_at,k:'call',dir:'out',sec:c.duration_sec||0,by:nmOf(c.by_id),man:1}));
   ce.forEach(e=>{const tm=new Date(e.at).getTime();if(dc.some(c=>Math.abs(new Date(c.started_at).getTime()-tm)<120000))return;items.push({at:e.at,k:'call',dir:e.missed?'missed':'in',sec:0,by:nmOf(e.user_id)})});
@@ -895,7 +898,7 @@ async function numHist(ph){
   items.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const nm=(ld[0]&&ld[0].name)||(pr[0]&&pr[0].owner_name&&('Owner: '+pr[0].owner_name))||(bl[0]&&bl[0].buyer_name&&('Buyer: '+bl[0].buyer_name))||'Unknown number';
   const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].property_id&&('Enquiry for '+bl[0].property_id))||'';
-  const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
+  const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='st')return '🔄 Status changed';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
   const row=i=>{const tm=new Date(i.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});const ex=i.k==='call'&&i.sec?' · talked '+fmt(i.sec):'';const bd=i.body?esc(i.body):(i.k==='wa'&&i.src==='crm'?'Chat opened from CRM':'');return '<div style="padding:8px 0;border-top:1px solid #eef1f6"><div style="font-weight:600;color:'+(i.dir==='missed'?'#dc2626':'#111')+'">'+lab(i)+'</div><div class="mu">'+tm+(i.by?' · '+esc(i.by):'')+ex+(i.man?' · timer':'')+'</div>'+(bd?'<div style="margin-top:2px">'+bd+'</div>':'')+'</div>'};
   box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:17px;font-weight:700">'+esc(nm)+'</div><div class="mu">'+esc(ph)+(sub?' · '+esc(sub):'')+'</div></div><button onclick="document.getElementById(\'nhv\').remove()">✕</button></div>'
    +'<div style="display:flex;gap:8px;margin:10px 0"><a class="btn p" href="tel:'+ph+'">📞 Call</a><a class="btn" target="_blank" rel="noopener" href="https://wa.me/91'+ph+'" onclick="waLog(\''+ph+'\')">💬 WhatsApp</a></div>'
@@ -1620,7 +1623,7 @@ async function exportXlsx(btn,allTime){
 }
 /* Full backup (admin): every CRM table, read with the admin's own login. Read-only, nothing is changed.
    Gives 2 files: .json (exact copy, for restore) and .xlsx (easy to open). */
-const BK_TABLES=['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares','dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history','invoices','assign_rules','app_settings','wa_settings','wa_messages'];
+const BK_TABLES=['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares','dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history','invoices','assign_rules','app_settings','wa_settings','wa_messages','blocked_leads','lead_ingest_log','lead_archive','lead_status_log'];
 async function fullBackup(btn){
   if(!ME||ME.role!='admin')return toast('Only admin can take a full backup',1);
   const old=btn.innerHTML;btn.style.pointerEvents='none';

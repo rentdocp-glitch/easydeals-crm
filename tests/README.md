@@ -13,6 +13,8 @@ Setup (one time): `pip install playwright`. You also need Google Chrome at `/usr
    - `python3 flows.py` and `python3 flows2.py`: test notes history, double tap, delete safety copy, Needs attention links, the drawer and the Back button.
    - `python3 backup_test.py`: tests the Full backup files.
    - `node wa_signature_test.mjs`: tests the webhook signature logic.
+   - `python3 flows3.py`: status history in Number history, AI-off banner and disabled Send on locked properties, admin-only toggle, Full backup table list.
+   - `node --test aihub_engine.test.mjs` and `python3 aihub_smoke.py`: AI Hub (read-only page).
 
 `backup_test.py`, `shot.py` and `realsdk.py` expect the Excel and Supabase libraries downloaded into `../qa/vendor` (see the comments inside each file).
 
