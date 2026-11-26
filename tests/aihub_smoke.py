@@ -6,7 +6,7 @@ Any request to a host other than localhost is blocked and reported."""
 import sys, os
 from playwright.sync_api import sync_playwright
 
-BASE = os.environ.get('BASE', 'http://localhost:8765/aihub.html')
+BASE = os.environ.get('BASE', 'http://localhost:8765/aihub.html?mock=1')
 OUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp/aihub_shots'
 os.makedirs(OUT, exist_ok=True)
 TABS = ['dash', 'owner', 'buyer', 'mkt', 'report', 'appr', 'act', 'cost', 'set']
@@ -49,13 +49,24 @@ with sync_playwright() as p:
             pg.evaluate("go('report')"); pg.screenshot(path=f'{OUT}/report_full_360.png', full_page=True)
             pg.evaluate("go('mkt')"); pg.screenshot(path=f'{OUT}/mkt_full_360.png', full_page=True)
             pg.evaluate("go('dash')"); pg.screenshot(path=f'{OUT}/dash_full_360.png', full_page=True)
+        if w == 360:
+            # Growing data: pretend the last visit saw buyers up to id 5, reload, new ones must be flagged
+            pg.evaluate("localStorage.setItem('aihub_v1_mock', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('aihub_v1_mock')||'{}'), {seen:{b:5,l:5}})))")
+            pg.reload(); pg.wait_for_selector('#tabs button'); pg.evaluate("go('buyer')")
+            if pg.evaluate("F.buyer") != 'NEW': fails.append('buyer tab did not open on New after new enquiries arrived')
+            nn = pg.evaluate("R.buyers.filter(b=>b.isNew&&!b.dupOf).length")
+            if nn < 5: fails.append(f'expected >=5 new buyers, got {nn}')
+            pg.screenshot(path=f'{OUT}/buyer_new_360.png')
+            pg.evaluate("refresh(true)"); pg.wait_for_timeout(300)
+            if pg.evaluate("R.buyers.filter(b=>b.isNew).length") != nn: fails.append('manual refresh changed the new-lead set')
+            pg.evaluate("go('dash')"); pg.screenshot(path=f'{OUT}/dash_live_360.png')
         if w == 1280: pg.evaluate("go('dash')"); pg.screenshot(path=f'{OUT}/dash_1280.png', full_page=True)
         if errs: fails.append(f'{w}px JS errors: {errs}')
         ctx.close()
     # Live mode without login must refuse (Supabase CDN is blocked here, so it must fail safely)
     ctx = br.new_context(viewport={'width': 360, 'height': 780}); pg = ctx.new_page()
     pg.route('**/*', lambda r: r.continue_() if 'localhost' in r.request.url else r.abort())
-    pg.goto(BASE + '?live=1'); pg.wait_for_timeout(1500)
+    pg.goto(BASE.replace('?mock=1', '')); pg.wait_for_timeout(1500)
     t = pg.inner_text('#app')
     if 'Could not load' not in t: fails.append('live mode without login did not refuse: ' + t[:120])
     pg.screenshot(path=f'{OUT}/live_refused_360.png'); ctx.close()

@@ -43,8 +43,8 @@ Easy Deals AI Hub, Phase 1. A separate, admin-only, **read-only** layer on top o
 
 ## Modes
 
-- **Mock (default):** `aihub.html`, fake data, no network at all.
-- **Live, read-only:** `aihub.html?live=1`. Uses the same Supabase login as the CRM (same site). Refuses unless the user is `admin`. Reads 9 tables with `select` only (calls / ingest log / WhatsApp log limited to 30 days).
+- **Live, read-only (default from the live-data update):** `aihub.html`. Uses the same Supabase login as the CRM (same site). Refuses unless the user is `admin`. Reads 9 tables with `select` only (calls and ingest log limited to 30 days; WhatsApp log fully, so an old STOP is never missed). `?live=1` still works.
+- **Test data:** `aihub.html?mock=1`, fake data, no network at all.
 
 ## Why rule-based, not an LLM
 
@@ -75,3 +75,18 @@ Paid AI APIs are cost-blocked. The rules are transparent (each result shows "Why
 ## Approval workflow
 
 `draft → pending → approved | rejected`. One decision per draft. Approved means "a human may send this manually". There is no code path that sends.
+
+## Live, growing buyer leads (added 26 Nov 2026)
+
+The Hub is a permanent assistant, not a one-time report. Nothing is imported into it and nothing is stored as a fixed number.
+
+| Need | How it works |
+| --- | --- |
+| Always the latest leads | Every load reads `buyer_leads`, `leads` and the other tables fresh from the CRM database. All counts and HOT/WARM/COLD labels are recalculated from that data. |
+| New enquiries appear on their own | Re-reads the CRM every 2 minutes while the page is open, when you come back to the tab after more than 1 minute, and on the ⟳ button. |
+| No manual import | Portal leads reach `buyer_leads` through the existing `ingest_lead`. The Hub only reads them and does not touch intake. |
+| New-lead detection | Remembers the highest buyer and owner IDs from your last visit on this device. Anything newer gets 🆕, has its own "New" filter, and is counted on the dashboard. |
+| No duplicate processing | Same phone (last 10 digits) + same property = one case. A draft key is buyer + message type (owner + status), so later edits to a lead never create the same draft again, whether it was approved or rejected. |
+| History | Approval decisions and activity are kept in the admin's browser. A shared server-side history needs `supabase/proposed/04_ai_hub_tables.sql` (approval needed). |
+| Priority | Newest enquiries are listed first. Owners are ranked by score, with newer leads first on ties. "Show more" pages through any size of list. |
+| Scale | Reads in pages of 1,000 with no 40,000-row cap (stops at 500,000 per table with a logged warning). The engine handles 60,000 buyer + 60,000 owner leads in about 2 s (unit test). |

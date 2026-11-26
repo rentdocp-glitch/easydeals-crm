@@ -2,7 +2,7 @@
 
 Run date: 25 Nov 2026. All tests use **fake data** or an **anonymised read-only copy**. No real buyer or owner was contacted and no lead was changed.
 
-## 1. Unit tests: `node --test tests/aihub_engine.test.mjs` → **21 / 21 pass**
+## 1. Unit tests: `node --test tests/aihub_engine.test.mjs` → **25 / 25 pass** (re-run 26 Nov 2026; 4 tests added for growing live data and scale)
 
 - ✔ buyer: callback request is HOT with callback draft
 - ✔ buyer: visit request detected from history note
@@ -47,3 +47,11 @@ Run date: 25 Nov 2026. All tests use **fake data** or an **anonymised read-only 
 - Live mode with a real admin login: needs Ashok to log in. The code path is the same `select` queries the CRM already uses.
 - The existing CRM test suite was not re-run. No existing app file was changed (`git diff main --stat` shows only new files plus one line in `supabase/proposed/README.md`).
 - Real WhatsApp delivery: deliberately not tested (rule: no real sends).
+
+## 5. Live-data tests (26 Nov 2026)
+- ✔ New enquiries since the last visit are flagged, listed first, and counted (first visit shows DATA NOT AVAILABLE, not 0)
+- ✔ A later edit to a lead does not create a second draft
+- ✔ A STOP reply of any age blocks drafts
+- ✔ 60,000 buyer and 60,000 owner leads processed in about 2 s
+- ✔ Browser: after new enquiries arrive, the Buyer tab opens on "🆕 New". A manual refresh keeps the same set.
+- ✔ Existing CRM smoke tests (`tests/smoke.py`): index.html 46/46, buyers.html 11/11, onboard.html 3/3
