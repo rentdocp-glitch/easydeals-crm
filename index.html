@@ -884,10 +884,13 @@ async function numHist(ph){
     q(sb.from('calls').select('by_id,duration_sec,created_at').ilike('phone',like).order('created_at',{ascending:false}).limit(60)),
     q(sb.from('call_events').select('user_id,at,missed').eq('phone',ph).order('at',{ascending:false}).limit(60)),
     q(sb.from('message_log').select('by_id,channel,direction,body,at,source').eq('phone',ph).order('at',{ascending:false}).limit(80)),
-    q(sb.from('leads').select('name,property').ilike('phone',like).limit(1)),
+    q(sb.from('leads').select('id,name,property').ilike('phone',like).limit(1)),
     q(sb.from('properties').select('id,owner_name,project').or('owner_phone.ilike.'+lk2+',owner_phone2.ilike.'+lk2).limit(1)),
     q(sb.from('buyer_leads').select('buyer_name,property_id').ilike('buyer_phone',like).order('id',{ascending:false}).limit(1))]);
   const nmOf=id=>(P[id]&&P[id].name)||'';const items=[];
+  /* status changes (lead_status_log, written by the database on every status change). Read-only; empty if not allowed. */
+  const sl=ld[0]&&ld[0].id?await q(sb.from('lead_status_log').select('old_status,new_status,by_id,at').eq('lead_id',ld[0].id).order('at',{ascending:false}).limit(60)):[];
+  sl.forEach(x=>items.push({at:x.at,k:'st',body:(ST[x.old_status]||x.old_status||'—')+' → '+(ST[x.new_status]||x.new_status||'—'),by:nmOf(x.by_id)}));
   dc.forEach(c=>items.push({at:c.started_at,k:'call',dir:c.direction,sec:c.duration_sec||0,by:nmOf(c.by_id)}));
   cl.forEach(c=>items.push({at:c.created_at,k:'call',dir:'out',sec:c.duration_sec||0,by:nmOf(c.by_id),man:1}));
   ce.forEach(e=>{const tm=new Date(e.at).getTime();if(dc.some(c=>Math.abs(new Date(c.started_at).getTime()-tm)<120000))return;items.push({at:e.at,k:'call',dir:e.missed?'missed':'in',sec:0,by:nmOf(e.user_id)})});
@@ -895,7 +898,7 @@ async function numHist(ph){
   items.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const nm=(ld[0]&&ld[0].name)||(pr[0]&&pr[0].owner_name&&('Owner: '+pr[0].owner_name))||(bl[0]&&bl[0].buyer_name&&('Buyer: '+bl[0].buyer_name))||'Unknown number';
   const sub=(ld[0]&&ld[0].property)||(pr[0]&&(pr[0].id+' '+(pr[0].project||'')))||(bl[0]&&bl[0].property_id&&('Enquiry for '+bl[0].property_id))||'';
-  const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
+  const lab=i=>{if(i.k==='call')return i.dir==='out'?'↗️ Outgoing call':i.dir==='in'?'↙️ Incoming call':i.dir==='missed'?'❗ Missed call':i.dir==='rejected'?'⛔ Rejected call':'📞 Call';if(i.k==='st')return '🔄 Status changed';if(i.k==='wa')return i.dir==='in'?'💬 WhatsApp received':'💬 WhatsApp sent';return i.dir==='in'?'✉️ Text received':'✉️ Text sent'};
   const row=i=>{const tm=new Date(i.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});const ex=i.k==='call'&&i.sec?' · talked '+fmt(i.sec):'';const bd=i.body?esc(i.body):(i.k==='wa'&&i.src==='crm'?'Chat opened from CRM':'');return '<div style="padding:8px 0;border-top:1px solid #eef1f6"><div style="font-weight:600;color:'+(i.dir==='missed'?'#dc2626':'#111')+'">'+lab(i)+'</div><div class="mu">'+tm+(i.by?' · '+esc(i.by):'')+ex+(i.man?' · timer':'')+'</div>'+(bd?'<div style="margin-top:2px">'+bd+'</div>':'')+'</div>'};
   box.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:17px;font-weight:700">'+esc(nm)+'</div><div class="mu">'+esc(ph)+(sub?' · '+esc(sub):'')+'</div></div><button onclick="document.getElementById(\'nhv\').remove()">✕</button></div>'
    +'<div style="display:flex;gap:8px;margin:10px 0"><a class="btn p" href="tel:'+ph+'">📞 Call</a><a class="btn" target="_blank" rel="noopener" href="https://wa.me/91'+ph+'" onclick="waLog(\''+ph+'\')">💬 WhatsApp</a></div>'
@@ -1003,10 +1006,10 @@ let MYP=[];
 async function rmLoad(){
   const {data,error}=await sb.from('buyer_leads').select('*').contains('assignees',[ME.id]).order('id',{ascending:false}).limit(1000);
   if(error)throw error;BUYL=data||[];
-  let mp=[];try{const r=await sb.from('properties').select('id,project,locality,bhk,price').contains('assignees',[ME.id]);mp=r.data||[]}catch(e){}
+  let mp=[];try{const r=await sb.from('properties').select('id,project,locality,bhk,price,details').contains('assignees',[ME.id]);mp=r.data||[]}catch(e){}
   MYP=mp;const ids=[...new Set(BUYL.map(b=>b.property_id).filter(Boolean).concat(mp.map(p=>p.id)))];BUYP={};mp.forEach(p=>BUYP[p.id]=p);
   const miss=ids.filter(id=>!BUYP[id]);
-  if(miss.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price').in('id',miss);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
+  if(miss.length){try{const r=await sb.from('properties').select('id,project,locality,bhk,price,details').in('id',miss);(r.data||[]).forEach(p=>BUYP[p.id]=p)}catch(e){}}
 }
 VIEW['telecaller:buy']=VIEW['fe:buy']=async()=>{
   await rmLoad();
@@ -1620,7 +1623,7 @@ async function exportXlsx(btn,allTime){
 }
 /* Full backup (admin): every CRM table, read with the admin's own login. Read-only, nothing is changed.
    Gives 2 files: .json (exact copy, for restore) and .xlsx (easy to open). */
-const BK_TABLES=['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares','dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history','invoices','assign_rules','app_settings','wa_settings','wa_messages'];
+const BK_TABLES=['leads','calls','device_calls','call_events','message_log','lead_assignment_log','lead_shares','dup_requests','profiles','team_access','zones','areas','area_audit','properties','buyer_leads','buyer_history','invoices','assign_rules','app_settings','wa_settings','wa_messages','blocked_leads','lead_ingest_log','lead_archive','lead_status_log'];
 async function fullBackup(btn){
   if(!ME||ME.role!='admin')return toast('Only admin can take a full backup',1);
   const old=btn.innerHTML;btn.style.pointerEvents='none';
@@ -2086,10 +2089,13 @@ window.aiSwitch=async function(){
 </script>
 <script>
 /* AI RM Phase 1: draft shown to the RM, sent only on the RM's tap. Server (wa-send) re-checks every safety rule. */
+/* Properties where AI RM must not message buyers (Ashok, 25 Nov 2026). Same list is enforced in wa-send. */
+var AI_OFF_PROPS=['ED-003','ED-008','ED-010','ED-014','ED-015'];
 window.aiDraft=function(id){
   var b=(typeof BUYL!=='undefined'?BUYL:[]).find(function(x){return x.id==id});if(!b)return toast('Buyer not found',1);
   var p=(typeof BUYP!=='undefined'?BUYP:{})[b.property_id];
   if(!p)return toast('Is buyer ki property linked nahi hai, draft nahi ban sakta',1);
+  var aiOff=AI_OFF_PROPS.indexOf(String(p.id))>=0||!!((p.details||{}).ai_off);
   var worked=!!b.last_fu&&!/^new$/i.test(b.status||'');
   var tpl=worked?'ed_followup_v2':'ed_welcome_v2';
   var first=String(b.buyer_name||'Sir/Madam').trim().split(/\s+/)[0];first=first.charAt(0).toUpperCase()+first.slice(1);
@@ -2106,12 +2112,24 @@ window.aiDraft=function(id){
    '<div style="font-size:12px;color:#666;margin-bottom:8px">'+e(b.buyer_name||'Buyer')+' · '+e(p.id)+' · template: '+tpl+'</div>'+
    '<div style="background:#f4f4f5;border-radius:10px;padding:10px;font-size:14px;line-height:1.45;white-space:pre-wrap">'+e(txt)+'</div>'+
    '<div style="font-size:12px;color:#777;margin:8px 0">Message approved Meta template se jayega. Master switch band ho, limit bhar gayi ho, 9 AM-8 PM ke bahar ho, buyer ne STOP likha ho, ya aaj message ja chuka ho to nahi jayega.</div>'+
+   (aiOff?'<div style="background:#fde8e8;color:#b42318;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px;font-weight:700">⛔ Is property ('+e(p.id)+') par AI RM band hai. Message nahi jayega.</div>':'')+
+   ((typeof ME!=='undefined'&&ME.role=='admin')?'<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:6px 0 8px"><input type="checkbox" id="ai_pon" style="width:18px;height:18px"'+(aiOff?'':' checked')+'> AI RM is property par chalu</label>':'')+
    '<div id="ai_msg" style="font-size:13px;margin-bottom:8px"></div>'+
    '<div style="display:flex;gap:8px"><button id="ai_send" style="flex:1;padding:10px;font-weight:700;background:#581c87;color:#fff;border:0;border-radius:8px">Send via AI RM</button>'+
    '<button id="ai_cp" style="flex:1;padding:10px;border:1px solid #ccc;background:#fff;border-radius:8px">Copy text</button>'+
    '<button id="ai_x" style="padding:10px;border:1px solid #ccc;background:#fff;border-radius:8px">✖</button></div></div>';
   document.body.appendChild(d);
   document.getElementById('ai_x').onclick=function(){d.remove()};
+  if(aiOff){var sbtn=document.getElementById('ai_send');sbtn.disabled=true;sbtn.style.opacity='.5'}
+  var pon=document.getElementById('ai_pon');
+  if(pon)pon.onchange=async function(){
+    var on=this.checked,cb=this;
+    if(on&&AI_OFF_PROPS.indexOf(String(p.id))>=0){cb.checked=false;return toast('Ye property code me band hai (Ashok ka order). Developer se kholna hoga.',1)}
+    var nd=Object.assign({},p.details||{});if(on)delete nd.ai_off;else nd.ai_off=true;
+    var q=await sb.from('properties').update({details:nd}).eq('id',p.id);
+    if(q.error){cb.checked=!on;return toast(q.error.message,1)}
+    p.details=nd;toast(on?'AI RM chalu ✅':'AI RM band ⛔');d.remove();
+  };
   document.getElementById('ai_cp').onclick=function(){try{navigator.clipboard.writeText(txt);toast('Copied')}catch(x){toast('Copy nahi hua',1)}};
   document.getElementById('ai_send').onclick=async function(){
     var btn=this,m=document.getElementById('ai_msg');btn.disabled=true;btn.textContent='Checking…';

@@ -15,6 +15,9 @@ const TEMPLATES: Record<string, { n: number; text: string }> = {
   ed_visit_reminder: { n: 4, text: "Namaste {{1}} ji, yaad dilana: {{2}} ki site visit {{3}} ko hai. Hamare {{4}} aapse wahan milenge." },
 };
 const STOP_RE = /\b(stop|unsubscribe|band\s*kar(o|do)?|band\s*kr(o|do)?)\b/i;
+// Properties whose buyers must NOT get AI RM messages (Ashok, 25 Nov 2026). A property can also be blocked
+// without a code change by setting properties.details.ai_off = true.
+const AI_OFF_PROPS = new Set(["ED-003", "ED-008", "ED-010", "ED-014", "ED-015"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -28,6 +31,16 @@ Deno.serve(async (req) => {
     const db = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const body = await req.json();
+    // admin-only maintenance: subscribe this WhatsApp account to the app's webhook, or read its status
+    if (body.action === "subscribe" || body.action === "sub_status") {
+      const { data: adm } = await userDb.rpc("ed_is_admin");
+      if (!adm) return J({ ok: false, reason: "admin only" }, 403);
+      const { data: ws } = await db.from("wa_settings").select("waba_id").eq("id", 1).single();
+      const tk = Deno.env.get("WA_TOKEN");
+      if (!tk || !ws?.waba_id) return J({ ok: false, reason: "token or waba missing" });
+      const rr = await fetch(`https://graph.facebook.com/v21.0/${ws.waba_id}/subscribed_apps`, { method: body.action === "subscribe" ? "POST" : "GET", headers: { Authorization: `Bearer ${tk}` } });
+      return J({ ok: rr.ok, status: rr.status, response: await rr.json().catch(() => null) });
+    }
     const buyerId = Number(body.buyer_id);
     const tpl = String(body.template || "");
     const extra: string[] = Array.isArray(body.extra) ? body.extra.map(String) : [];
@@ -44,21 +57,24 @@ Deno.serve(async (req) => {
 
     // 2) time window 9:00-20:00 IST
     const h = ist.getUTCHours();
-    if (h < 9 || h >= 20) return J({ ok: false, reason: "outside 9 AM-8 PM IST" });
+    const outsideHours = h < 9 || h >= 20;
 
-    // 3) buyer + permission (admin or the assigned RM)
+    // 3) buyer + permission (admin, the assigned RM, or any co-assigned RM)
     const { data: b } = await db.from("buyer_leads").select("*").eq("id", buyerId).single();
     if (!b) return J({ ok: false, reason: "buyer not found" });
     const { data: isAdmin } = await userDb.rpc("ed_is_admin");
     const isAssigned = b.assigned_to === u.user.id || (Array.isArray(b.assignees) && b.assignees.includes(u.user.id));
     if (!isAdmin && !isAssigned) return J({ ok: false, reason: "not allowed for this buyer" }, 403);
+    if (outsideHours && !(body.test === true && isAdmin && b.buyer_name === "Test Owner")) return J({ ok: false, reason: "outside 9 AM-8 PM IST" });
     if (/closed|not interested/i.test(b.status || "")) return J({ ok: false, reason: `buyer status is ${b.status}` });
 
-    // 4) property lock: only the buyer's original, available property
+    // 4) property lock: only the buyer's original, available property, and not an AI-off property
     if (!b.property_id) return J({ ok: false, reason: "buyer has no property" });
+    if (AI_OFF_PROPS.has(String(b.property_id))) return J({ ok: false, reason: `AI RM is OFF for ${b.property_id}` });
     const { data: p } = await db.from("properties").select("*").eq("id", b.property_id).single();
     if (!p) return J({ ok: false, reason: "property not found" });
-    // real values are "Available - Sale" / "Available - Rent"; anything else (Sold, etc.) is blocked
+    if (p.details && (p.details as Record<string, unknown>).ai_off === true) return J({ ok: false, reason: `AI RM is OFF for ${p.id}` });
+    // real values are "Available - Sale" / "Available - Rent"; anything else (Sold, Under Offer, etc.) is blocked
     if (p.status && !/^available\b/i.test(String(p.status).trim())) return J({ ok: false, reason: `property is ${p.status}` });
 
     // 5) phone, opt-out, one message per buyer per day
