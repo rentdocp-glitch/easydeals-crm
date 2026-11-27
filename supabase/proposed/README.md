@@ -15,3 +15,4 @@ How to run one (after approval):
 | `02_lead_archive_on_delete.sql` | Before any lead is deleted, copies the lead and its calls, device calls, assignment log and shares into `lead_archive`. Admin-only table. The app does not change. | Low (adds 1 table + 1 trigger) |
 | `03_lead_status_history.sql` | Logs every owner-lead status change (old → new, who, when) into `lead_status_log`. Used for reports and history. | Low |
 | `04_ai_hub_tables.sql` | AI Hub: stores the draft approval queue and AI activity on the server instead of only in the admin's browser. 2 new admin-only tables. Nothing sends. | Low (adds 2 tables) |
+| `05_security_hardening.sql` | Security review fixes: logged-out visitors can no longer call 30 internal functions (portal intake and Android caller-ID keep working); unused `emp_props` view follows RLS; fixed search_path on 7 functions. Permissions only, no data. Tested on a local copy: before/after/run-twice/rollback. | Low |

@@ -1,6 +1,6 @@
 # AI_HUB_PROGRESS.md
 
-Last update: 26 Nov 2026
+Last update: 27 Nov 2026
 
 | Item | Status |
 | --- | --- |
@@ -19,8 +19,17 @@ Last update: 26 Nov 2026
 | Docs (8 files) | ✅ Done |
 | Pull request #4 (Phase 1) | ✅ Merged and live 25 Nov 2026 (approved) |
 | Live admin login test | ⏳ Needs Ashok |
-| Live-data update (auto-refresh, 🆕 new leads, newest first, no row cap, stable dedupe, live by default) | ✅ Built and tested on branch `ai-hub-live-data`, ⏳ deploy needs approval |
+| Live-data update (auto-refresh, 🆕 new leads, newest first, no row cap, stable dedupe, live by default) | ✅ Live 27 Nov 2026 (PR #5, approved on decision card) |
 | Server-side queue table (`04_ai_hub_tables.sql`) | ⏳ Proposed, needs approval |
 
 ## Live changes made
 Only one: `aihub.html` (read-only page, not linked in the team app) published on 25 Nov 2026 with approval. No database write, migration, WhatsApp send, call or publish.
+
+## 27 Nov 2026: no-cross-selling guard + security prep (branch `ai-hub-buyer-guard`, not live)
+| Item | Status |
+| --- | --- |
+| Buyer RM AI flags "buyer asks about other properties" → NEEDS REVIEW, no draft | ✅ Built + tested |
+| Team app (index.html, buyers.html) "🏘 More options" template sent 3 OTHER properties to a buyer, and was the default for "Not Interested" buyers. "After visit" offered "show me other options". "No property" text promised "matching options" | ✅ Fix ready (replaced by a thank-you note naming only the buyer's own property). ⏳ Needs approval to go live |
+| `crm-buyer-assistant` helper prompt told Claude to "match 3-5 properties" | ✅ Fixed (own property only) |
+| Security fixes as SQL (`05_security_hardening.sql`) | ✅ Prepared + tested on a local database copy. ⏳ Needs approval to run on live DB |
+| `wa-send` Verify JWT ON | ⏳ Needs approval (Edge Function redeploy) |

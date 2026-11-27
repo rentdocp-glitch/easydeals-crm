@@ -55,3 +55,10 @@ Run date: 25 Nov 2026. All tests use **fake data** or an **anonymised read-only 
 - ✔ 60,000 buyer and 60,000 owner leads processed in about 2 s
 - ✔ Browser: after new enquiries arrive, the Buyer tab opens on "🆕 New". A manual refresh keeps the same set.
 - ✔ Existing CRM smoke tests (`tests/smoke.py`): index.html 46/46, buyers.html 11/11, onboard.html 3/3
+
+## 6. No-cross-selling + security prep (27 Nov 2026, branch `ai-hub-buyer-guard`)
+- ✔ Unit tests 28/28 (3 new: "other property" request → human review; Hinglish/English phrasings with no false alarms on normal notes; portal boilerplate ignored)
+- ✔ `tests/crosssell_guard.py`: every buyer WhatsApp template in index.html and buyers.html is rendered with a second property present, and none names it or offers "other options". **The same test FAILS on the current live main** (8 findings), which proves the problem and the fix
+- ✔ CRM regression: smoke index 46/46, buyers 11/11, onboard 3/3; clickall 0 problems; flows and flows2 no errors
+- ✔ AI Hub browser smoke: PASS
+- ✔ `05_security_hardening.sql` on a local Postgres 16 copy with the 33 live function signatures: before = 33 anon functions; after = 3 (ingest_lead, caller_id, call_missed); logged-in access unchanged (35/35); run twice = same; rollback = exactly the original 33

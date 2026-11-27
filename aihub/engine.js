@@ -20,6 +20,8 @@
   const STOP_RE = /\b(stop|unsubscribe|band\s*kar(o|do)?|band\s*kr(o|do)?)\b/i;
   const VISIT_RE = /\b(site\s*visit|visit|dekhn[ae]|see\s+the\s+(flat|property)|viewing|inspect)\b/i;
   const CALLBACK_RE = /\b(call\s*(me|back)|callback|call\s*karo|phone\s*karo|contact\s*me|please\s*call)\b/i;
+  // Buyer asking about a DIFFERENT property: never auto-handled, always a human decision (no cross-selling).
+  const OTHER_PROP_RE = /\b(other|more|different|another|similar|alternative)\s+(options?|propert(y|ies)|flats?|projects?|listings?|homes?)\b|\b(aur|dusr[aie]|doosr[aie])\s+(options?|propert(y|ies)|flats?|ghar)\b|\bshow\s+me\s+other\b/i;
   const URGENT_RE = /\b(urgent|immediately|asap|ready\s*to\s*(buy|move)|loan\s*(approved|sanctioned)|token)\b/i;
   const OWNER_ACTIVE = ['new', 'ringing', 'callback', 'followup', 'prospect', 'meeting_assigned', 'meeting_done', 'online_meet_done'];
   const ST_LABEL = { new: 'New', callback: 'Call Back', ringing: 'Ringing', followup: 'Follow Up', prospect: 'Prospect', meeting_assigned: 'Meeting Assigned', meeting_done: 'Meeting Done', online_meet_done: 'Online Meet Done', not_interested: 'Not Interested', deal_closed: 'Deal Closed', not_available: 'Not Available' };
@@ -63,6 +65,8 @@
       const lastTouch = h.length ? daysAgo(h[0].at, now) : null;
       const status = String(b.status || 'New');
       const optedOut = ins.some((m) => STOP_RE.test(m.body || ''));
+      // Only the buyer's own words and team notes, not portal boilerplate in `requirement`.
+      const askedOther = OTHER_PROP_RE.test([b.remarks, ...h.map((x) => x.note), ...ins.map((m) => m.body)].join(' \n '));
       const visitReq = VISIT_RE.test(text) || /site visit/i.test(status);
       const callbackReq = CALLBACK_RE.test(text);
       const contacted = h.length > 0 || !/^new$/i.test(status);
@@ -75,6 +79,7 @@
       else if (!propAvailable(p)) review.push('Property is ' + p.status);
       if (!validPhone(b.buyer_phone)) review.push('Phone number missing or invalid');
       if (optedOut) review.push('Buyer replied STOP (opted out)');
+      if (askedOther) review.push('Buyer asked about other properties: human decides (no automatic cross-selling)');
       const soldOnly = review.length === 1 && p && !propAvailable(p);
       if (soldOnly && age !== null && age > 14) { cls = 'COLD'; reasons.push('Property is ' + p.status + ' (old enquiry)'); }
       else if (review.length) { cls = 'NEEDS REVIEW'; reasons.push(...review); }
@@ -94,6 +99,7 @@
       const nextFu = b.next_fu ? daysAgo(b.next_fu, now) : null; // >0 overdue, 0 today
       let next;
       if (dupOf) next = 'Duplicate of buyer #' + dupOf + ' for the same property. Handle there.';
+      else if (askedOther && !optedOut) next = 'Human to decide. Answer only about ' + (b.property_id || 'the enquired property') + '. Do not offer other listings automatically.';
       else if (soldOnly) next = 'Property is ' + p.status + '. Inform the buyer politely if they ask. Do not offer other listings.';
       else if (cls === 'NEEDS REVIEW') next = 'Admin to review: ' + review[0] + '.';
       else if (optedOut) next = 'Do not message.';
@@ -135,7 +141,7 @@
       return {
         id: b.id, code: b.code || ('#' + b.id), name: b.buyer_name || '', phoneMasked: mask(b.buyer_phone), source: b.source || '', status,
         propertyId: b.property_id || null, propertyLabel: label, cls, reasons, visitRequest: visitReq, callbackRequest: callbackReq,
-        unanswered, ageDays: age, lastTouchDays: lastTouch, dupOf, enquiries, optedOut, nextAction: next, draft, draftType, draftBlocked,
+        askedOther, unanswered, ageDays: age, lastTouchDays: lastTouch, dupOf, enquiries, optedOut, nextAction: next, draft, draftType, draftBlocked,
         fp: 'buyer:' + b.id + ':' + (draftType || '-'),
         isNew: opts.lastSeenBuyerId != null && b.id > opts.lastSeenBuyerId,
         createdAt: b.created_at || b.lead_date || '',

@@ -149,11 +149,11 @@ test('buyer: old enquiry on a sold property is COLD, no draft, never redirected'
 test('growing data: new enquiries are flagged as new since last visit and listed first', () => {
   const d = data();
   d.buyer_leads.push({ id: 500, buyer_name: 'Fresh Lead', buyer_phone: '9000000500', property_id: 'ED-T01', status: 'New', created_at: new Date(NOW - 60000).toISOString() });
-  const B = E.buyerAgent(d, { now: NOW, lastSeenBuyerId: 13 });
+  const B = E.buyerAgent(d, { now: NOW, lastSeenBuyerId: 14 });
   assert.equal(B[0].id, 500, 'newest enquiry must be first');
   assert.deepEqual(B.filter((b) => b.isNew).map((b) => b.id), [500]);
   for (let i = 1; i < B.length; i++) assert.ok(String(B[i - 1].createdAt) >= String(B[i].createdAt));
-  const r = E.founderReport(d, { now: NOW, lastSeenBuyerId: 13 });
+  const r = E.founderReport(d, { now: NOW, lastSeenBuyerId: 14 });
   assert.equal(r.newSinceLastVisit, 1);
   assert.equal(E.founderReport(d, { now: NOW }).newSinceLastVisit, E.DNA, 'first visit: unknown, not zero');
 });
@@ -186,4 +186,22 @@ test('scale: 60,000 buyer leads and 60,000 owner leads run in under 5 seconds', 
   assert.ok(B.length > 60000 && O.length > 60000);
   assert.ok(B.some((b) => b.dupOf), 'repeat phones must be detected as duplicates');
   assert.ok(ms < 5000, 'took ' + ms + ' ms');
+});
+
+/* ---- Critical buyer rule: never cross-sell (added 27 Nov 2026) ---- */
+test('buyer asking for other properties is flagged for human review, no draft, no other listing named', () => {
+  const B = E.buyerAgent(data(), { now: NOW });
+  const b = byId(B, 14);
+  assert.equal(b.cls, 'NEEDS REVIEW'); assert.equal(b.askedOther, true); assert.equal(b.draft, null);
+  assert.match(b.nextAction, /Do not offer other listings/);
+  assert.ok(!/ED-T0[2-5]|Sample|Mock Park|Quiet/.test(b.nextAction));
+});
+test('other-property detector: Hinglish and English phrasings, and no false alarm on normal notes', () => {
+  const mk = (note) => { const d = data(); d.buyer_history.push({ id: 90, buyer_id: 2, at: new Date(NOW).toISOString(), note }); return byId(E.buyerAgent(d, { now: NOW }), 2).askedOther; };
+  for (const t of ['aur options bhejo', 'any other flats nearby?', 'dusra property dikhao', 'Show me other 2 BHK', 'similar properties please']) assert.equal(mk(t), true, t);
+  for (const t of ['Will visit on Sunday', 'Spoke, discuss with family', 'Price negotiable?', 'Other family members will come']) assert.equal(mk(t), false, t);
+});
+test('portal boilerplate in requirement does not trigger the other-property flag', () => {
+  const d = data(); byId(d.buyer_leads, 3).requirement = 'This user is looking for 1 BHK. Similar listings: none';
+  assert.equal(byId(E.buyerAgent(d, { now: NOW }), 3).askedOther, false);
 });
