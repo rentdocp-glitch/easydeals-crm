@@ -62,3 +62,7 @@ Run date: 25 Nov 2026. All tests use **fake data** or an **anonymised read-only 
 - ✔ CRM regression: smoke index 46/46, buyers 11/11, onboard 3/3; clickall 0 problems; flows and flows2 no errors
 - ✔ AI Hub browser smoke: PASS
 - ✔ `05_security_hardening.sql` on a local Postgres 16 copy with the 33 live function signatures: before = 33 anon functions; after = 3 (ingest_lead, caller_id, call_missed); logged-in access unchanged (35/35); run twice = same; rollback = exactly the original 33
+
+## 7. Follow-up priority + CRM health (27 Nov 2026, branch `ai-hub-followups`)
+- ✔ Unit tests 30/30 (new: priority order new → follow-ups due → newest; closed buyers not counted as follow-ups; health alerts when no lead reached the CRM in 24 h; failed transfers reported)
+- ✔ AI Hub browser smoke: PASS

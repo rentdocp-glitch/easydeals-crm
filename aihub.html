@@ -134,16 +134,16 @@ V.dash=()=>{const r=R.rep,p=S.queue.filter(q=>q.status=='pending').length;
   ${r.problems.length?`<div class="warnbox"><b>Problems</b><ul>${r.problems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
   <div class="card"><b>Recommended founder actions</b><ol>${r.actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`};
 V.buyer=()=>{const f=F.buyer,all=R.buyers;
-  const pick=k=>k=='DUP'?(b=>b.dupOf):k=='UNANS'?(b=>b.unanswered&&!b.dupOf):k=='NEW'?(b=>b.isNew&&!b.dupOf):(b=>b.cls==k&&!b.dupOf);
+  const pick=k=>k=='DUP'?(b=>b.dupOf):k=='UNANS'?(b=>b.unanswered&&!b.dupOf):k=='NEW'?(b=>b.isNew&&!b.dupOf):k=='FU'?(b=>b.fuDue&&!b.dupOf):(b=>b.cls==k&&!b.dupOf);
   const cnt=k=>all.filter(pick(k)).length;
   const list=all.filter(pick(f));
-  return `<div class="chips">${['NEW','HOT','WARM','COLD','NEEDS REVIEW','UNANS','DUP'].map(k=>`<button class="${f==k?'on':''}" onclick="F.buyer='${k}';LIM.buyer=150;render()">${k=='NEW'?'🆕 New':k=='UNANS'?'Not contacted':k=='DUP'?'Duplicates':k} (${cnt(k)})</button>`).join('')}</div>
-  <div class="mu" style="margin-bottom:8px">Newest enquiries first. ${PREV?'🆕 = arrived since your last visit.':'First visit on this device: 🆕 starts from the next visit.'}</div>
+  return `<div class="chips">${['NEW','FU','HOT','WARM','COLD','NEEDS REVIEW','UNANS','DUP'].map(k=>`<button class="${f==k?'on':''}" onclick="F.buyer='${k}';LIM.buyer=150;render()">${k=='NEW'?'🆕 New':k=='FU'?'⏰ Follow-up due':k=='UNANS'?'Not contacted':k=='DUP'?'Duplicates':k} (${cnt(k)})</button>`).join('')}</div>
+  <div class="mu" style="margin-bottom:8px">Order: 🆕 new leads, then ⏰ follow-ups due (most overdue first), then newest enquiries. ${PREV?'🆕 = arrived since your last visit.':'First visit on this device: 🆕 starts from the next visit.'}</div>
   ${f=='HOT'?`<div class="btns" style="margin-bottom:10px"><button class="s" onclick="queueAll()">➕ Queue all HOT drafts</button></div>`:''}
   <div class="mu" style="margin-bottom:8px">Rule: a buyer is only ever messaged about the property they enquired about. Phone numbers are masked.</div>
-  ${list.length?list.slice(0,LIM.buyer).map(b=>`<div class="card"><div class="row"><div>${b.isNew?'🆕 ':''}<b>${esc(b.name||b.code)}</b> <span class="mu">${esc(b.code)} · ${esc(b.phoneMasked)} · ${esc(b.source)}</span><br>
+  ${list.length?list.slice(0,LIM.buyer).map(b=>`<div class="card"><div class="row"><div>${b.isNew?'🆕 ':''}${b.fuDue?'⏰ ':''}<b>${esc(b.name||b.code)}</b> <span class="mu">${esc(b.code)} · ${esc(b.phoneMasked)} · ${esc(b.source)}</span><br>
     <span class="mu">Property:</span> ${b.propertyId?`<b>${esc(b.propertyId)}</b> ${esc(b.propertyLabel)}`:'<span class="er">not linked</span>'} · <span class="mu">${esc(b.status)}${b.ageDays!=null?' · '+b.ageDays+'d old':''}</span></div>${clsTag(b.cls)}</div>
-    <div class="mu">Why: ${esc(b.reasons.join('; '))}</div>
+    <div class="mu">Why: ${esc(b.reasons.join('; '))}${b.fuDue?` · <b class="${b.fuOverdueDays>0?'er':'wr'}">Follow-up ${b.fuOverdueDays>0?'overdue '+b.fuOverdueDays+'d':'due today'}</b>`:''}</div>
     <div>👉 <b>${esc(b.nextAction)}</b></div>
     ${b.draft?`<details><summary>WhatsApp draft (${esc(b.draftType)})</summary><div class="draft">${esc(b.draft)}</div></details><div class="btns"><button class="p" onclick="queue('Buyer RM AI','buyer',R.buyers.find(x=>x.id==${+b.id}))">Send to approval queue</button></div>`:`<div class="mu">No draft: ${esc(b.draftBlocked||'')}</div>`}
   </div>`).join('')+(list.length>LIM.buyer?`<button class="s" style="width:100%" onclick="LIM.buyer+=150;render()">Show more (${list.length-LIM.buyer} left)</button>`:''):'<div class="card mu">Nothing here.</div>'}`};

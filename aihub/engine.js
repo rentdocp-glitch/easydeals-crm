@@ -97,6 +97,8 @@
       } else { cls = 'COLD'; reasons.push('No activity, enquiry ' + age + ' days old'); }
 
       const nextFu = b.next_fu ? daysAgo(b.next_fu, now) : null; // >0 overdue, 0 today
+      const closedSt = /not interested|closed/i.test(status);
+      const fuDue = nextFu !== null && nextFu >= 0 && !closedSt;
       let next;
       if (dupOf) next = 'Duplicate of buyer #' + dupOf + ' for the same property. Handle there.';
       else if (askedOther && !optedOut) next = 'Human to decide. Answer only about ' + (b.property_id || 'the enquired property') + '. Do not offer other listings automatically.';
@@ -141,14 +143,15 @@
       return {
         id: b.id, code: b.code || ('#' + b.id), name: b.buyer_name || '', phoneMasked: mask(b.buyer_phone), source: b.source || '', status,
         propertyId: b.property_id || null, propertyLabel: label, cls, reasons, visitRequest: visitReq, callbackRequest: callbackReq,
-        askedOther, unanswered, ageDays: age, lastTouchDays: lastTouch, dupOf, enquiries, optedOut, nextAction: next, draft, draftType, draftBlocked,
+        askedOther, fuDue, fuOverdueDays: fuDue ? nextFu : null, unanswered, ageDays: age, lastTouchDays: lastTouch, dupOf, enquiries, optedOut, nextAction: next, draft, draftType, draftBlocked,
         fp: 'buyer:' + b.id + ':' + (draftType || '-'),
         isNew: opts.lastSeenBuyerId != null && b.id > opts.lastSeenBuyerId,
         createdAt: b.created_at || b.lead_date || '',
       };
     });
-    // Newest enquiries first, so fresh leads are never buried under the backlog.
-    return out.sort((x, y) => String(y.createdAt).localeCompare(String(x.createdAt)) || y.id - x.id);
+    // Priority order: new since last visit, then follow-ups due today/overdue (most overdue first), then newest enquiries.
+    const rank = (x) => (x.dupOf ? 3 : x.isNew ? 0 : x.fuDue ? 1 : 2);
+    return out.sort((x, y) => rank(x) - rank(y) || (rank(x) === 1 ? y.fuOverdueDays - x.fuOverdueDays : 0) || String(y.createdAt).localeCompare(String(x.createdAt)) || y.id - x.id);
   }
 
   /* ---------- AGENT 1: OWNER SERVICE AI ---------- */
@@ -279,12 +282,13 @@
     const callsToday = (data.calls || []).filter((c) => istDay(c.created_at) === today);
     const team = {}; callsToday.forEach((c) => { const n = people.get(c.by_id) || 'Unknown'; team[n] = (team[n] || 0) + 1; });
     const problems = [];
-    if (has('lead_ingest_log')) {
-      const last = (data.lead_ingest_log || []).map((x) => x.at).sort().pop();
+    {
+      // Leads reach the CRM from the website Admin Panel (portal -> Admin Panel -> CRM). Watch the CRM itself.
+      const last = buyers.map((x) => x.created_at || '').sort().pop();
       const hrs = last ? (now - new Date(last)) / 3600000 : null;
-      if (hrs === null || hrs > 24) problems.push('No portal lead received in the last 24 hours. Check the portal integrations.');
+      if (has('buyer_leads') && (hrs === null || hrs > 24)) problems.push('No new buyer lead reached the CRM in the last 24 hours. Check the Admin Panel to CRM transfer.');
       const bad = (data.lead_ingest_log || []).filter((x) => x.outcome && x.outcome !== 'ok' && daysAgo(x.at, now) <= 1).length;
-      if (bad) problems.push(bad + ' portal lead(s) failed to import in the last day.');
+      if (bad) problems.push(bad + ' lead(s) failed to reach the CRM in the last day.');
     }
     const noProp = primary.filter((b) => !b.propertyId).length;
     if (noProp) problems.push(noProp + ' buyer enquiries are not linked to any property.');
@@ -368,10 +372,10 @@
     const out = [];
     const tables = ['leads', 'buyer_leads', 'properties', 'buyer_history', 'calls', 'profiles', 'lead_ingest_log', 'wa_messages', 'wa_settings'];
     tables.forEach((t) => out.push({ check: 'Read ' + t, ok: Array.isArray(data[t]), detail: Array.isArray(data[t]) ? data[t].length + ' rows' : (data._errors && data._errors[t]) || 'not loaded' }));
-    if (Array.isArray(data.lead_ingest_log)) {
-      const last = data.lead_ingest_log.map((x) => x.at).sort().pop();
+    if (Array.isArray(data.buyer_leads)) {
+      const last = data.buyer_leads.map((x) => x.created_at || '').sort().pop();
       const hrs = last ? Math.round((now - new Date(last)) / 3600000) : null;
-      out.push({ check: 'Portal leads arriving', ok: hrs !== null && hrs <= 24, detail: last ? 'Last lead ' + hrs + ' h ago' : 'No log' });
+      out.push({ check: 'New leads reaching CRM', ok: hrs !== null && hrs <= 24, detail: last ? 'Last buyer lead added to CRM ' + hrs + ' h ago' : 'No buyer leads' });
     }
     out.push({ check: 'WhatsApp auto-send', ok: true, detail: 'OFF (locked in Phase 1)' });
     return out;

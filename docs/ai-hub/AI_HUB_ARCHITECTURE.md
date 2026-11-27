@@ -5,8 +5,11 @@ Easy Deals AI Hub, Phase 1. A separate, admin-only, **read-only** layer on top o
 ## Big picture
 
 ```
- Portals (99acres / Housing / Magicbricks / Website)
-        │  ingest_lead (existing, untouched)
+ Portals (99acres / Magicbricks / Housing.com)
+        │  (existing, untouched)
+        ▼
+ Easy Deals website Admin Panel
+        │  Admin Panel → CRM transfer (existing, untouched; arrives via ingest_lead)
         ▼
  ┌──────────── Supabase (existing, Free plan) ────────────┐
  │ leads · buyer_leads · properties · buyer_history ·      │
@@ -84,9 +87,16 @@ The Hub is a permanent assistant, not a one-time report. Nothing is imported int
 | --- | --- |
 | Always the latest leads | Every load reads `buyer_leads`, `leads` and the other tables fresh from the CRM database. All counts and HOT/WARM/COLD labels are recalculated from that data. |
 | New enquiries appear on their own | Re-reads the CRM every 2 minutes while the page is open, when you come back to the tab after more than 1 minute, and on the ⟳ button. |
-| No manual import | Portal leads reach `buyer_leads` through the existing `ingest_lead`. The Hub only reads them and does not touch intake. |
+| No manual import | Leads flow portal → website Admin Panel → CRM (`buyer_leads`). The Hub reads **only the CRM**: never the portals or the Admin Panel. It never imports or writes leads, so it cannot create duplicates or disturb intake. |
 | New-lead detection | Remembers the highest buyer and owner IDs from your last visit on this device. Anything newer gets 🆕, has its own "New" filter, and is counted on the dashboard. |
 | No duplicate processing | Same phone (last 10 digits) + same property = one case. A draft key is buyer + message type (owner + status), so later edits to a lead never create the same draft again, whether it was approved or rejected. |
 | History | Approval decisions and activity are kept in the admin's browser. A shared server-side history needs `supabase/proposed/04_ai_hub_tables.sql` (approval needed). |
 | Priority | Newest enquiries are listed first. Owners are ranked by score, with newer leads first on ties. "Show more" pages through any size of list. |
 | Scale | Reads in pages of 1,000 with no 40,000-row cap (stops at 500,000 per table with a logged warning). The engine handles 60,000 buyer + 60,000 owner leads in about 2 s (unit test). |
+
+## Priority order in Buyer RM AI (27 Nov 2026)
+1. 🆕 New since your last visit
+2. ⏰ Follow-ups due today or overdue (most overdue first; closed / not-interested buyers excluded)
+3. All other enquiries, newest first
+
+Health check "New leads reaching CRM" alerts when no buyer lead was added to the CRM for 24 hours. It watches the CRM itself, not the portals.

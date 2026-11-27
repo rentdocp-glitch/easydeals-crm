@@ -103,11 +103,10 @@ test('founder report: numbers match mock data, missing tables -> DATA NOT AVAILA
   assert.equal(r2.team, E.DNA); assert.equal(r2.followToday, E.DNA); assert.equal(r2.meetingsPending, E.DNA);
   assert.match(E.reportText(r2), /DATA NOT AVAILABLE/);
 });
-test('founder report: stale portal feed is reported as a problem', () => {
-  const d = data(); d.lead_ingest_log = [{ at: new Date(NOW - 3 * 864e5).toISOString(), outcome: 'ok' }];
-  assert.ok(E.founderReport(d, { now: NOW }).problems.some((p) => /portal/.test(p)));
+test('founder report: failed lead transfers into the CRM are reported as a problem', () => {
+  const d = data(); d.lead_ingest_log = [{ at: new Date(NOW - 3600000).toISOString(), outcome: 'error' }];
+  assert.ok(E.founderReport(d, { now: NOW }).problems.some((p) => /failed to reach the CRM/.test(p)));
 });
-
 test('approval queue: dedupe, decide once, approve never sends', () => {
   const S = {};
   const item = { agent: 'Buyer RM AI', title: 't', text: 'hello', fp: 'buyer:1:intro:x' };
@@ -152,7 +151,8 @@ test('growing data: new enquiries are flagged as new since last visit and listed
   const B = E.buyerAgent(d, { now: NOW, lastSeenBuyerId: 14 });
   assert.equal(B[0].id, 500, 'newest enquiry must be first');
   assert.deepEqual(B.filter((b) => b.isNew).map((b) => b.id), [500]);
-  for (let i = 1; i < B.length; i++) assert.ok(String(B[i - 1].createdAt) >= String(B[i].createdAt));
+  const rest = B.filter((b) => !b.isNew && !b.fuDue && !b.dupOf);
+  for (let i = 1; i < rest.length; i++) assert.ok(String(rest[i - 1].createdAt) >= String(rest[i].createdAt), 'newest first after new + follow-ups');
   const r = E.founderReport(d, { now: NOW, lastSeenBuyerId: 14 });
   assert.equal(r.newSinceLastVisit, 1);
   assert.equal(E.founderReport(d, { now: NOW }).newSinceLastVisit, E.DNA, 'first visit: unknown, not zero');
@@ -204,4 +204,28 @@ test('other-property detector: Hinglish and English phrasings, and no false alar
 test('portal boilerplate in requirement does not trigger the other-property flag', () => {
   const d = data(); byId(d.buyer_leads, 3).requirement = 'This user is looking for 1 BHK. Similar listings: none';
   assert.equal(byId(E.buyerAgent(d, { now: NOW }), 3).askedOther, false);
+});
+
+/* ---- Priority: new leads, then follow-ups due (added 27 Nov 2026) ---- */
+test('priority order: new since last visit, then follow-ups due (most overdue first), then newest', () => {
+  const d = data();
+  d.buyer_leads.push({ id: 600, buyer_name: 'Due Today', buyer_phone: '9000000600', property_id: 'ED-T04', status: 'Follow-up', next_fu: E.istDay(NOW), created_at: new Date(NOW - 20 * 864e5).toISOString() });
+  d.buyer_leads.push({ id: 601, buyer_name: 'Very Overdue', buyer_phone: '9000000601', property_id: 'ED-T04', status: 'Follow-up', next_fu: E.istDay(NOW - 9 * 864e5), created_at: new Date(NOW - 25 * 864e5).toISOString() });
+  d.buyer_leads.push({ id: 602, buyer_name: 'Brand New', buyer_phone: '9000000602', property_id: 'ED-T01', status: 'New', created_at: new Date(NOW - 60000).toISOString() });
+  d.buyer_leads.push({ id: 599, buyer_name: 'Closed Due', buyer_phone: '9000000603', property_id: 'ED-T04', status: 'Not Interested', next_fu: E.istDay(NOW - 2 * 864e5), created_at: new Date(NOW - 3 * 864e5).toISOString() });
+  const B = E.buyerAgent(d, { now: NOW, lastSeenBuyerId: 601 });
+  assert.equal(B[0].id, 602);
+  const fu = B.filter((b) => b.fuDue && !b.isNew).map((b) => b.id);
+  assert.ok(fu.indexOf(601) < fu.indexOf(600), 'most overdue first');
+  const firstNonFu = B.findIndex((b) => !b.isNew && !b.fuDue);
+  assert.ok(B.findIndex((b) => b.id === 600) < firstNonFu);
+  assert.equal(byId(B, 599).fuDue, false, 'closed buyers are not follow-ups');
+  assert.equal(byId(B, 601).fuOverdueDays, 9);
+});
+test('health watches the CRM itself: alerts when no buyer lead reached the CRM for 24h', () => {
+  const d = data(); d.buyer_leads.forEach((b) => { b.created_at = new Date(NOW - 3 * 864e5).toISOString(); });
+  assert.ok(E.founderReport(d, { now: NOW }).problems.some((p) => /reached the CRM/.test(p)));
+  const h = E.health(d, { now: NOW }).find((x) => x.check === 'New leads reaching CRM');
+  assert.equal(h.ok, false);
+  assert.equal(E.health(data(), { now: NOW }).find((x) => x.check === 'New leads reaching CRM').ok, true);
 });
