@@ -1,6 +1,6 @@
 # AI_HUB_PROGRESS.md
 
-Last update: 27 Nov 2026
+Last update: 27 Nov 2026 (afternoon)
 
 | Item | Status |
 | --- | --- |
@@ -29,7 +29,16 @@ Only one: `aihub.html` (read-only page, not linked in the team app) published on
 | Item | Status |
 | --- | --- |
 | Buyer RM AI flags "buyer asks about other properties" → NEEDS REVIEW, no draft | ✅ Built + tested |
-| Team app (index.html, buyers.html) "🏘 More options" template sent 3 OTHER properties to a buyer, and was the default for "Not Interested" buyers. "After visit" offered "show me other options". "No property" text promised "matching options" | ✅ Fix ready (replaced by a thank-you note naming only the buyer's own property). ⏳ Needs approval to go live |
+| Team app (index.html, buyers.html) "🏘 More options" template sent 3 OTHER properties to a buyer, and was the default for "Not Interested" buyers. "After visit" offered "show me other options". "No property" text promised "matching options" | ✅ Live 27 Nov 2026, 11:20 AM IST (PR #6, approved) |
 | `crm-buyer-assistant` helper prompt told Claude to "match 3-5 properties" | ✅ Fixed (own property only) |
 | Security fixes as SQL (`05_security_hardening.sql`) | ✅ Prepared + tested on a local database copy. ⏳ Needs approval to run on live DB |
 | `wa-send` Verify JWT ON | ⏳ Needs approval (Edge Function redeploy) |
+
+## 27 Nov 2026: lead-flow check (branch `ai-hub-followups`)
+Confirmed flow: portals → website Admin Panel → CRM → AI Hub (reads CRM only). No gaps in reading, growth or duplicates. 3 small gaps fixed on the branch:
+| Gap | Status |
+| --- | --- |
+| Buyer follow-ups due/overdue were not prioritised | ✅ "⏰ Follow-up due" filter; order is new → follow-ups due (most overdue first) → newest |
+| Health label said "Portal leads arriving" and watched the intake log | ✅ "New leads reaching CRM", based on the CRM's own buyer leads |
+| Docs described the flow as portal → CRM | ✅ portal → Admin Panel → CRM |
+| Go live | ⏳ Needs approval |
